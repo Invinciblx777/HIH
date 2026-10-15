@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AegisLab</title>
+<meta name="description" content="AegisLab: secure infrastructure for adversarial AI evaluation. Hackathon prototype by Team Tech Mavericks.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="proto-banner" id="proto-banner" role="note">
+  <strong>Implemented prototype</strong> · local single-host control plane · stub model worker · not a production security system
+  <span id="mode-note"></span>
+</div>
+<header class="topbar">
+  <a class="brand" href="#/" aria-label="AegisLab overview">
+    <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><path d="M16 2 4 7v8c0 7.4 5.1 13.4 12 15 6.9-1.6 12-7.6 12-15V7z" fill="#13233A"/><path d="M9 21 14 13l3 4 2-3 4 7z" fill="#E8772E"/></svg>
+    <span>AegisLab</span>
+  </a>
+  <nav class="nav" aria-label="Main">
+    <a href="#/" data-nav="overview">Overview</a>
+    <a href="#/runs" data-nav="runs">Evaluation dashboard</a>
+    <a href="#/runs/DEMO-001" data-nav="run">DEMO-001</a>
+    <a href="#/runs/DEMO-001/evidence" data-nav="evidence">Evidence report</a>
+  </nav>
+  <label class="role">
+    <span>Viewing as</span>
+    <select id="role-select" aria-label="Demo identity">
+      <option value="observer">Observer</option>
+      <option value="operator">Operator</option>
+      <option value="reviewer">Reviewer</option>
+      <option value="blue_participant">Blue participant</option>
+      <option value="red_participant">Red participant</option>
+    </select>
+  </label>
+</header>
+<main id="app" tabindex="-1"></main>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<footer class="foot">
+  <span>AegisLab · Team Tech Mavericks · Hack in Hills ’26, Track 04</span>
+  <span>Identities are local demo tokens issued by this control plane, enforced server-side. Production would use SSO.</span>
+</footer>
+<script src="app.js"></script>
+</body>
+</html>

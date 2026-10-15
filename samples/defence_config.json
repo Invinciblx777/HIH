@@ -1,0 +1,6 @@
+{
+  "version": "blue-v1.3",
+  "_note": "Sample blue-team defence configuration (pattern rules) for the prototype.",
+  "input_patterns": ["ignore (all )?previous instructions", "developer mode", "system prompt"],
+  "output_patterns": ["\\[UNSAFE-MARKER\\]"]
+}
