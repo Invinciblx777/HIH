@@ -1,0 +1,38 @@
+$ phase1_closeout/scratch_validation/rel/aegislab/.venv/bin/python -m aegis.verify_cli --bundle evidence/validation_2026-10-22/bundles/VAL-001_TAMPERED_truncated_last3
+# started 2026-10-22T18:42:21Z
+{
+  "ok": false,
+  "entries": 22,
+  "chain_ok": true,
+  "checkpoints_checked": 3,
+  "checkpoint_ok": false,
+  "last_checkpoint_seq": 25,
+  "tail_uncovered": 0,
+  "terminal_required": true,
+  "terminal_verified": false,
+  "terminal_state": "RELEASED",
+  "anchor_checked": true,
+  "findings": [
+    {
+      "checkpoint_seq": 24,
+      "issue": "log has 22 entries but a signed checkpoint covers seq 24: truncation"
+    },
+    {
+      "checkpoint_seq": 25,
+      "issue": "log has 22 entries but a signed checkpoint covers seq 25: truncation"
+    },
+    {
+      "checkpoint_seq": 25,
+      "issue": "log has 22 entries but the terminal checkpoint binds 25: truncation"
+    },
+    {
+      "checkpoint_seq": 25,
+      "issue": "final entry 'attack.evaluated' is not a terminal lifecycle event"
+    },
+    {
+      "checkpoint_seq": 25,
+      "issue": "terminal state RELEASED does not match the final lifecycle event"
+    }
+  ]
+}
+# exit=1

@@ -1,0 +1,22 @@
+$ phase1_closeout/scratch_validation/rel/aegislab/.venv/bin/python -m aegis.verify_cli --bundle phase1_closeout/scratch_validation/tamper/edited
+# started 2026-10-22T18:42:21Z
+{
+  "ok": false,
+  "entries": 25,
+  "chain_ok": false,
+  "checkpoints_checked": 3,
+  "checkpoint_ok": true,
+  "last_checkpoint_seq": 25,
+  "tail_uncovered": 0,
+  "terminal_required": true,
+  "terminal_verified": true,
+  "terminal_state": "RELEASED",
+  "anchor_checked": true,
+  "findings": [
+    {
+      "seq": 13,
+      "issue": "entry content does not match its hash"
+    }
+  ]
+}
+# exit=1

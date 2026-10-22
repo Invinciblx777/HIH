@@ -1,0 +1,419 @@
+{
+ "argv": [
+  "evaluation/timing_closeout.py",
+  "--runs",
+  "20",
+  "--seed",
+  "20261024",
+  "--out-dir",
+  "/home/v0idsai/Projects/Hack On Hills/phase1_closeout/runs/exec3_seed20261024"
+ ],
+ "broker_mailbox_rtt": {
+  "idle": {
+   "block_medians_ms": [
+    2.571,
+    2.597,
+    2.576,
+    2.758,
+    2.493,
+    2.59,
+    2.569,
+    2.476,
+    2.54,
+    2.583
+   ],
+   "blocks": 10,
+   "max_ms": 5.15,
+   "median_ms": 2.59,
+   "min_ms": 2.3,
+   "n": 1000,
+   "p90_ms": 4.56,
+   "p95_ms": 4.59,
+   "p99_ms": 4.79
+  },
+  "limited_1cpu_8proc": {
+   "block_medians_ms": [
+    2.608,
+    2.654,
+    2.668,
+    2.943,
+    2.703,
+    3.471,
+    2.926,
+    2.531,
+    2.518,
+    2.725
+   ],
+   "blocks": 10,
+   "increase_vs_idle": {
+    "median_pct": 2.3,
+    "median_pct_ci95_block_bootstrap": [
+     -1.6,
+     8.0
+    ],
+    "p99_pct": -0.8,
+    "p99_pct_ci95_block_bootstrap": [
+     -3.7,
+     2.7
+    ]
+   },
+   "max_ms": 5.16,
+   "median_ms": 2.65,
+   "min_ms": 2.29,
+   "n": 1000,
+   "p90_ms": 4.59,
+   "p95_ms": 4.63,
+   "p99_ms": 4.75
+  },
+  "unrestricted_16proc": {
+   "block_medians_ms": [
+    3.486,
+    4.275,
+    3.087,
+    4.593,
+    3.578,
+    3.425,
+    4.531,
+    3.799,
+    4.53,
+    4.605
+   ],
+   "blocks": 10,
+   "increase_vs_idle": {
+    "median_pct": 51.7,
+    "median_pct_ci95_block_bootstrap": [
+     33.4,
+     75.4
+    ],
+    "p99_pct": 62.8,
+    "p99_pct_ci95_block_bootstrap": [
+     42.7,
+     79.1
+    ]
+   },
+   "max_ms": 13.01,
+   "median_ms": 3.93,
+   "min_ms": 2.41,
+   "n": 1000,
+   "p90_ms": 5.34,
+   "p95_ms": 6.55,
+   "p99_ms": 7.8
+  }
+ },
+ "code_revision": {
+  "files": 33,
+  "note": "not a git repository; hash over aegis/ sandbox/ evaluation/ scripts/ tests/ samples/ (*.py, *.sh, *.json)",
+  "tree_sha256": "sha256:d5850aa4dc82570f2ee9b8e6a6fe678d8f31399a43686ac5fabe97f2cd8af100"
+ },
+ "conditions": {
+  "0": {
+   "added_median_latency_for_answered_requests_ms": 0.0,
+   "auc_refused_faster": 0.824,
+   "bucket_ms": 0,
+   "folds": 5,
+   "heldout_accuracy": 0.8,
+   "heldout_accuracy_ci95": [
+    0.739,
+    0.85
+   ],
+   "heldout_balanced_accuracy": 0.8,
+   "latency_answered": {
+    "max_ms": 113.98,
+    "median_ms": 93.89,
+    "min_ms": 77.33,
+    "n": 100,
+    "p90_ms": 104.46,
+    "p95_ms": 109.84,
+    "p99_ms": 113.68
+   },
+   "latency_refused": {
+    "max_ms": 110.26,
+    "median_ms": 53.69,
+    "min_ms": 31.32,
+    "n": 100,
+    "p90_ms": 97.32,
+    "p95_ms": 100.27,
+    "p99_ms": 103.98
+   },
+   "majority_baseline": 0.5,
+   "n_answered": 100,
+   "n_refused": 100,
+   "permutation_p": 0.001,
+   "permutations": 1000,
+   "run_wall_clock_s": {
+    "max_ms": 2433.5,
+    "median_ms": 2231.25,
+    "min_ms": 1775.9,
+    "n": 20,
+    "p90_ms": 2327.3,
+    "p95_ms": 2390.3,
+    "p99_ms": 2433.5
+   },
+   "total_requests": 200,
+   "usable_runs": 20
+  },
+  "100": {
+   "added_median_latency_for_answered_requests_ms": 50.41,
+   "auc_refused_faster": 0.515,
+   "bucket_ms": 100,
+   "folds": 5,
+   "heldout_accuracy": 0.545,
+   "heldout_accuracy_ci95": [
+    0.476,
+    0.613
+   ],
+   "heldout_balanced_accuracy": 0.545,
+   "latency_answered": {
+    "max_ms": 161.11,
+    "median_ms": 144.3,
+    "min_ms": 129.22,
+    "n": 100,
+    "p90_ms": 153.8,
+    "p95_ms": 156.93,
+    "p99_ms": 160.55
+   },
+   "latency_refused": {
+    "max_ms": 167.3,
+    "median_ms": 140.82,
+    "min_ms": 128.23,
+    "n": 100,
+    "p90_ms": 155.72,
+    "p95_ms": 157.82,
+    "p99_ms": 165.1
+   },
+   "majority_baseline": 0.5,
+   "n_answered": 100,
+   "n_refused": 100,
+   "permutation_p": 0.2128,
+   "permutations": 1000,
+   "run_wall_clock_s": {
+    "max_ms": 3212.3,
+    "median_ms": 2882.95,
+    "min_ms": 2425.7,
+    "n": 20,
+    "p90_ms": 3026.2,
+    "p95_ms": 3039.3,
+    "p99_ms": 3212.3
+   },
+   "total_requests": 200,
+   "usable_runs": 20
+  },
+  "250": {
+   "added_median_latency_for_answered_requests_ms": 197.94,
+   "auc_refused_faster": 0.506,
+   "bucket_ms": 250,
+   "folds": 5,
+   "heldout_accuracy": 0.495,
+   "heldout_accuracy_ci95": [
+    0.426,
+    0.564
+   ],
+   "heldout_balanced_accuracy": 0.495,
+   "latency_answered": {
+    "max_ms": 327.98,
+    "median_ms": 291.83,
+    "min_ms": 277.6,
+    "n": 100,
+    "p90_ms": 309.89,
+    "p95_ms": 311.89,
+    "p99_ms": 322.54
+   },
+   "latency_refused": {
+    "max_ms": 319.45,
+    "median_ms": 292.94,
+    "min_ms": 278.19,
+    "n": 100,
+    "p90_ms": 309.49,
+    "p95_ms": 312.54,
+    "p99_ms": 317.15
+   },
+   "majority_baseline": 0.5,
+   "n_answered": 100,
+   "n_refused": 100,
+   "permutation_p": 0.5375,
+   "permutations": 1000,
+   "run_wall_clock_s": {
+    "max_ms": 4721.2,
+    "median_ms": 4392.0,
+    "min_ms": 3954.6,
+    "n": 20,
+    "p90_ms": 4571.9,
+    "p95_ms": 4579.5,
+    "p99_ms": 4721.2
+   },
+   "total_requests": 200,
+   "usable_runs": 20
+  },
+  "500": {
+   "added_median_latency_for_answered_requests_ms": 447.82,
+   "auc_refused_faster": 0.491,
+   "bucket_ms": 500,
+   "folds": 5,
+   "heldout_accuracy": 0.495,
+   "heldout_accuracy_ci95": [
+    0.426,
+    0.564
+   ],
+   "heldout_balanced_accuracy": 0.495,
+   "latency_answered": {
+    "max_ms": 582.08,
+    "median_ms": 541.71,
+    "min_ms": 529.51,
+    "n": 100,
+    "p90_ms": 558.59,
+    "p95_ms": 560.52,
+    "p99_ms": 569.95
+   },
+   "latency_refused": {
+    "max_ms": 604.07,
+    "median_ms": 541.93,
+    "min_ms": 528.84,
+    "n": 100,
+    "p90_ms": 559.63,
+    "p95_ms": 561.03,
+    "p99_ms": 579.75
+   },
+   "majority_baseline": 0.5,
+   "n_answered": 100,
+   "n_refused": 100,
+   "permutation_p": 0.5614,
+   "permutations": 1000,
+   "run_wall_clock_s": {
+    "max_ms": 7213.2,
+    "median_ms": 6901.4,
+    "min_ms": 6426.1,
+    "n": 20,
+    "p90_ms": 7074.4,
+    "p95_ms": 7084.2,
+    "p99_ms": 7213.2
+   },
+   "total_requests": 200,
+   "usable_runs": 20
+  }
+ },
+ "config": {
+  "aegis_var": "/home/v0idsai/Projects/Hack On Hills/phase1_closeout/scratch_var/exec3",
+  "attacks_per_run": 10,
+  "classes_per_run": {
+   "answered": 5,
+   "refused": 5
+  },
+  "model": "stub worker, fixed ~40 ms sleep",
+  "padding_intervals_ms": [
+   0,
+   100,
+   250,
+   500
+  ],
+  "rtt_block": 100,
+  "rtt_reps": 10,
+  "rtt_warmup": 20,
+  "runs": 20,
+  "seed": 20261024
+ },
+ "confounders": [
+  "label (refused) is determined by attack id: 10 distinct payloads, 5 refused / 5 answered per run",
+  "stub model latency is a fixed ~40 ms sleep; a real model's latency varies and can cross bucket boundaries (not covered)",
+  "single host, laptop CPU, desktop session running, SELinux enforcing, rootless Podman, file-mailbox polling ~2 ms (RTT quantised)",
+  "runs are sequential; no concurrent tenants during the classification experiment",
+  "a single-threshold classifier is a weak adversary; a stronger one or a far larger n could extract more",
+  "the 100/250/500 ms settings were fixed before measurement; 250 ms is the shipped default chosen on 15 Oct data"
+ ],
+ "environment": {
+  "cgroups": "v2",
+  "cpus": 16,
+  "cpuset_delegated": false,
+  "kernel": "7.2.11-200.fc44.x86_64",
+  "oci_runtime": "crun",
+  "oci_runtime_version": "crun version 1.28",
+  "podman": "5.8.9",
+  "rootless": true,
+  "seccomp_profile": "/usr/share/containers/seccomp.json",
+  "selinux": true
+ },
+ "execution_id": "TX-20261022T180713Z-df7f7e",
+ "finished_utc": "2026-10-22T18:16:01.888212+00:00",
+ "host": {
+  "cpu_model": "AMD Ryzen 7 7735HS with Radeon Graphics",
+  "cpus": 16,
+  "governor": "performance",
+  "loadavg": [
+   6.4501953125,
+   3.27783203125,
+   2.1484375
+  ],
+  "loadavg_after": [
+   6.36083984375,
+   3.7666015625,
+   2.80419921875
+  ],
+  "mem_available_mb": 3795,
+  "platform": "Linux-7.2.11-200.fc44.x86_64-x86_64-with-glibc2.43",
+  "python": "3.14.8",
+  "top_processes_by_cpu_before_start": [
+   "92.3 python",
+   "21.0 brave",
+   "11.3 brave",
+   "4.1 antigravity",
+   "3.8 brave",
+   "3.4 brave"
+  ]
+ },
+ "raw_files_sha256": {
+  "raw_classification.jsonl": "3dbda264f9204dc4c1c42be97e596bf4b9e899c7d4e8e4ce31038df88ecf0122",
+  "raw_rtt.jsonl": "cfeab319e5f66595ab6bf00db798780d5b23af29c0e74282f8a36325a6016142",
+  "raw_runs.json": "7fd3d6ef642e1b85747079398f59a2f1faf553c11cbd6f45ce01fbc7bd6d0810",
+  "rtt_blocks.json": "8f1fb98747abf7eabd7369a9d3b1f4461e267bab38bad59855cb102050ccc8c1"
+ },
+ "rules": {
+  "classification": "per bucket, 20 runs x 10 attacks (5 refused, 5 answered); threshold fitted on training runs only, scored on held-out runs (grouped 5-fold by run); majority baseline = larger class share; permutation p from 1000 label shuffles of the full procedure; padding intervals fixed in advance (0/100/250/500 ms) and not tuned on these observations",
+  "latency_increase_pct": "100*(median(contention)-median(idle))/median(idle), pooled non-warm-up samples of this execution; same for p99; 95% interval by bootstrap over blocks (2000 resamples)",
+  "rtt": "blocks of 100 timed calls after 20 discarded warm-up calls; 10 blocks per condition; condition order shuffled within each repetition; a contention block is valid only if the neighbour container is running before and after",
+  "usable_run": "run ends SEALED with complete=true without exception and returns exactly 10 observations; others are listed in `unusable` and excluded from metrics (raw kept)",
+  "verdict_rule": "a padded setting is 'leak detected' if its permutation p < 0.05/9 (Bonferroni over 3 executions x 3 padded settings) in any execution; otherwise 'no leak detected (inconclusive as to absence)'; settings whose executions disagree at uncorrected p<0.05 are 'unstable'"
+ },
+ "sandbox_image_id": "e5570bb3b81c1ad5b7f45f1c6058016b6e41914231b193b550434898d3cc5fec",
+ "seed": 20261024,
+ "source_sha256": {
+  "Containerfile": "0b6423381fe6899ff98ccdb7c8b1eb42021f2c06985932dfea08d88cdc7bb7a9",
+  "aegis/__init__.py": "47158bd9175dcb86f3fd3215a50b48f8ee26b10932abf38892f674398628a644",
+  "aegis/api.py": "d318fc8c091f79baa0eadffb0a1d681c4aa54f389d9d1298f712545ecfb7f2de",
+  "aegis/audit.py": "806e0dbbf71f028f2e644f43c6c551a9830267356b80973679774dcc5e9ea543",
+  "aegis/crypto.py": "24e2623bf4a7f907fc479efe0770bbc1febe28646a9fce8a55e547a1e042f926",
+  "aegis/evidence.py": "a992580a795d941db8301331c4b9a3c7accf180f91983e5709da5e3f705e21c2",
+  "aegis/model_client.py": "1a752e41f18d0269fb6d1a6f498ecb79ca9eb32192d27f6f9aa96b816107bc2b",
+  "aegis/runs.py": "827bdde104f808aaf7ea2dd5dbfd777e4619371198d1036d62a1a0513af78432",
+  "aegis/runtime.py": "85043330afc12bf9a798f6946bfab825c5be318e24f947a68f604256b3673d69",
+  "aegis/store.py": "80b3c6ee81ea2857f386788f4a25f3927685a469b5ffd1c24fa57bc37d7bda81",
+  "aegis/verify_cli.py": "a51c67d4d5569b967b343993008015e35b355cb2cfe33608016926bb105204ba",
+  "evaluation/check_claims.py": "e064dd2462e6a44e958c38a01786b956db547eaea65a6fdecfaed04d3dd6da5e",
+  "evaluation/isolation_matrix.py": "bb41bea3dd85c69b7bfb252de68396bd5da2bfad4a57c620a31b819db22785bc",
+  "evaluation/model_experiments.py": "1c951cedfb9ad0879a825fa0813f9527f9c222fc5f70a470c15aca0d1c238460",
+  "evaluation/revision.py": "8613c974eb9dfd30c1c5ef10ecd7296423783e4659f8f7c1621d8bbb9178f281",
+  "evaluation/run_evaluation.py": "d96966eaf3b3c4ad73e89fc6d2a1c76522ec30cd1563302d1bd0c27780148347",
+  "evaluation/run_validation.py": "a661455713b8e4d7e410d6ba9c1311ec35a4c1f8d14e4128da5459b8d65cbfcc",
+  "evaluation/timing_closeout.py": "a88bfa637df3610f2de29726b0893ae3d6a9de84af1846e92047afcfc5e72065",
+  "evaluation/timing_eval.py": "6f793132c98c0a43e945e4afc7013298476fedcdf74e94746a802531d2ec7128",
+  "requirements.txt": "2dade7e6e03924544949eec51a72dc5b18b6678c8285a9486170df98488f513f",
+  "samples/attack_pack.json": "eba57929c4accb5e68b3d46fd4bfdf0b3a77ff8e196ff43b1b99d27be9fc0aea",
+  "samples/defence_config.json": "c6139a79babc49ecddf1a4564e7e750a52292dbc41585ab4f11ffaf097918d76",
+  "sandbox/defence_runner.py": "46abdcbd99b835405b79ad78046d040086018a84efa24b971e5a17bb0ab0eab4",
+  "sandbox/model_worker.py": "f4d89aa4274b2611ab8ab7200fab2a6d7cbbd8e0abcec33685f359559dc6b96c",
+  "sandbox/red_agent.py": "1f70fc31e16a0ad9aefdc0f8bdf5fcf7d2d14dfa06e1b43563f5730c526f81bb",
+  "sandbox/spool.py": "fb3b388cd5e59a78c9682ff4686d8f0de107b692b4be14e659568f90a077982e",
+  "scripts/demo_run.py": "4493ad7f955878071f559448c6972fec4e415c6b76aefb556f521788b672f21c",
+  "scripts/export_snapshot.py": "2c03204b74759ed122bdd1eb2888e483b540ea262a4cc7269a068dabad2361c3",
+  "scripts/quickstart.sh": "1d909a1b48625ba91480016ffe2c20b179afc116abddbe2bc6953eea301684b8",
+  "scripts/security_demo.py": "da8da34fe6fcef0f63de9de1cafd8ee870e725c89a388eb45eea2b368927a0f0",
+  "scripts/security_demo.sh": "69210d857d9216b033e09f0e15d484e81d9e1777f0390231a1ed821dcd36f1c2",
+  "tests/test_audit_integrity.py": "4d896036674e6b8f7b6bca599edccf29605547c2f8b2b54047766afd96acda23",
+  "tests/test_core.py": "e977af5a5756d0f3e93ba8814e7dab4579af707974ba2ca3234222541a124dd6",
+  "tests/test_isolation.py": "d31c7021d613a9a92a3122c7f8a481e267163055972e4491fb95bd659a5cd6c1",
+  "tests/test_model_client.py": "ce00ad82c4df42e9f3155a22480f02db8789222788f9f9dcf49ba0251d50287f"
+ },
+ "started_utc": "2026-10-22T18:07:13.158489+00:00",
+ "status": "COMPLETE",
+ "unusable": [],
+ "unusable_rtt_blocks": [],
+ "wall_clock_s": 528.7
+}

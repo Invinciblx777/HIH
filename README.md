@@ -4,7 +4,7 @@ Secure infrastructure for adversarial AI evaluation. Team Tech Mavericks, Hack i
 
 **Status: implemented prototype.** It is a working single-host proof of concept with measured results. It is not a production security system. By default the model under test is a deterministic **stub**, not an LLM; an optional, opt-in OpenAI-compatible adapter exists (see "Optional real-model backend").
 
-**Two result sets exist and are kept apart.** The 15 Oct 2026 submission numbers are in `evidence/results.json`, `evidence/RESULTS.md` and `evidence/DEMO-001/` and are unchanged. The 22 Oct 2026 hardening validation (terminal audit anchor, access matrix, real-model experiments, held-out timing analysis) is in `evidence/validation_2026-10-22/`, summarised in `../VALIDATION_ADDENDUM_2026-10-22.md`. The full threat table with measured results and residual risk is `THREAT_MODEL.md`.
+**Two result sets exist and are kept apart.** The 15 Oct 2026 submission numbers are in `evidence/results.json`, `evidence/RESULTS.md` and `evidence/DEMO-001/` and are unchanged. The 22 Oct 2026 hardening validation (terminal audit anchor, access matrix, real-model experiments, held-out timing analysis) is in `evidence/validation_2026-10-22/`, summarised in `../VALIDATION_ADDENDUM_2026-10-22.md`; the timing figures there were superseded by the Phase 1 closeout executions in `evidence/closeout_2026-10-22/`. The full threat table with measured results and residual risk is `THREAT_MODEL.md`.
 
 ## What it does
 
@@ -51,7 +51,7 @@ podman pull docker.io/library/python:3.12-slim
 pytest -q tests                                   # 144 tests; includes the security regression suites and one Podman end-to-end run
 AEGIS_VAR=var/mine python scripts/demo_run.py DEMO-001 --bundle-dir var/mine/bundles/DEMO-001
 python -m aegis.verify_cli --bundle var/mine/bundles/DEMO-001
-scripts/security_demo.sh                          # judge-facing demonstration, ~30 s, fresh temp state, exits 0 only if every check behaves
+scripts/security_demo.sh                          # judge-facing demonstration (a few seconds once the image is built), fresh temp state, exits 0 only if every check behaves
 AEGIS_VAR=var/mine AEGIS_DEMO_MODE=1 uvicorn aegis.api:app --host 127.0.0.1 --port 8400   # console
 ```
 
@@ -60,7 +60,9 @@ Evaluations (each writes only to the `--out` folder; the runner refuses to write
 ```bash
 AEGIS_VAR=var/scratch python evaluation/run_evaluation.py --runs 10 --out evidence/validation_<date>/e1_e9_rerun     # original E1-E9 harness, ~2 min
 AEGIS_VAR=var/scratch python evaluation/run_validation.py --out evidence/validation_<date> --runs 30                 # audit tamper/truncation x30 + access matrix, ~3 min
-AEGIS_VAR=var/scratch python evaluation/timing_eval.py --runs 20 --out evidence/validation_<date>/timing.json         # held-out timing analysis + RTT, ~9 min
+AEGIS_VAR=var/scratch python evaluation/timing_eval.py --runs 20 --out evidence/validation_<date>/timing.json         # held-out timing analysis + RTT, ~9 min (summaries only)
+AEGIS_VAR=var/scratch python evaluation/timing_closeout.py --seed 1 --out-dir evidence/closeout_<date>/timing/exec1     # one execution with run id, source hashes and raw per-request / per-round-trip files, ~8 min
+python evaluation/timing_aggregate.py --out evidence/closeout_<date>/timing/aggregate.json evidence/closeout_<date>/timing/exec*   # combine executions, held-out transfer, verdicts
 ```
 
 To try the gated actions, use the "Viewing as" selector: Operator (create/freeze/start), Reviewer (release, tamper test), Blue or Red participant (gets 403 before release). The API enforces these identities. They are local demo tokens in `var/keys/tokens.json`; production would use SSO/OIDC. `AEGIS_DEMO_MODE=1` makes `GET /api/demo/identities` hand out every token to any local caller: demo only.
@@ -79,7 +81,7 @@ python -m aegis.verify_cli --audit audit.jsonl --checkpoints vault.jsonl --pubke
 
 The verifier is **fail-closed**: a log with no signed terminal checkpoint (or retained anchor) is never reported valid, because a truncated log cannot show that it was truncated. `--allow-in-progress` is the explicit opt-out for unfinished runs and old bundles; it exits 0 only with a stderr warning that completeness is not established.
 
-A published example is in `evidence/validation_2026-10-22/bundles/`: `VAL-001` must verify and `VAL-001_TAMPERED_truncated_last3` must fail. The **submitted** `evidence/DEMO-001/` bundle predates terminal checkpoints, so strict verification rejects it ("no signed terminal checkpoint ... legacy checkpoints only"); check it with `--allow-in-progress` (chain and checkpoint consistency only: `ok: true, terminal_verified: false`). It is intentionally left unchanged.
+A published example is in `evidence/validation_2026-10-22/bundles/`: `VAL-001` must verify and `VAL-001_TAMPERED_truncated_last3` must fail. A completed, released `DEMO-001` that passes strict verification is in `evidence/closeout_2026-10-22/DEMO-001_released/` (`python -m aegis.verify_cli --bundle evidence/closeout_2026-10-22/DEMO-001_released`, exit 0). The **submitted** `evidence/DEMO-001/` bundle is the completed 15 Oct run in the legacy format; it has no terminal checkpoint, so strict verification rejects it ("no signed terminal checkpoint ... legacy checkpoints only"). `--allow-in-progress` checks chain and checkpoint consistency only (`ok: true, terminal_verified: false`) and is **not** equivalent to verifying a completed run. The legacy bundle is intentionally left unchanged.
 
 ### Optional real-model backend
 
@@ -133,7 +135,7 @@ Identity header: `X-Aegis-Token`.
 - **Broker, host kernel, runtime or signing-key compromise.** The broker sees everything and signs checkpoints; a compromised broker can read sealed artifacts and write false entries before signing. A hash chain cannot detect lies told at write time.
 - **Kernel or container-runtime escape.** Containers share the host kernel. MicroVMs (Kata, Firecracker) or gVisor are the next step.
 - **Shared-hardware side channels.** Last-level cache, memory bandwidth, scheduling and power remain shared. CPU quotas apply; per-tenant cpusets were *not* applied on the test host because the cpuset controller is not delegated to rootless users.
-- **Defence inference through authorised outputs.** Red legitimately sees refusals. On the 15 Oct in-sample measure, 250 ms buckets reduced a simple classifier from 0.80 to 0.57. The 22 Oct held-out analysis (n=200 per setting) found: no padding 0.805, 100 ms buckets 0.595 (still separable, p=0.013), 250 ms 0.545 (p=0.19), 500 ms 0.515 (p=0.40); 250 ms adds ~208 ms to answered requests. Not distinguishable from chance at this n is not proof of absence.
+- **Defence inference through authorised outputs.** Red legitimately sees refusals. On the 15 Oct in-sample measure, 250 ms buckets reduced a simple classifier from 0.80 to 0.57. The 22 Oct held-out analysis (three complete executions, n=200 per setting each, raw data kept in `evidence/closeout_2026-10-22/timing/`) found: no padding 0.795–0.800 (p=0.001 each), 100 ms 0.510–0.545, 250 ms 0.495–0.555, 500 ms 0.495–0.510, none significantly above chance (smallest p 0.136); 250 ms adds +198 to +201 ms to answered requests. Not distinguishable from chance at this n is not proof of absence.
 - **Model cache and cleanup on real inference servers.** Only the stub was tested. GPU KV-cache, CUDA contexts and prefix caching need their own boundary.
 - **Monitoring metadata.** Content is redacted, but event timing and counts are visible.
 - **Audit: what still defeats it.** The 15 Oct gap (reviewer keeps only the freeze checkpoint: 0/30 detected) is closed by the terminal checkpoint and the fail-closed verifier (30/30). Still undetected: an attacker who holds the signing key and replaces every retained copy (vault, anchor store, exported bundle); a compromised verifier or pinned key; a broker that signs false entries.

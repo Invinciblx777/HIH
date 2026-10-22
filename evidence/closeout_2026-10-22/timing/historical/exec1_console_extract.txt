@@ -1,0 +1,14 @@
+EXECUTION 1 (unsaved raw) - console output exactly as captured in the 22 Oct hardening session
+source: Claude Code session transcript 9fce1e01-f647-4aac-bcf5-7f0d75733692.jsonl, line 667 (tool result, 2026-10-22T14:26:54Z / 19:56:54 IST)
+command that produced the file read here: `rm -rf var/validation_2026-10-22/timing && AEGIS_VAR=.../timing python evaluation/timing_eval.py --runs 20 --rtt 500 ...` issued 2026-10-22T14:18:07Z (19:48:07 IST)
+status: HISTORICAL, UNVERIFIED. No raw file survives (the scratch state and evidence/validation_2026-10-22/timing.json were overwritten by the 14:34:59Z re-run). Code revision: earlier than the final tree (see report).
+-----
+(first line: wall_clock_s, loadavg_before, loadavg_after; then one line per padding setting; then the three RTT conditions, n=500)
+523.1 [3.322265625, 2.1689453125, 1.92578125] [2.9111328125, 2.2109375, 2.08544921875]
+0 n 100 100 acc 0.805 [0.745, 0.854] bal 0.805 auc 0.757 p 0.001 ref med 53.72 ans med 94.24 p95 100.93 103.49 wall 2223.14 added 0.0
+100 n 100 100 acc 0.595 [0.526, 0.661] bal 0.595 auc 0.423 p 0.013 ref med 146.83 ans med 146.29 p95 156.25 156.06 wall 2890.2 added 52.05
+250 n 100 100 acc 0.545 [0.476, 0.613] bal 0.545 auc 0.423 p 0.1908 ref med 304.51 ans med 302.28 p95 313.07 316.3 wall 4472.52 added 208.04
+500 n 100 100 acc 0.515 [0.446, 0.583] bal 0.515 auc 0.475 p 0.4026 ref med 553.19 ans med 552.36 p95 562.64 567.7 wall 6954.52 added 458.12
+cpu_hog_limited_1cpu_8proc {'max_ms': 6.09, 'median_ms': 2.82, 'min_ms': 2.33, 'n': 500, 'p90_ms': 4.68, 'p95_ms': 4.76, 'p99_ms': 5.11}
+cpu_hog_unlimited_16proc {'max_ms': 10.05, 'median_ms': 4.62, 'min_ms': 2.48, 'n': 500, 'p90_ms': 5.25, 'p95_ms': 5.76, 'p99_ms': 8.23}
+idle {'max_ms': 6.73, 'median_ms': 2.72, 'min_ms': 2.31, 'n': 500, 'p90_ms': 4.62, 'p95_ms': 4.68, 'p99_ms': 4.83}

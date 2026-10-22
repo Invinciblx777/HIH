@@ -1,0 +1,17 @@
+$ phase1_closeout/scratch_validation/rel/aegislab/.venv/bin/python -m aegis.verify_cli --bundle evidence/validation_2026-10-22/bundles/VAL-001
+# started 2026-10-22T18:42:20Z
+{
+  "ok": true,
+  "entries": 25,
+  "chain_ok": true,
+  "checkpoints_checked": 3,
+  "checkpoint_ok": true,
+  "last_checkpoint_seq": 25,
+  "tail_uncovered": 0,
+  "terminal_required": true,
+  "terminal_verified": true,
+  "terminal_state": "RELEASED",
+  "anchor_checked": true,
+  "findings": []
+}
+# exit=0

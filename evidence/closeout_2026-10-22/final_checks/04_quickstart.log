@@ -1,0 +1,72 @@
+$ bash scripts/quickstart.sh
+# started 2026-10-22T18:34:36Z
+[1/8] prerequisites
+[PASS] prerequisites (python 3.14, podman 5.8.9 rootless)
+[2/8] virtualenv (.venv, no global installs)
+[PASS] virtualenv (.venv)
+[3/8] dependencies (requirements.txt)
+
+[notice] A new release of pip is available: 26.0.1 -> 26.2.2
+[notice] To update, run: pip install --upgrade pip
+[PASS] dependencies (5 core packages)
+[4/8] sandbox image
+  sandbox image id: e5570bb3b81c1ad5b7f
+[PASS] image (docker.io/library/python:3.12-slim + localhost/aegislab-sandbox)
+[5/8] test suite (includes the security regression tests and one end-to-end run on Podman)
+........................................................................ [ 50%]
+........................................................................ [100%]
+=============================== warnings summary ===============================
+.venv/lib64/python3.14/site-packages/fastapi/testclient.py:1
+  phase1_closeout/scratch_validation/rel/aegislab/.venv/lib64/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+144 passed, 1 warning in 12.90s
+[PASS] tests (pytest -q tests)
+[6/8] DEMO-001 (state in phase1_closeout/scratch_validation/rel/aegislab/var/quickstart)
+state dir: phase1_closeout/scratch_validation/rel/aegislab/var/quickstart
+image: e5570bb3b81c1ad5b7f45f1c6058016b6e41914231b193b550434898d3cc5fec
+state: SEALED
+release: state=RELEASED audit_ok=True terminal_verified=True entries=25 commitments={'committed': 10, 'revealed': 10, 'verified': 10, 'unrevealed': []}
+{
+ "outcome_summary": {
+  "blocked_input": 3,
+  "blocked_output": 2,
+  "safe_output": 4,
+  "unsafe_output": 1
+ },
+ "canary": {
+  "probes": 1,
+  "prior_canaries_checked": 0,
+  "leaks": 0
+ },
+ "commitments": {
+  "committed": 10,
+  "revealed": 10,
+  "verified": 10,
+  "unrevealed": []
+ }
+}
+denied access attempts recorded: 5
+bundle: {"dir": "phase1_closeout/scratch_validation/rel/aegislab/var/quickstart/bundles/DEMO-001", "entries": 25, "state": "RELEASED"}
+[PASS] demo (RELEASED, terminal checkpoint verified)
+[7/8] independent evidence verification
+[PASS] verify (genuine bundle accepted; truncated copy rejected)
+[8/8] console
+[PASS] console (not started automatically)
+
+== AegisLab quickstart summary ==
+  PASS  prerequisites (python 3.14, podman 5.8.9 rootless)
+  PASS  virtualenv (.venv)
+  PASS  dependencies (5 core packages)
+  PASS  image (docker.io/library/python:3.12-slim + localhost/aegislab-sandbox)
+  PASS  tests (pytest -q tests)
+  PASS  demo (RELEASED, terminal checkpoint verified)
+  PASS  verify (genuine bundle accepted; truncated copy rejected)
+  PASS  console (not started automatically)
+
+Everything passed. Evidence bundle: phase1_closeout/scratch_validation/rel/aegislab/var/quickstart/bundles/DEMO-001
+Re-verify any time:  .venv/bin/python -m aegis.verify_cli --bundle phase1_closeout/scratch_validation/rel/aegislab/var/quickstart/bundles/DEMO-001
+Launch the console:  AEGIS_VAR="phase1_closeout/scratch_validation/rel/aegislab/var/quickstart" AEGIS_DEMO_MODE=1 .venv/bin/uvicorn aegis.api:app --host 127.0.0.1 --port 8400
+Security demo:       scripts/security_demo.sh
+# exit=0

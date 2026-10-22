@@ -177,15 +177,15 @@ def main():
     if not vf["ok"]:
         print("  (limit not reproduced: the forged history was rejected)")
     # (b) timing: the model worker is a stub; buckets only reduce the timing signal
-    vdir = ROOT / "evidence" / "validation_2026-10-22"
-    timings = [json.loads((vdir / f).read_text()) for f in ("timing.json", "timing_execution_2.json") if (vdir / f).exists()]
-    if timings:
-        k0 = [r["conditions"]["0"] for r in timings]
-        k250 = [r["conditions"]["250"] for r in timings]
-        print("  timing channel (stub model, held-out, n=%d per setting, %d saved executions; chance = %.2f): no padding accuracy %s; 250 ms buckets %s"
-              % (k0[0]["n_refused"] + k0[0]["n_answered"], len(timings), k0[0]["majority_baseline"],
-                 "/".join("%.2f" % k["heldout_accuracy"] for k in k0), "/".join("%.2f" % k["heldout_accuracy"] for k in k250)))
-        print("  reading: padding reduces the signal at a cost of ~200 ms per answered request; not shown to remove it (one weak classifier, constant-latency stub; see VALIDATION_ADDENDUM section 4).")
+    agg = ROOT / "evidence" / "closeout_2026-10-22" / "timing" / "aggregate.json"
+    if agg.exists():
+        a = json.loads(agg.read_text())
+        k0, k250 = a["buckets"]["0"], a["buckets"]["250"]
+        print("  timing channel (stub model, held-out, n=%d per setting per execution, %d complete executions; chance = %.2f): no padding accuracy %s; 250 ms buckets %s (pooled %.3f over n=%d)"
+              % (k0["n_per_execution"][0], a["n_executions_complete"], k0["majority_baseline"][0],
+                 "/".join("%.3f" % x for x in k0["heldout_accuracy"]), "/".join("%.3f" % x for x in k250["heldout_accuracy"]),
+                 k250["pooled_heldout"]["accuracy"], k250["pooled_heldout"]["n"]))
+        print("  reading: padding takes this classifier from ~0.80 to a level not distinguishable from chance at a cost of ~200 ms per answered request; a leak is not ruled out (verdict at 250 ms: %s; one weak classifier, constant-latency stub; see VALIDATION_ADDENDUM section 4)." % k250["verdict"])
     print("  other documented limits: containers share the host kernel; local demo tokens, not SSO; JSON files, single host;")
     print("  the stub is not an LLM (see evidence/validation_2026-10-22/model_experiments.json for the optional real-model test).")
 

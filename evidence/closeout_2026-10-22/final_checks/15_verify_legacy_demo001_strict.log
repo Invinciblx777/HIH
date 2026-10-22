@@ -1,0 +1,21 @@
+$ phase1_closeout/scratch_validation/rel/aegislab/.venv/bin/python -m aegis.verify_cli --bundle evidence/DEMO-001
+# started 2026-10-22T18:42:21Z
+{
+  "ok": false,
+  "entries": 25,
+  "chain_ok": true,
+  "checkpoints_checked": 4,
+  "checkpoint_ok": true,
+  "last_checkpoint_seq": 25,
+  "tail_uncovered": 0,
+  "terminal_required": true,
+  "terminal_verified": false,
+  "terminal_state": null,
+  "anchor_checked": null,
+  "findings": [
+    {
+      "issue": "no signed terminal checkpoint: completeness of the log cannot be established (legacy checkpoints only)"
+    }
+  ]
+}
+# exit=1
