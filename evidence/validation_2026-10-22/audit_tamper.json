@@ -1,0 +1,158 @@
+{
+  "categories": {
+    "delete": {
+      "description": "Delete one entry from the middle of the log",
+      "detected": 30,
+      "trials": 30
+    },
+    "drop_checkpoint": {
+      "description": "Remove a middle checkpoint from the vault copy",
+      "detected": 30,
+      "trials": 30
+    },
+    "drop_terminal": {
+      "description": "Remove the terminal checkpoint from the vault copy; no anchor retained",
+      "detected": 30,
+      "trials": 30
+    },
+    "duplicate_seq": {
+      "description": "Duplicate one entry so a sequence number repeats",
+      "detected": 30,
+      "trials": 30
+    },
+    "extra_entry_after_terminal": {
+      "description": "an entry appended after the terminal checkpoint",
+      "detected": 30,
+      "trials": 30
+    },
+    "foreign_anchor": {
+      "description": "anchor from a different run supplied",
+      "detected": 30,
+      "trials": 30
+    },
+    "foreign_checkpoint_in_vault": {
+      "description": "terminal checkpoint replaced by the one from a different run (genuinely signed)",
+      "detected": 30,
+      "trials": 30
+    },
+    "forge_signature": {
+      "description": "Corrupt the signature of the terminal checkpoint",
+      "detected": 30,
+      "trials": 30
+    },
+    "modify": {
+      "description": "Change the outcome field of one attack.evaluated entry",
+      "detected": 30,
+      "trials": 30
+    },
+    "other_run_substituted": {
+      "description": "complete log+checkpoints of another run presented as this run",
+      "detected": 30,
+      "trials": 30
+    },
+    "rehash": {
+      "description": "Modify an entry and recompute every later hash (attacker without the signing key)",
+      "detected": 30,
+      "trials": 30
+    },
+    "reorder": {
+      "description": "Swap two adjacent entries",
+      "detected": 30,
+      "trials": 30
+    },
+    "reorder_checkpoints": {
+      "description": "Swap two adjacent checkpoints in the vault copy",
+      "detected": 30,
+      "trials": 30
+    },
+    "sequence_gap": {
+      "description": "an entry's seq field rewritten and re-hashed",
+      "detected": 30,
+      "trials": 30
+    },
+    "state_mismatch": {
+      "description": "verifier told the run FAILED while evidence says RELEASED",
+      "detected": 30,
+      "trials": 30
+    },
+    "truncate": {
+      "description": "Drop the final entries of the log; the full checkpoint vault is retained",
+      "detected": 30,
+      "trials": 30
+    },
+    "truncate_unprotected": {
+      "description": "Drop the final entries and every checkpoint after freeze; no anchor retained",
+      "detected": 30,
+      "trials": 30
+    },
+    "truncate_vs_anchor": {
+      "description": "Drop the final entries and every checkpoint after freeze; the signed terminal anchor is retained",
+      "detected": 30,
+      "trials": 30
+    },
+    "wrong_event_count": {
+      "description": "reviewer expects a different number of entries",
+      "detected": 30,
+      "trials": 30
+    }
+  },
+  "checkpoints_per_run": [
+    3
+  ],
+  "clean_runs_terminal_verified": 30,
+  "clean_runs_verify": 30,
+  "cli_level": {
+    "anchor_deleted_but_vault_intact_accepted": 10,
+    "bundles": 10,
+    "genuine_accepted": 10,
+    "tampered_rejected": 40,
+    "tampered_total": 40
+  },
+  "code_revision": {
+    "files": 31,
+    "note": "not a git repository; hash over aegis/ sandbox/ evaluation/ scripts/ tests/ samples/ (*.py, *.sh, *.json)",
+    "tree_sha256": "sha256:de2e6271f07babea7c7c35a435174911853630f807d2a77ea2d46552813d367d"
+  },
+  "entries_per_run": [
+    25
+  ],
+  "environment": {
+    "cgroups": "v2",
+    "cpus": 16,
+    "cpuset_delegated": false,
+    "kernel": "7.2.11-200.fc44.x86_64",
+    "oci_runtime": "crun",
+    "oci_runtime_version": "crun version 1.28",
+    "platform": "Linux-7.2.11-200.fc44.x86_64-x86_64-with-glibc2.43",
+    "podman": "5.8.9",
+    "python": "3.14.8",
+    "rootless": true,
+    "seccomp_profile": "/usr/share/containers/seccomp.json",
+    "selinux": true
+  },
+  "finished_at": 1792679697.6394598,
+  "kind": "audit tamper / truncation detection on real released runs",
+  "limits": [
+    "an attacker who rewrites EVERY retained copy (vault, anchor store, reviewer's bundle) and holds the signing key forges a consistent history - not detected",
+    "an attacker who controls the verifier or the pinned public key defeats verification",
+    "the broker can sign false entries at write time; the chain proves integrity since signing, not truthfulness",
+    "30 runs share one synthetic attack pack: the repeats test determinism across signatures, not different workloads",
+    "'old_rules_detected' reproduces the 15 Oct 0/30 gap only for the freeze-only retention case"
+  ],
+  "original_gap_case": {
+    "description": "truncate last 3 entries; reviewer retained only the freeze checkpoint (the 0/30 case in the 15 Oct report)",
+    "new_rules_detected_fail_closed": 30,
+    "new_rules_with_retained_anchor_detected": 30,
+    "old_rules_detected (require_terminal=False)": 0,
+    "trials": 30
+  },
+  "published_bundles": {
+    "genuine": "bundles/VAL-001",
+    "genuine_cli_exit": 0,
+    "tampered_cli_exit": 1,
+    "tampered_must_fail": "bundles/VAL-001_TAMPERED_truncated_last3"
+  },
+  "runs": 30,
+  "started_at": 1792679636.2460787,
+  "wall_clock_s": 61.4
+}

@@ -34,22 +34,25 @@ def test_commitment_matches_sandbox_formula():
 
 
 def _log(tmp_path, n=30):
-    from aegis.audit import AuditLog
+    from aegis.audit import AuditLog, read_jsonl
     from aegis.crypto import Signer
     s = Signer(tmp_path / "k.pem")
     log = AuditLog(tmp_path / "a.jsonl", "T-1")
     for i in range(n):
         log.append("attack.evaluated" if i % 3 else "note", "broker", {"i": i, "outcome": "unsafe_output"})
-        if i in (9, n - 1):
-            log.checkpoint(s, tmp_path / "c.jsonl", tmp_path / "vault.jsonl", "t")
-    from aegis.audit import read_jsonl
+        if i == 9:
+            log.checkpoint(s, tmp_path / "c.jsonl", tmp_path / "vault.jsonl", "freeze")
+    log.append("run.released", "reviewer", {})
+    log.checkpoint(s, tmp_path / "c.jsonl", tmp_path / "vault.jsonl", "terminal", state="RELEASED",
+                   extra_paths=[tmp_path / "anchor.jsonl"])
     return read_jsonl(tmp_path / "a.jsonl"), read_jsonl(tmp_path / "vault.jsonl"), s.public_b64()
 
 
 def test_clean_log_verifies(tmp_path):
     from aegis.audit import verify
     e, c, pub = _log(tmp_path)
-    assert verify(e, c, pub, expect_sealed=True)["ok"]
+    r = verify(e, c, pub, expect_sealed=True)
+    assert r["ok"] and r["terminal_verified"] and r["terminal_state"] == "RELEASED"
 
 
 @pytest.mark.parametrize("mode", ["modify", "delete", "reorder", "truncate", "rehash"])
@@ -59,10 +62,15 @@ def test_tamper_detected(tmp_path, mode):
     assert tamper_test(e, c, pub, mode)["detected"]
 
 
-def test_truncation_without_retained_checkpoint_is_a_known_gap(tmp_path):
+def test_truncation_with_only_early_checkpoint_now_fails_closed(tmp_path):
+    """Originally a documented gap (0/30 detected). The verifier now refuses a log with no terminal evidence."""
     from aegis.audit import verify
     e, c, pub = _log(tmp_path)
-    assert verify(e[:-3], c[:1], pub)["ok"]  # documented limitation, see README
+    r = verify(e[:-3], c[:1], pub)
+    assert not r["ok"] and not r["terminal_verified"]
+    # explicit opt-out keeps the old behaviour but never claims completeness
+    r = verify(e[:-3], c[:1], pub, require_terminal=False)
+    assert r["ok"] and not r["terminal_verified"]
 
 
 def test_forged_checkpoint_signature_rejected(tmp_path):

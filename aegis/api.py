@@ -6,6 +6,7 @@ Identities are local demo tokens (var/keys/tokens.json). The API enforces them;
 production would use SSO/OIDC with run-scoped claims. GET /api/demo/identities
 exposes the tokens to the local website only when AEGIS_DEMO_MODE=1.
 """
+import hmac
 import os
 import re
 
@@ -15,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import evidence, runtime, store
+from . import runs as runs_mod
 from .audit import read_jsonl
 from .runs import GateError, Run, artifacts, create_run, freeze, list_runs, release, start, update_defence_config, verify_run
 from .verify_cli import TAMPER_MODES, tamper_test
@@ -26,10 +28,13 @@ WEB = store.ROOT / "web"
 def role_of(token: str | None) -> str:
     if not token:
         return "observer"
-    for role, tok in store.tokens().items():
-        if tok == token:
-            return role
-    raise HTTPException(401, "unknown identity token")
+    found = None
+    for role, tok in store.tokens().items():  # constant-time compare against every token
+        if hmac.compare_digest(tok.encode(), token.encode()):
+            found = role
+    if found is None:
+        raise HTTPException(401, "unknown identity token")
+    return found
 
 
 def need(token, *roles):
@@ -111,14 +116,21 @@ def create(req: CreateReq, x_aegis_token: str | None = Header(None)):
     return public_view(gate(create_run, req.run_id, timing_bucket_ms=req.timing_bucket_ms, tags=req.tags).record)
 
 
+SECRET_DIGESTS = ("defence_config_digest", "attack_pack_digest")
+
+
 @app.get("/api/runs/{run_id}")
-def run_detail(run_id: str):
+def run_detail(run_id: str, x_aegis_token: str | None = Header(None)):
+    """Digests of the blue config and red attack pack are a guess-confirmation oracle (a team that can guess
+    the file, e.g. the sample config, could confirm it by hashing), so only the operator and reviewer see them
+    before release."""
     run = get_run(run_id)
+    role = role_of(x_aegis_token)
     manifest = store.read_json(run.dir / "manifest.json") or {}
-    return {**public_view(run.record),
-            "manifest": {k: manifest.get(k) for k in ("defence_config_digest", "attack_pack_digest", "sandbox_image_id",
-                                                      "base_image_digest", "signing_key_id", "hardening_flags",
-                                                      "environment", "frozen_at")} if manifest else None}
+    show_secret = role in ("operator", "reviewer") or run.state == "RELEASED"
+    keys = ("sandbox_image_id", "base_image_digest", "signing_key_id", "hardening_flags", "environment",
+            "frozen_at") + (SECRET_DIGESTS if show_secret else ())
+    return {**public_view(run.record), "manifest": {k: manifest.get(k) for k in keys} if manifest else None}
 
 
 @app.get("/api/runs/{run_id}/events")
@@ -132,7 +144,7 @@ def do_freeze(run_id: str, x_aegis_token: str | None = Header(None)):
     need(x_aegis_token, "operator")
     get_run(run_id)
     gate(freeze, run_id)
-    return run_detail(run_id)
+    return run_detail(run_id, x_aegis_token)
 
 
 @app.post("/api/runs/{run_id}/defence-config")
@@ -186,9 +198,11 @@ def do_tamper(run_id: str, req: TamperReq, x_aegis_token: str | None = Header(No
     run = get_run(run_id)
     if req.mode not in TAMPER_MODES:
         raise HTTPException(400, "unknown mode")
-    manifest = store.read_json(run.dir / "manifest.json") or {}
-    res = tamper_test(read_jsonl(run.dir / "audit.jsonl"), read_jsonl(store.p("reviewer_vault", run_id + ".jsonl")),
-                      manifest.get("signing_public_key"), req.mode)
+    anchor_file = store.anchor_path(run_id)
+    res = tamper_test(read_jsonl(run.dir / "audit.jsonl"), read_jsonl(store.vault_path(run_id)),
+                      runs_mod.signer().public_b64(), req.mode, run_id=run_id,
+                      anchor=store.read_json(anchor_file) if anchor_file.exists() else None,
+                      expected_state=run.state if run.state in ("RELEASED", "FAILED") else None)
     res["note"] = "Tampering applied to an in-memory copy; the stored audit log is unchanged."
     return res
 
@@ -203,8 +217,8 @@ def get_evidence(run_id: str, x_aegis_token: str | None = Header(None)):
 
 
 @app.get("/api/runs/{run_id}/evidence.md", response_class=PlainTextResponse)
-def get_evidence_md(run_id: str, x_aegis_token: str | None = Header(None), token: str | None = None):
-    rep = get_evidence(run_id, x_aegis_token or token)
+def get_evidence_md(run_id: str, x_aegis_token: str | None = Header(None)):
+    rep = get_evidence(run_id, x_aegis_token)
     return PlainTextResponse(evidence.markdown(rep), headers={
         "Content-Disposition": 'attachment; filename="%s_evidence.md"' % run_id})
 

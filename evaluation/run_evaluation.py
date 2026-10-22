@@ -3,7 +3,7 @@
 Runs real runs through the prototype (rootless Podman containers, stub model
 worker) and writes evidence/results.json and evidence/RESULTS.md.
 
-    AEGIS_VAR=var python evaluation/run_evaluation.py [--runs 10]
+    AEGIS_VAR=<scratch dir> python evaluation/run_evaluation.py --out evidence/<dated folder> [--runs 10]
 
 Every number in RESULTS.md comes from this script's output on the machine it
 ran on. Re-running produces new measurements.
@@ -26,7 +26,7 @@ from aegis import api, runtime, runs, store  # noqa: E402
 from aegis.audit import read_jsonl  # noqa: E402
 from aegis.verify_cli import TAMPER_MODES, tamper_test  # noqa: E402
 
-OUT = ROOT / "evidence"
+OUT = ROOT / "evidence"  # replaced by --out in main(); the submitted results.json / RESULTS.md here are never overwritten
 HOG = "import multiprocessing as m\ndef f():\n    while True: pass\nfor _ in range(%d): m.Process(target=f).start()"
 
 
@@ -202,11 +202,18 @@ def markdown(r):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--runs", type=int, default=10)
+    ap.add_argument("--out", required=True, help="output folder; must not be the submitted evidence/ folder itself")
     a = ap.parse_args()
-    OUT.mkdir(exist_ok=True)
+    global OUT
+    OUT = Path(a.out).resolve()
+    if OUT == (ROOT / "evidence").resolve():
+        sys.exit("refusing to write into the submitted evidence/ folder; use e.g. --out evidence/validation_<date>")
+    OUT.mkdir(parents=True, exist_ok=True)
     t_start = time.time()
     print("building image", runtime.build_image(ROOT))
-    results = {"started_at": t_start, "environment": runtime.environment(), "runs_per_condition": a.runs}
+    sys.path.insert(0, str(ROOT / "evaluation"))
+    from revision import code_revision
+    results = {"started_at": t_start, "code_revision": code_revision(), "environment": runtime.environment(), "runs_per_condition": a.runs}
 
     print("E1 freeze")
     results["E1_freeze"] = exp_freeze()

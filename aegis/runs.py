@@ -21,8 +21,8 @@ import threading
 import time
 from pathlib import Path
 
-from . import runtime, store
-from .audit import AuditLog, read_jsonl, verify
+from . import model_client, runtime, store
+from .audit import TERMINAL_STATES, AuditLog, checkpoint_hash, read_jsonl, verify
 from .crypto import Signer, canonical, commitment, file_digest, sha256, verify_commitment
 
 STATES = ("CREATED", "FROZEN", "RUNNING", "SEALED", "RELEASED", "FAILED")
@@ -79,23 +79,61 @@ class Run:
     def state(self) -> str:
         return self.record.get("state", "MISSING")
 
-    def log(self, type_, actor, data, monitor=None):
-        e = self.audit.append(type_, actor, data)
+    def log(self, type_, actor, data, monitor=None, checkpoint=True, close=False):
+        e = None if self.record.get("terminal") else self.audit.append(type_, actor, data, close=close)
+        if e is None:  # chain already closed by the terminal event
+            return self._log_post_terminal(type_, actor, data, monitor)
         if monitor is not None:
             store.append_jsonl(self.dir / "monitor.jsonl",
                                {"ts": e["ts"], "seq": e["seq"], "type": type_, "actor": actor, **monitor})
+        if not checkpoint:
+            return e
         if self.state in ("SEALED", "RELEASED", "FAILED"):
             self.checkpoint("post-seal")  # rare entries after sealing are covered immediately
         elif e["seq"] % CHECKPOINT_EVERY == 0:
             self.checkpoint("periodic")
         return e
 
+    def _log_post_terminal(self, type_, actor, data, monitor):
+        """The signed chain is closed once the terminal checkpoint exists, so a later entry could never be
+        covered by the anchor. Late events (e.g. denied access to a released run) go to a separate, unsigned,
+        informational file and the monitoring stream."""
+        ts = round(time.time(), 6)
+        store.append_jsonl(self.dir / "post_terminal.jsonl",
+                           {"ts": ts, "run_id": self.id, "type": type_, "actor": actor, "data": data})
+        if monitor is not None:
+            store.append_jsonl(self.dir / "monitor.jsonl",
+                               {"ts": ts, "seq": None, "type": type_, "actor": actor, "post_terminal": True, **monitor})
+        return {"seq": None, "ts": ts, "type": type_, "post_terminal": True}
+
     def checkpoint(self, reason):
-        cp = self.audit.checkpoint(signer(), self.dir / "checkpoints.jsonl",
-                                   store.p("reviewer_vault", self.id + ".jsonl"), reason)
+        cp = self.audit.checkpoint(signer(), self.dir / "checkpoints.jsonl", store.vault_path(self.id), reason)
         store.append_jsonl(self.dir / "monitor.jsonl",
                            {"ts": cp["ts"], "seq": cp["seq"], "type": "audit.checkpoint", "actor": "control-plane",
                             "summary": "Signed checkpoint at entry %d (%s)" % (cp["seq"], reason)})
+        return cp
+
+    def terminal_checkpoint(self, state):
+        """Close the chain: sign {run, final state, final seq/hash, count, checkpoint index, previous checkpoint}
+        once, write it to the reviewer vault and to the anchor store (outside the run directory)."""
+        if self.record.get("terminal"):
+            raise GateError("run already has a terminal checkpoint")
+        if state not in TERMINAL_STATES:
+            raise GateError("not a terminal state")
+        if not self.audit.closed:
+            raise GateError("the final lifecycle event must be logged with close=True before the terminal checkpoint")
+        anchor = store.anchor_path(self.id)
+        cp = self.audit.checkpoint(signer(), self.dir / "checkpoints.jsonl", store.vault_path(self.id), "terminal",
+                                   state=state)
+        anchor.parent.mkdir(parents=True, exist_ok=True)
+        if anchor.exists():
+            os.chmod(anchor, 0o644)
+        anchor.write_text(json.dumps(cp, sort_keys=True, indent=2) + "\n")
+        os.chmod(anchor, 0o444)
+        self.update(terminal=True, terminal_checkpoint_hash=checkpoint_hash(cp))
+        store.append_jsonl(self.dir / "monitor.jsonl",
+                           {"ts": cp["ts"], "seq": cp["seq"], "type": "audit.terminal", "actor": "control-plane",
+                            "summary": "Terminal checkpoint signed at entry %d (%s)" % (cp["seq"], state)})
         return cp
 
 
@@ -130,12 +168,28 @@ def create_run(run_id, timing_bucket_ms=250, reset_strategy="fresh-container", f
     return run
 
 
+def validate_defence_config(cfg):
+    """Reject oversized or malformed configs before they reach the defence runner (a bad regex would crash it)."""
+    if not isinstance(cfg, dict) or len(json.dumps(cfg)) > 64 * 1024:
+        raise GateError("defence configuration must be a JSON object under 64 KiB")
+    for key in ("input_patterns", "output_patterns"):
+        pats = cfg.get(key, [])
+        if not isinstance(pats, list) or len(pats) > 200 or not all(isinstance(p_, str) and len(p_) <= 500 for p_ in pats):
+            raise GateError("%s must be a list of at most 200 strings of at most 500 characters" % key)
+        for p_ in pats:
+            try:
+                re.compile(p_)
+            except re.error:
+                raise GateError("%s contains an invalid regular expression" % key)
+
+
 def update_defence_config(run_id, new_config: dict, actor="blue_participant"):
     run = Run(run_id)
     if run.state != "CREATED":
         run.log("policy.denied", actor, {"op": "update_defence_config", "reason": "configuration frozen"},
                 monitor={"summary": "Defence config change rejected: run is frozen", "decision": "denied"})
         raise GateError("configuration is frozen for this run")
+    validate_defence_config(new_config)
     store.write_json(run.dir / "blue_working_config.json", new_config)
     run.log("config.updated", actor, {"digest": file_digest(run.dir / "blue_working_config.json")})
 
@@ -144,6 +198,10 @@ def freeze(run_id) -> dict:
     run = Run(run_id)
     if run.state != "CREATED":
         raise GateError("run is %s; only CREATED runs can be frozen" % run.state)
+    try:
+        model_cfg = model_client.load_config()
+    except model_client.ModelBackendError:
+        raise GateError("model backend configuration is invalid (see aegis/model_client.py)")
     frozen_cfg = run.dir / "frozen/defence_config.json"
     shutil.copy(run.dir / "blue_working_config.json", frozen_cfg)
     os.chmod(frozen_cfg, 0o444)
@@ -155,6 +213,7 @@ def freeze(run_id) -> dict:
         "base_image_digest": runtime.image_repo_digest(),
         "hardening_flags": {r: runtime.hardening_flags(r) for r in ("red", "blue", "model")},
         "policy": run.record["policy"],
+        "model": model_cfg.describe(),
         "environment": runtime.environment(),
         "signing_key_id": signer().key_id,
         "signing_public_key": signer().public_b64(),
@@ -185,18 +244,44 @@ def start(run_id, wait=False) -> threading.Thread:
 
 
 # ---------------------------------------------------------------- broker
+def _discard(path: Path):
+    """Remove a tenant-created directory entry without following it (symlink, FIFO, file or empty directory)."""
+    try:
+        os.unlink(path)
+    except IsADirectoryError:
+        shutil.rmtree(path, ignore_errors=True)
+    except OSError:
+        pass
+
+
 def _safe_read(path: Path):
-    """Read a tenant-written message without following links or trusting size."""
-    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    """Read a tenant-written message without following links, blocking on special files or trusting size.
+
+    O_NONBLOCK matters: opening a FIFO that a tenant planted would otherwise block the broker forever.
+    Whatever the outcome, the directory entry is removed so a rejected file cannot be re-processed.
+    """
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except OSError:
+        _discard(path)
+        raise
     try:
         st = os.fstat(fd)
         if not stat.S_ISREG(st.st_mode) or st.st_size > MAX_MSG:
             raise ValueError("rejected message file")
         data = os.read(fd, MAX_MSG + 1)
+        if len(data) > MAX_MSG:
+            raise ValueError("rejected message file")
+        try:
+            msg = json.loads(data)
+        except RecursionError:
+            raise ValueError("rejected message file")
+        if not isinstance(msg, dict):
+            raise ValueError("rejected message file")
+        return msg
     finally:
         os.close(fd)
-    os.unlink(path)
-    return json.loads(data)
+        _discard(path)
 
 
 def _write_msg(directory: Path, name: str, obj):
@@ -227,6 +312,9 @@ class Broker:
         rec = run.record
         self.bucket_s = rec["policy"]["timing_bucket_ms"] / 1000.0
         self.reuse = rec["policy"]["reset_strategy"] == "reuse-control"
+        self.model_cfg = None  # resolved in start_workloads and checked against the frozen manifest
+        self.model_client = None
+        self.model_errors = 0
 
     # -- mailbox plumbing
     def _mk_spool(self, role):
@@ -255,8 +343,16 @@ class Broker:
     def start_workloads(self):
         run, rid = self.run, self.run.id
         manifest = store.read_json(run.dir / "manifest.json")
+        self.model_cfg = model_client.load_config()
+        if self.model_cfg.describe() != manifest.get("model", {"backend": "stub"}):
+            raise GateError("model backend differs from the frozen manifest")
+        if self.model_cfg.backend != "stub":
+            if self.reuse:
+                raise GateError("reuse-control applies to the stub worker only")
+            self.model_client = model_client.OpenAICompatibleClient(self.model_cfg)
+            self.model_client.ping()  # unreachable endpoint: the run fails closed, there is no fallback to the stub
         # model worker: fresh container per run, or a shared one for the control experiment
-        if self.reuse:
+        elif self.reuse:
             self.spool["model"] = store.p("shared_model_spool")
             for sub in ("in", "out"):
                 (self.spool["model"] / sub).mkdir(parents=True, exist_ok=True)
@@ -283,11 +379,18 @@ class Broker:
         if not ok:
             raise GateError("defence config digest mismatch")
 
-        stats = self.call("model", {"op": "stats"}, timeout=30)
-        run.log("model.session_opened", "model-worker",
-                {"cache_entries_at_start": stats.get("cache_entries"), "worker_uptime_s": stats.get("uptime_s"),
-                 "strategy": run.record["policy"]["reset_strategy"], "container": self.names["model"]},
-                monitor={"summary": "Model worker ready, cache entries at start: %s" % stats.get("cache_entries")})
+        if self.model_client is not None:
+            stats = {"cache_entries": None, "uptime_s": None}
+            run.log("model.session_opened", "model-adapter",
+                    {"cache_entries_at_start": None, "strategy": "stateless-http", "backend": self.model_cfg.describe(),
+                     "server_state_reset": "none: AegisLab sends stateless requests but cannot clear server-side cache"},
+                    monitor={"summary": "Real-model backend reachable (stateless requests; server cache not controlled)"})
+        else:
+            stats = self.call("model", {"op": "stats"}, timeout=30)
+            run.log("model.session_opened", "model-worker",
+                    {"cache_entries_at_start": stats.get("cache_entries"), "worker_uptime_s": stats.get("uptime_s"),
+                     "strategy": run.record["policy"]["reset_strategy"], "container": self.names["model"]},
+                    monitor={"summary": "Model worker ready, cache entries at start: %s" % stats.get("cache_entries")})
         self.run.update(model_cache_at_start=stats.get("cache_entries"))
 
         self.names["red"] = "aegis-%s-red" % rid.lower()
@@ -304,7 +407,13 @@ class Broker:
         run = self.run
         for role in ("red", "blue"):
             runtime.stop(self.names.get(role, ""))
-        if self.reuse:
+        if self.model_client is not None:
+            run.log("model.session_closed", "control-plane",
+                    {"strategy": "stateless-http", "errors": self.model_errors,
+                     "note": "no container to destroy; server-side cache is outside AegisLab control"},
+                    monitor={"summary": "Real-model session closed (server-side state not reset by AegisLab)",
+                             "decision": "warning"})
+        elif self.reuse:
             run.log("model.reset_skipped", "control-plane", {"strategy": "reuse-control",
                                                               "note": "control experiment: worker kept alive"},
                     monitor={"summary": "Model worker kept alive (control experiment)", "decision": "warning"})
@@ -314,6 +423,23 @@ class Broker:
             run.log("model.reset", "control-plane", {"strategy": "fresh-container",
                                                       "action": "container removed; tmpfs and process memory discarded"},
                     monitor={"summary": "Model worker destroyed (fresh state for next run)"})
+
+    def generate(self, prompt):
+        """One model call. Stub: mailbox to the model container. Real model: stateless HTTP from the broker.
+        Returns None on a backend error (red then receives the uniform refusal); three consecutive errors abort."""
+        if self.model_client is None:
+            return self.call("model", {"op": "generate", "session": self.run.id, "prompt": prompt})["text"]
+        try:
+            text = self.model_client.generate(prompt)["text"]
+            self.model_errors = 0
+            return text
+        except model_client.ModelBackendError as exc:
+            self.model_errors += 1
+            self.run.log("model.error", "model-adapter", {"kind": exc.kind, "consecutive": self.model_errors},
+                         monitor={"summary": "Model backend error (%s)" % exc.kind, "decision": "failed"})
+            if self.model_errors >= 3:
+                raise GateError("model backend failed repeatedly")
+            return None
 
     # -- request handling
     def deny(self, name, op, reason, extra=None):
@@ -343,23 +469,25 @@ class Broker:
             self.run.update(commitments_root=root)
             return self.reply_red(name, {"ok": True, "root": root})
         if op in ("read_artifact", "get_verdicts", "release_results"):
-            return self.deny(name, op, "not permitted for tenant red", {"target": str(msg.get("target", ""))[:64]})
+            return self.deny(name, op, "not permitted for tenant red",
+                             {"target_digest": sha256(str(msg.get("target", "")).encode())[:23]})
         if op == "attack":
             return self.attack(name, msg)
         if op == "done":
             store.write_json(self.run.dir / "sealed/red_observed.json", msg.get("observed", [])[:1000])
             self.reply_red(name, {"ok": True})
             return "done"
-        return self.deny(name, str(op)[:32], "unknown operation")
+        # the op string is chosen by the red tenant: record only a digest, never the text, in monitored fields
+        return self.deny(name, "unknown", "unknown operation", {"op_digest": sha256(str(op).encode())[:23]})
 
     def attack(self, name, msg):
         t0 = time.monotonic()
         aid, payload, nonce = str(msg.get("attack_id")), str(msg.get("payload", "")), str(msg.get("nonce", ""))
         if "tenant" in msg and msg["tenant"] != "red":
             return self.deny(name, "attack", "identity is bound to the mailbox; claimed tenant rejected",
-                             {"claimed": str(msg["tenant"])[:16]})
+                             {"claimed_digest": sha256(str(msg["tenant"]).encode())[:23]})
         if aid not in self.commitments:
-            return self.deny(name, "attack", "no prior commitment", {"attack_id": aid[:32]})
+            return self.deny(name, "attack", "no prior commitment", {"attack_id_digest": sha256(aid.encode())[:23]})
         if aid in self.used:
             return self.deny(name, "attack", "replay of committed attack", {"attack_id": aid})
         if not verify_commitment(self.commitments[aid], nonce, payload):
@@ -373,12 +501,15 @@ class Broker:
         v_out = {"verdict": "skipped"}
         if v_in.get("verdict") == "allow":
             t_model = time.monotonic()
-            model_text = self.call("model", {"op": "generate", "session": self.run.id, "prompt": payload})["text"]
+            model_text = self.generate(payload)
             t_out = time.monotonic()
-            v_out = self.call("blue", {"op": "inspect_output", "text": model_text})
-        blocked = v_in.get("verdict") == "block" or v_out.get("verdict") == "block"
+            if model_text is not None:
+                v_out = self.call("blue", {"op": "inspect_output", "text": model_text})
+        blocked = (v_in.get("verdict") == "block" or v_out.get("verdict") == "block"
+                   or (v_in.get("verdict") == "allow" and model_text is None))
         final = UNIFORM_REFUSAL if blocked else model_text
-        outcome = ("blocked_input" if v_in.get("verdict") == "block" else
+        outcome = ("model_error" if v_in.get("verdict") == "allow" and model_text is None else
+                   "blocked_input" if v_in.get("verdict") == "block" else
                    "blocked_output" if v_out.get("verdict") == "block" else
                    "unsafe_output" if oracle_unsafe(final) else "safe_output")
         leaked = []
@@ -429,7 +560,12 @@ class Broker:
                     except (OSError, ValueError):
                         self.deny(n, "malformed", "message rejected (link, size or JSON)")
                         continue
-                    if self.handle(n, msg) == "done":
+                    try:
+                        outcome = self.handle(n, msg)
+                    except (KeyError, TypeError, AttributeError, ValueError):
+                        self.deny(n, "malformed", "message rejected (link, size or JSON)")
+                        continue
+                    if outcome == "done":
                         done = True
             self.stop_workloads()
             self.seal(complete=done)
@@ -438,9 +574,10 @@ class Broker:
                 if name != SHARED_WORKER:
                     runtime.stop(name)
             run.log("run.failed", "control-plane", {"error": type(exc).__name__, "detail": str(exc)[:200]},
-                    monitor={"summary": "Run failed closed: %s" % type(exc).__name__, "decision": "failed"})
+                    monitor={"summary": "Run failed closed: %s" % type(exc).__name__, "decision": "failed"},
+                    checkpoint=False, close=True)
             run.update(state="FAILED")
-            run.checkpoint("failure")
+            run.terminal_checkpoint("FAILED")
 
     def seal(self, complete):
         run = self.run
@@ -459,13 +596,31 @@ class Broker:
 
 
 # ---------------------------------------------------------------- result gate
-def verify_run(run_id) -> dict:
+def verify_run(run_id, tail_ok=False) -> dict:
+    """Verify a run's log against the reviewer vault, using the broker's own public key (not the copy in the
+    run directory). Terminal runs (RELEASED, FAILED) must carry a valid terminal checkpoint; the anchor store
+    copy must agree with the vault. Runs still in progress are checked in-progress and say so."""
     run = Run(run_id)
     manifest = store.read_json(run.dir / "manifest.json") or {}
-    pub = manifest.get("signing_public_key", signer().public_b64())
-    res = verify(read_jsonl(run.dir / "audit.jsonl"), read_jsonl(store.p("reviewer_vault", run_id + ".jsonl")),
-                 pub, expect_sealed=run.state in ("SEALED", "RELEASED"))
-    res["checked_against"] = "reviewer vault (independent copy)"
+    pub = signer().public_b64()
+    terminal = run.state in TERMINAL_STATES
+    anchor_file = store.anchor_path(run_id)
+    anchor = store.read_json(anchor_file) if anchor_file.exists() else None
+    res = verify(read_jsonl(run.dir / "audit.jsonl"), read_jsonl(store.vault_path(run_id)), pub,
+                 expect_sealed=run.state in ("SEALED", "RELEASED", "FAILED") and not tail_ok, require_terminal=terminal,
+                 run_id=run_id, expected_state=run.state if terminal else None, anchor=anchor)
+    if terminal and anchor is None:
+        res["findings"].append({"issue": "terminal anchor missing from the anchor store"})
+        res["ok"] = False
+    elif terminal:
+        vault = [checkpoint_hash(c) for c in read_jsonl(store.vault_path(run_id)) if c.get("reason") == "terminal"]
+        if vault != [checkpoint_hash(anchor)]:
+            res["findings"].append({"issue": "reviewer vault and anchor store disagree about the terminal checkpoint"})
+            res["ok"] = False
+    if manifest.get("signing_public_key") not in (None, pub):
+        res["findings"].append({"issue": "run manifest names a different signing key than the broker's"})
+        res["ok"] = False
+    res["checked_against"] = "reviewer vault + anchor store (independent copies)"
     return res
 
 
@@ -486,19 +641,25 @@ def release(run_id, actor="reviewer") -> dict:
         raise GateError("release requires a SEALED run (current: %s)" % run.state)
     # entries written after the seal (e.g. denied access attempts) get a signed checkpoint
     # before verification, so every entry the reviewer relies on is covered
-    if run.audit.seq > max((c["seq"] for c in read_jsonl(store.p("reviewer_vault", run_id + ".jsonl"))), default=0):
+    if run.audit.seq > max((c["seq"] for c in read_jsonl(store.vault_path(run_id))), default=0):
         run.checkpoint("pre-release")
-    v = verify_run(run_id)
+    # chain and checkpoint consistency before release; entries that race in after the pre-release checkpoint are
+    # covered by the terminal checkpoint, which is verified strictly below
+    v = verify_run(run_id, tail_ok=True)
     c = check_commitments(run_id)
     if not v["ok"] or c["verified"] != c["revealed"]:
         run.log("policy.denied", actor, {"op": "release", "reason": "verification failed"},
                 monitor={"summary": "Release rejected: verification failed", "decision": "denied"})
         raise GateError("audit or commitment verification failed")
     run.log("run.released", actor, {"audit_entries_verified": v["entries"], "commitments_verified": c["verified"]},
-            monitor={"summary": "Results released to authorised reviewer", "decision": "ok"})
+            monitor={"summary": "Results released to authorised reviewer", "decision": "ok"}, checkpoint=False, close=True)
     run.update(state="RELEASED", released_at=time.time())
-    run.checkpoint("release")
-    return {"state": "RELEASED", "verification": verify_run(run_id), "commitments": c}
+    run.terminal_checkpoint("RELEASED")
+    final = verify_run(run_id)
+    if not final["ok"]:  # fail closed: a release that does not verify strictly never exposes artifacts
+        run.update(state="FAILED")
+        raise GateError("terminal verification failed after release; run marked FAILED")
+    return {"state": "RELEASED", "verification": final, "commitments": c}
 
 
 def artifacts(run_id) -> list:

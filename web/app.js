@@ -344,7 +344,7 @@ async function runPage(id) {
 /* ---------------------------------------------------------------- evidence */
 function verdictHTML(v, title) {
   return `<div class="verdict ${v.ok ? "pass" : "fail"}"><span class="big">${v.ok ? "PASS" : "FAIL"}</span>
-    <div>${esc(title)}<div class="small" style="font-weight:400">${v.entries} entries · ${v.checkpoints_checked} signed checkpoints · ${v.tail_uncovered} entries uncovered · checked against ${esc(v.checked_against || "reviewer-held checkpoints")}</div>
+    <div>${esc(title)}<div class="small" style="font-weight:400">${v.entries} entries · ${v.checkpoints_checked} signed checkpoints · ${v.tail_uncovered} entries uncovered${v.terminal_required === undefined ? "" : v.terminal_verified ? " · terminal checkpoint (" + esc(v.terminal_state) + ") binds the final entry" : " · <b>no verified terminal checkpoint: completeness not established</b>"} · checked against ${esc(v.checked_against || "reviewer-held checkpoints")}</div>
     ${(v.findings || []).map((f) => `<div class="small" style="font-weight:600">• ${esc(f.issue)}${f.seq ? " (entry #" + esc(f.seq) + ")" : f.checkpoint_seq ? " (checkpoint at #" + esc(f.checkpoint_seq) + ")" : ""}</div>`).join("")}</div></div>`;
 }
 
@@ -361,12 +361,13 @@ async function evidencePage(id) {
   }
   const d = rep.digests, v = rep.audit_verification, c = rep.commitments, k = rep.canary, ms = rep.model_state;
   const counts = {}; rep.outcomes.forEach((o) => (counts[o.outcome] = (counts[o.outcome] || 0) + 1));
-  const dl = S.live ? `/api/runs/${encodeURIComponent(id)}/evidence.md${S.tokens[S.role] ? "?token=" + encodeURIComponent(S.tokens[S.role]) : ""}` : `snapshot/evidence_${id}.md`;
-  const modes = rep._tamper_modes || { modify: "Change the outcome field of one attack.evaluated entry", delete: "Delete one entry from the middle of the log", reorder: "Swap two adjacent entries", truncate: "Drop the final entries of the log (reviewer holds the seal checkpoint)", truncate_unprotected: "Drop the final entries when the reviewer kept only the freeze checkpoint", rehash: "Modify an entry and recompute every later hash (attacker without the signing key)" };
+  const dl = S.live ? "#" : `snapshot/evidence_${id}.md`;
+  const meta = S.live ? await api("/meta").catch(() => null) : null;
+  const modes = rep._tamper_modes || (meta && meta.tamper_modes) || { modify: "Change the outcome field of one attack.evaluated entry", delete: "Delete one entry from the middle of the log", reorder: "Swap two adjacent entries", truncate: "Drop the final entries of the log (reviewer holds the seal checkpoint)", truncate_unprotected: "Drop the final entries when the reviewer kept only the freeze checkpoint", rehash: "Modify an entry and recompute every later hash (attacker without the signing key)" };
   render(`
   <div class="spread"><div><h1>Evidence report · <span style="font-family:var(--mono)">${esc(id)}</span></h1>
     <p class="muted">${esc(rep.label)}</p></div>
-    <div class="row"><span class="lbl measured">Measured result</span><a class="btn ghost" href="${dl}" download>Download report (.md)</a></div></div>
+    <div class="row"><span class="lbl measured">Measured result</span><a class="btn ghost" id="dl-evidence" href="${dl}" download="${esc(id)}_evidence.md">Download report (.md)</a></div></div>
 
   <div class="grid g2 mt" style="grid-template-columns:1.3fr 1fr">
     <div class="card"><h2>Audit verification</h2><p class="sub">Recomputes the hash chain and checks every Ed25519 checkpoint the reviewer retained independently.</p>
@@ -406,6 +407,14 @@ async function evidencePage(id) {
 
   <div class="card mt"><h2>Limitations of this evidence</h2><ul class="limits">${rep.limitations.map((l) => `<li>${esc(l)}</li>`).join("")}</ul></div>`);
 
+  if (S.live) $("#dl-evidence").addEventListener("click", async (ev) => {
+    ev.preventDefault();  // fetch with the identity header; never put the token in a URL
+    try {
+      const r = await fetch(`/api/runs/${encodeURIComponent(id)}/evidence.md`, { headers: S.tokens[S.role] ? { "X-Aegis-Token": S.tokens[S.role] } : {} });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.statusText);
+      const a = document.createElement("a"); a.href = URL.createObjectURL(await r.blob()); a.download = `${id}_evidence.md`; a.click(); URL.revokeObjectURL(a.href);
+    } catch (e) { toast(e.message, true); }
+  });
   $("#reverify").addEventListener("click", async () => {
     try { const nv = await api(`/runs/${id}/verify`); $("#verdict").innerHTML = verdictHTML(nv, "Audit log matches reviewer-held checkpoints"); $("#reverify-note").textContent = "Verified at " + new Date().toLocaleTimeString() + (S.live ? "" : " (snapshot result)"); }
     catch (e) { toast(e.message, true); }
