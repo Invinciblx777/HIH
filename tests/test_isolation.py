@@ -199,7 +199,13 @@ def test_sandbox_mounts_expose_only_role_specific_directories(monkeypatch):
     assert any(h.endswith("private/red") for h in host("red")) and dict((c, m) for h, c, m in mounts["red"])["/aegis/private"] == "ro"
     assert not any("private" in h or "sealed" in h for h in host("blue"))
     assert dict((c, m) for h, c, m in mounts["blue"])["/aegis/frozen"] == "ro"
-    assert len(mounts["model"]) == 1 and mounts["model"][0][1] == "/aegis/spool"
+    # Phase 2: in/ and out/ are separate mount points. The tenant must never be given the parent spool directory, because
+    # it could then rename or replace in/ and out/ (for example with a symlink the broker would follow).
+    assert sorted(c for h, c, m in mounts["model"]) == ["/aegis/spool/in", "/aegis/spool/out"]
+    for role in mounts:
+        spool_mounts = [(h, c) for h, c, m in mounts[role] if "/spool/" in h]
+        assert sorted(c for h, c in spool_mounts) == ["/aegis/spool/in", "/aegis/spool/out"], role
+        assert all(h.endswith("/spool/%s/in" % role) or h.endswith("/spool/%s/out" % role) for h, c in spool_mounts), role
     for role in mounts:
         assert all(h.startswith(d) for h in host(role)), "mount outside the run directory"
     spools = [h for role in mounts for h in host(role) if "/spool/" in h]

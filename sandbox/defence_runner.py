@@ -13,11 +13,13 @@ import hashlib
 import json
 import os
 import re
+import signal
 import sys
 
 import spool
 
-CONFIG_PATH = "/aegis/frozen/defence_config.json"
+CONFIG_PATH = os.environ.get("AEGIS_CONFIG_PATH", "/aegis/frozen/defence_config.json")
+BUDGET_S = float(os.environ.get("AEGIS_REGEX_BUDGET_S", "0.5"))  # time one inspection may take in total
 
 
 def load_config():
@@ -35,11 +37,26 @@ def load_config():
 CFG, DIGEST = load_config()
 
 
+def _timed_out(*_):
+    raise TimeoutError
+
+
 def inspect(text, patterns):
-    for i, pat in enumerate(patterns):
-        if pat.search(text):
-            return {"ok": True, "verdict": "block", "rule": i}
-    return {"ok": True, "verdict": "allow", "rule": None}
+    """Apply the blue team's patterns. A pattern that backtracks catastrophically must not stall the runner (and with it
+    the whole run), so one inspection gets a fixed time budget; on expiry the input or output is blocked (fail closed) and
+    the verdict says why."""
+    previous = signal.signal(signal.SIGALRM, _timed_out)
+    signal.setitimer(signal.ITIMER_REAL, BUDGET_S)
+    try:
+        for i, pat in enumerate(patterns):
+            if pat.search(text):
+                return {"ok": True, "verdict": "block", "rule": i}
+        return {"ok": True, "verdict": "allow", "rule": None}
+    except TimeoutError:
+        return {"ok": True, "verdict": "block", "rule": None, "error": "pattern_time_budget_exceeded"}
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
 
 
 def handle(req):

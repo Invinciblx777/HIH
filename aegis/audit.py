@@ -106,23 +106,37 @@ class AuditLog:
 
     def checkpoint(self, signer, local_path: Path, vault_path: Path, reason: str, state: str = None,
                    extra_paths=()) -> dict:
-        """Sign the current head. The previous checkpoint is read from the vault (independent copy)."""
+        """Sign the current head. The previous checkpoint is read from the vault (independent copy).
+
+        Once the chain is closed only the terminal checkpoint may still be written: a later non-terminal checkpoint
+        would follow the terminal one and make a genuine run fail verification ("terminal checkpoint is not the last
+        checkpoint"). Returns None in that case; the terminal checkpoint already covers every entry. A second terminal
+        checkpoint is refused."""
         with self.lock:
-            seq, head = self._tail()
-            vault = read_jsonl(vault_path)
-            prev_cp = checkpoint_hash(vault[-1]) if vault else GENESIS
-            body = {"v": CP_VERSION, "run_id": self.run_id, "seq": seq, "head": head,
-                    "event_count": seq, "cp_seq": len(vault) + 1, "prev_cp": prev_cp,
-                    "ts": round(time.time(), 6), "reason": reason, "key_id": signer.key_id}
-            if state is not None:
-                body["state"] = state
-            cp = dict(body, sig=signer.sign(body))
-            line = json.dumps(cp, sort_keys=True) + "\n"
-            for p in (Path(local_path), Path(vault_path), *map(Path, extra_paths)):
-                p.parent.mkdir(parents=True, exist_ok=True)
-                with p.open("a") as fh:
-                    fh.write(line)
-            return cp
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            # The same file lock as append(): every API request builds its own AuditLog object, so the thread lock alone
+            # does not stop two requests from signing a checkpoint with the same cp_seq at the same time.
+            with self.path.open("a") as lockfh:
+                fcntl.flock(lockfh, fcntl.LOCK_EX)
+                if self.closed and reason != "terminal":
+                    return None
+                seq, head = self._tail()
+                vault = read_jsonl(vault_path)
+                if reason == "terminal" and any(c.get("reason") == "terminal" for c in vault):
+                    raise ValueError("a terminal checkpoint already exists for this run")
+                prev_cp = checkpoint_hash(vault[-1]) if vault else GENESIS
+                body = {"v": CP_VERSION, "run_id": self.run_id, "seq": seq, "head": head,
+                        "event_count": seq, "cp_seq": len(vault) + 1, "prev_cp": prev_cp,
+                        "ts": round(time.time(), 6), "reason": reason, "key_id": signer.key_id}
+                if state is not None:
+                    body["state"] = state
+                cp = dict(body, sig=signer.sign(body))
+                line = json.dumps(cp, sort_keys=True) + "\n"
+                for p in (Path(local_path), Path(vault_path), *map(Path, extra_paths)):
+                    p.parent.mkdir(parents=True, exist_ok=True)
+                    with p.open("a") as fh:
+                        fh.write(line)
+                return cp
 
 
 def read_jsonl(path: Path):
@@ -137,7 +151,8 @@ def _finding(findings, issue, **kw):
 
 
 def verify(entries, checkpoints, public_b64: str, expect_sealed: bool = False, *, require_terminal: bool = True,
-           run_id: str = None, expected_state: str = None, expected_events: int = None, anchor: dict = None) -> dict:
+           run_id: str = None, expected_state: str = None, expected_events: int = None, anchor: dict = None,
+           expected_terminal_hash: str = None) -> dict:
     """Verify a log against independently held checkpoints. Fails closed.
 
     ``ok`` is True only if all of the following hold:
@@ -154,10 +169,23 @@ def verify(entries, checkpoints, public_b64: str, expect_sealed: bool = False, *
     describe exactly the final entry; if the checkpoint list also holds a terminal checkpoint the two must be
     identical. A reviewer who kept only early checkpoints plus the anchor can therefore still detect truncation.
 
+    ``expected_terminal_hash`` is the hash (``checkpoint_hash``) of the terminal checkpoint a reviewer wrote down when the
+    run was released. Unlike the retained anchor it does not depend on any file the verified party can rewrite, so it
+    still detects a complete re-signed history produced with a stolen key and replaced retained copies.
+
     ``expect_sealed`` is kept for compatibility and means "no entries after the last checkpoint".
     ``require_terminal=False`` is an explicit in-progress check; it is reported as ``terminal_verified: false``.
     """
     findings = []
+    if (not isinstance(entries, list) or not all(isinstance(e, dict) for e in entries)
+            or not isinstance(checkpoints, list) or not all(isinstance(c, dict) and isinstance(c.get("seq"), int)
+                                                            and not isinstance(c.get("seq"), bool) for c in checkpoints)):
+        _finding(findings, "evidence is malformed: entries and checkpoints must be JSON objects and checkpoints need an integer seq")
+        return {"ok": False, "entries": len(entries) if isinstance(entries, list) else 0, "chain_ok": False,
+                "checkpoints_checked": len(checkpoints) if isinstance(checkpoints, list) else 0, "checkpoint_ok": False,
+                "last_checkpoint_seq": 0, "tail_uncovered": 0, "terminal_required": require_terminal,
+                "terminal_verified": False, "terminal_state": None, "anchor_checked": None, "terminal_hash": None,
+                "findings": findings}
     heads = {}
     prev = GENESIS
     chain_ok = True
@@ -228,7 +256,7 @@ def verify(entries, checkpoints, public_b64: str, expect_sealed: bool = False, *
             _finding(findings, "chain head differs from signed checkpoint", checkpoint_seq=cp["seq"])
             cp_ok = False
 
-    terminal_ok, terminal_state = False, None
+    terminal_ok, terminal_state, terminal_hash = False, None, None
     anchor_ok = None
     anchor_cp = None
     if anchor is not None:
@@ -259,6 +287,9 @@ def verify(entries, checkpoints, public_b64: str, expect_sealed: bool = False, *
             if anchor is not None and anchor_cp is None:
                 problems.append("a terminal anchor was supplied but is not valid")
             terminal_state = t.get("state")
+            terminal_hash = checkpoint_hash(t)
+            if expected_terminal_hash is not None and terminal_hash != expected_terminal_hash:
+                problems.append("terminal checkpoint hash differs from the one the reviewer recorded at release")
             if terminal_state not in TERMINAL_STATES:
                 problems.append("terminal state %r is not one of %s" % (terminal_state, "/".join(TERMINAL_STATES)))
             if expected_state is not None and terminal_state != expected_state:
@@ -292,4 +323,5 @@ def verify(entries, checkpoints, public_b64: str, expect_sealed: bool = False, *
     return {"ok": ok, "entries": len(entries), "chain_ok": chain_ok, "checkpoints_checked": len(checkpoints),
             "checkpoint_ok": cp_ok, "last_checkpoint_seq": last_cp_seq, "tail_uncovered": tail_uncovered,
             "terminal_required": require_terminal, "terminal_verified": bool(terminal_ok),
-            "terminal_state": terminal_state, "anchor_checked": anchor_ok, "findings": findings}
+            "terminal_state": terminal_state, "anchor_checked": anchor_ok, "terminal_hash": terminal_hash,
+            "findings": findings}

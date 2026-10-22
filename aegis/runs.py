@@ -11,6 +11,9 @@ event to the monitoring stream, and answers red after timing padding.
 """
 import base64
 import binascii
+import contextlib
+import errno
+import fcntl
 import json
 import os
 import re
@@ -32,6 +35,12 @@ CANARY_RE = re.compile(r"CANARY-[0-9a-f]{12}")
 SAMPLES = store.ROOT / "samples"
 CHECKPOINT_EVERY = 25
 SHARED_WORKER = "aegis-shared-model"  # only used by the reuse control experiment
+ATTACK_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
+DIGEST_RE = re.compile(r"sha256:[0-9a-f]{64}")
+MAX_COMMITMENTS = 500
+DENIAL_LOG_CAP = 100          # policy.denied entries written per run; later denials are only counted
+POST_TERMINAL_CAP = 1000      # unsigned post-terminal lines kept per run; later ones are only counted
+MAX_REPLY_FAILURES = 3        # tenant-broken mailbox: stop serving and seal the run as incomplete
 
 _signer = None
 _lock = threading.Lock()
@@ -56,6 +65,47 @@ def ensure_tenant_storage():
             shutil.copy(SAMPLES / name, dst)
 
 
+# ---------------------------------------------------------------- per-run lifecycle lock
+class _RunLock:
+    """Re-entrant lock for one run directory: a thread lock (several threads of this process) plus an flock
+    (other processes). State checks and the transitions that depend on them happen inside it, so two callers
+    cannot both pass the same `state == X` test."""
+
+    def __init__(self, path: Path):
+        self.path, self.rlock, self.depth, self.fh = path, threading.RLock(), 0, None
+
+    def acquire(self):
+        self.rlock.acquire()
+        try:
+            if self.depth == 0:
+                self.fh = open(self.path, "a")  # never creates the run directory: an unknown run stays unknown
+                fcntl.flock(self.fh, fcntl.LOCK_EX)
+            self.depth += 1
+        except BaseException:
+            self.rlock.release()
+            raise
+
+    def release(self):
+        self.depth -= 1
+        if self.depth == 0:
+            fcntl.flock(self.fh, fcntl.LOCK_UN)
+            self.fh.close()
+            self.fh = None
+        self.rlock.release()
+
+
+_run_locks = {}
+_run_locks_guard = threading.Lock()
+
+
+def _lock_for(run_dir: Path) -> _RunLock:
+    key = str(run_dir)
+    with _run_locks_guard:
+        if key not in _run_locks:
+            _run_locks[key] = _RunLock(Path(run_dir) / ".lifecycle.lock")
+        return _run_locks[key]
+
+
 # ---------------------------------------------------------------- run record
 class Run:
     def __init__(self, run_id: str):
@@ -70,16 +120,49 @@ class Run:
     def record(self) -> dict:
         return store.read_json(self.dir / "run.json", {})
 
+    @contextlib.contextmanager
+    def lifecycle(self):
+        lock = _lock_for(self.dir)
+        try:
+            lock.acquire()
+        except FileNotFoundError:
+            raise GateError("run not found")
+        try:
+            yield
+        finally:
+            lock.release()
+
     def update(self, **kw):
-        rec = self.record
-        rec.update(kw)
-        store.write_json(self.dir / "run.json", rec)
+        with self.lifecycle():  # read-modify-write of run.json must not interleave
+            rec = self.record
+            rec.update(kw)
+            store.write_json(self.dir / "run.json", rec)
+
+    def _count(self, key, cap):
+        """Increment a per-run counter; True while it is still below `cap` (the caller may write), False once exceeded."""
+        with self.lifecycle():
+            n = self.record.get(key, 0)
+            self.update(**{key: n + 1})
+            return n < cap
 
     @property
     def state(self) -> str:
         return self.record.get("state", "MISSING")
 
     def log(self, type_, actor, data, monitor=None, checkpoint=True, close=False):
+        if type_ == "policy.denied":
+            # Denials are cheap to cause (any caller, including an anonymous one, can trigger them), so the signed log
+            # records the first DENIAL_LOG_CAP and then only counts; the count is bound into the sealing/release event.
+            with self.lifecycle():
+                n = self.record.get("denied_events", 0)
+                self.update(denied_events=n + 1)
+                if n >= DENIAL_LOG_CAP:
+                    if n == DENIAL_LOG_CAP:
+                        self.log("policy.denied.capped", "control-plane", {"cap": DENIAL_LOG_CAP},
+                                 monitor={"summary": "Further denied requests are counted, not logged individually",
+                                          "decision": "denied"})
+                    self.update(denials_suppressed=self.record.get("denials_suppressed", 0) + 1)
+                    return {"seq": None, "suppressed": True, "type": type_}
         e = None if self.record.get("terminal") else self.audit.append(type_, actor, data, close=close)
         if e is None:  # chain already closed by the terminal event
             return self._log_post_terminal(type_, actor, data, monitor)
@@ -99,6 +182,8 @@ class Run:
         covered by the anchor. Late events (e.g. denied access to a released run) go to a separate, unsigned,
         informational file and the monitoring stream."""
         ts = round(time.time(), 6)
+        if not self._count("post_terminal_events", POST_TERMINAL_CAP):
+            return {"seq": None, "ts": ts, "type": type_, "post_terminal": True, "suppressed": True}
         store.append_jsonl(self.dir / "post_terminal.jsonl",
                            {"ts": ts, "run_id": self.id, "type": type_, "actor": actor, "data": data})
         if monitor is not None:
@@ -108,6 +193,8 @@ class Run:
 
     def checkpoint(self, reason):
         cp = self.audit.checkpoint(signer(), self.dir / "checkpoints.jsonl", store.vault_path(self.id), reason)
+        if cp is None:  # chain already closed: the terminal checkpoint covers everything
+            return None
         store.append_jsonl(self.dir / "monitor.jsonl",
                            {"ts": cp["ts"], "seq": cp["seq"], "type": "audit.checkpoint", "actor": "control-plane",
                             "summary": "Signed checkpoint at entry %d (%s)" % (cp["seq"], reason)})
@@ -116,25 +203,29 @@ class Run:
     def terminal_checkpoint(self, state):
         """Close the chain: sign {run, final state, final seq/hash, count, checkpoint index, previous checkpoint}
         once, write it to the reviewer vault and to the anchor store (outside the run directory)."""
-        if self.record.get("terminal"):
-            raise GateError("run already has a terminal checkpoint")
-        if state not in TERMINAL_STATES:
-            raise GateError("not a terminal state")
-        if not self.audit.closed:
-            raise GateError("the final lifecycle event must be logged with close=True before the terminal checkpoint")
-        anchor = store.anchor_path(self.id)
-        cp = self.audit.checkpoint(signer(), self.dir / "checkpoints.jsonl", store.vault_path(self.id), "terminal",
-                                   state=state)
-        anchor.parent.mkdir(parents=True, exist_ok=True)
-        if anchor.exists():
-            os.chmod(anchor, 0o644)
-        anchor.write_text(json.dumps(cp, sort_keys=True, indent=2) + "\n")
-        os.chmod(anchor, 0o444)
-        self.update(terminal=True, terminal_checkpoint_hash=checkpoint_hash(cp))
-        store.append_jsonl(self.dir / "monitor.jsonl",
-                           {"ts": cp["ts"], "seq": cp["seq"], "type": "audit.terminal", "actor": "control-plane",
-                            "summary": "Terminal checkpoint signed at entry %d (%s)" % (cp["seq"], state)})
-        return cp
+        with self.lifecycle():
+            if self.record.get("terminal"):
+                raise GateError("run already has a terminal checkpoint")
+            if state not in TERMINAL_STATES:
+                raise GateError("not a terminal state")
+            if not self.audit.closed:
+                raise GateError("the final lifecycle event must be logged with close=True before the terminal checkpoint")
+            anchor = store.anchor_path(self.id)
+            try:
+                cp = self.audit.checkpoint(signer(), self.dir / "checkpoints.jsonl", store.vault_path(self.id),
+                                           "terminal", state=state)
+            except ValueError as exc:
+                raise GateError(str(exc))
+            anchor.parent.mkdir(parents=True, exist_ok=True)
+            if anchor.exists():
+                os.chmod(anchor, 0o644)
+            anchor.write_text(json.dumps(cp, sort_keys=True, indent=2) + "\n")
+            os.chmod(anchor, 0o444)
+            self.update(terminal=True, terminal_checkpoint_hash=checkpoint_hash(cp))
+            store.append_jsonl(self.dir / "monitor.jsonl",
+                               {"ts": cp["ts"], "seq": cp["seq"], "type": "audit.terminal", "actor": "control-plane",
+                                "summary": "Terminal checkpoint signed at entry %d (%s)" % (cp["seq"], state)})
+            return cp
 
 
 # ---------------------------------------------------------------- lifecycle
@@ -142,27 +233,38 @@ def create_run(run_id, timing_bucket_ms=250, reset_strategy="fresh-container", f
                tags=(), defence_config=None, attack_pack=None) -> Run:
     ensure_tenant_storage()
     run = Run(run_id)
-    with _lock:
-        if run.dir.exists():
-            raise GateError("run already exists")
+    if not isinstance(timing_bucket_ms, int) or isinstance(timing_bucket_ms, bool) or not 0 <= timing_bucket_ms <= 5000:
+        raise GateError("timing_bucket_ms must be an integer between 0 and 5000")
+    tags = list(tags)
+    if len(tags) > 20 or not all(isinstance(t, str) and len(t) <= 64 for t in tags):
+        raise GateError("tags must be at most 20 strings of at most 64 characters")
+    run.dir.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        os.mkdir(run.dir)  # exclusive: of several concurrent creators (threads or processes) exactly one wins
+    except FileExistsError:
+        raise GateError("run already exists")
+    try:
         for sub in ("private/red", "frozen", "sealed"):
             (run.dir / sub).mkdir(parents=True, exist_ok=True)
-    pack = json.loads(Path(attack_pack or store.p("tenants", "red", "attack_pack.json")).read_text())
-    canary = "CANARY-" + secrets.token_hex(6)
-    for a in pack["attacks"]:
-        a["payload"] = a["payload"].replace("{canary}", canary)
-    pack["forbidden_probes"] = forbidden_probes
-    store.write_json(run.dir / "private/red/attack_pack.json", pack)
-    store.write_json(run.dir / "sealed/canary.json", {"canary": canary})
-    # blue's working copy stays editable until freeze
-    shutil.copy(defence_config or store.p("tenants", "blue", "defence_config.json"),
-                run.dir / "blue_working_config.json")
-    store.write_json(run.dir / "run.json", {
-        "id": run_id, "state": "CREATED", "created_at": time.time(), "tags": list(tags),
-        "policy": {"timing_bucket_ms": timing_bucket_ms, "reset_strategy": reset_strategy,
-                   "forbidden_probes": forbidden_probes},
-        "attack_count": len(pack["attacks"]), "evaluated": 0,
-    })
+        pack = json.loads(Path(attack_pack or store.p("tenants", "red", "attack_pack.json")).read_text())
+        canary = "CANARY-" + secrets.token_hex(6)
+        for a in pack["attacks"]:
+            a["payload"] = a["payload"].replace("{canary}", canary)
+        pack["forbidden_probes"] = forbidden_probes
+        store.write_json(run.dir / "private/red/attack_pack.json", pack)
+        store.write_json(run.dir / "sealed/canary.json", {"canary": canary})
+        # blue's working copy stays editable until freeze
+        shutil.copy(defence_config or store.p("tenants", "blue", "defence_config.json"),
+                    run.dir / "blue_working_config.json")
+        store.write_json(run.dir / "run.json", {
+            "id": run_id, "state": "CREATED", "created_at": time.time(), "tags": tags,
+            "policy": {"timing_bucket_ms": timing_bucket_ms, "reset_strategy": reset_strategy,
+                       "forbidden_probes": forbidden_probes},
+            "attack_count": len(pack["attacks"]), "evaluated": 0,
+        })
+    except BaseException:
+        shutil.rmtree(run.dir, ignore_errors=True)  # a half-created run would block the id for good
+        raise
     run.log("run.created", "operator", {"policy": run.record["policy"], "attack_count": len(pack["attacks"])},
             monitor={"summary": "Run created"})
     return run
@@ -185,17 +287,23 @@ def validate_defence_config(cfg):
 
 def update_defence_config(run_id, new_config: dict, actor="blue_participant"):
     run = Run(run_id)
-    if run.state != "CREATED":
-        run.log("policy.denied", actor, {"op": "update_defence_config", "reason": "configuration frozen"},
-                monitor={"summary": "Defence config change rejected: run is frozen", "decision": "denied"})
-        raise GateError("configuration is frozen for this run")
-    validate_defence_config(new_config)
-    store.write_json(run.dir / "blue_working_config.json", new_config)
-    run.log("config.updated", actor, {"digest": file_digest(run.dir / "blue_working_config.json")})
+    with run.lifecycle():  # the state test and the write are one step: freeze() cannot slip in between them
+        if run.state != "CREATED":
+            run.log("policy.denied", actor, {"op": "update_defence_config", "reason": "configuration frozen"},
+                    monitor={"summary": "Defence config change rejected: run is frozen", "decision": "denied"})
+            raise GateError("configuration is frozen for this run")
+        validate_defence_config(new_config)
+        store.write_json(run.dir / "blue_working_config.json", new_config)
+        run.log("config.updated", actor, {"digest": file_digest(run.dir / "blue_working_config.json")})
 
 
 def freeze(run_id) -> dict:
     run = Run(run_id)
+    with run.lifecycle():
+        return _freeze_locked(run, run_id)
+
+
+def _freeze_locked(run, run_id) -> dict:
     if run.state != "CREATED":
         raise GateError("run is %s; only CREATED runs can be frozen" % run.state)
     try:
@@ -233,9 +341,10 @@ def freeze(run_id) -> dict:
 
 def start(run_id, wait=False) -> threading.Thread:
     run = Run(run_id)
-    if run.state != "FROZEN":
-        raise GateError("run is %s; only FROZEN runs can start" % run.state)
-    run.update(state="RUNNING", started_at=time.time())
+    with run.lifecycle():  # compare-and-set: of two concurrent starts exactly one gets a broker
+        if run.state != "FROZEN":
+            raise GateError("run is %s; only FROZEN runs can start" % run.state)
+        run.update(state="RUNNING", started_at=time.time())
     t = threading.Thread(target=Broker(run).execute, name="broker-" + run_id, daemon=True)
     t.start()
     if wait:
@@ -244,14 +353,56 @@ def start(run_id, wait=False) -> threading.Thread:
 
 
 # ---------------------------------------------------------------- broker
-def _discard(path: Path):
-    """Remove a tenant-created directory entry without following it (symlink, FIFO, file or empty directory)."""
+class MailboxError(OSError):
+    """A mailbox directory is not what the broker created (replaced by a link, removed, unreadable)."""
+
+
+def _dir_fd(directory) -> int:
+    """Open a mailbox directory without following a link in its last component. Every later operation is relative to
+    this descriptor, so a tenant that swaps the directory for a symlink cannot redirect the broker."""
     try:
-        os.unlink(path)
+        return os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    except OSError as exc:
+        raise MailboxError(exc.errno, "mailbox directory unusable") from None
+
+
+def _unlink_at(dfd: int, name: str):
+    """Remove a tenant-created directory entry without following it (symlink, FIFO, socket, file or directory tree)."""
+    try:
+        os.unlink(name, dir_fd=dfd)
     except IsADirectoryError:
-        shutil.rmtree(path, ignore_errors=True)
+        shutil.rmtree(name, ignore_errors=True, dir_fd=dfd)
     except OSError:
         pass
+
+
+def _discard(path: Path):
+    """Path form of _unlink_at (kept for callers that hold a path)."""
+    path = Path(path)
+    try:
+        dfd = _dir_fd(path.parent)
+    except MailboxError:
+        return
+    try:
+        _unlink_at(dfd, path.name)
+    finally:
+        os.close(dfd)
+
+
+def _list_messages(directory) -> list:
+    dfd = _dir_fd(directory)
+    try:
+        return sorted(n for n in os.listdir(dfd) if re.fullmatch(r"\d{6}\.json", n))
+    finally:
+        os.close(dfd)
+
+
+def _entries(directory) -> list:
+    dfd = _dir_fd(directory)
+    try:
+        return os.listdir(dfd)
+    finally:
+        os.close(dfd)
 
 
 def _safe_read(path: Path):
@@ -260,34 +411,61 @@ def _safe_read(path: Path):
     O_NONBLOCK matters: opening a FIFO that a tenant planted would otherwise block the broker forever.
     Whatever the outcome, the directory entry is removed so a rejected file cannot be re-processed.
     """
+    path = Path(path)
+    dfd = _dir_fd(path.parent)
     try:
-        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
-    except OSError:
-        _discard(path)
-        raise
-    try:
-        st = os.fstat(fd)
-        if not stat.S_ISREG(st.st_mode) or st.st_size > MAX_MSG:
-            raise ValueError("rejected message file")
-        data = os.read(fd, MAX_MSG + 1)
-        if len(data) > MAX_MSG:
-            raise ValueError("rejected message file")
         try:
-            msg = json.loads(data)
-        except RecursionError:
-            raise ValueError("rejected message file")
-        if not isinstance(msg, dict):
-            raise ValueError("rejected message file")
-        return msg
+            fd = os.open(path.name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=dfd)
+        except OSError:
+            _unlink_at(dfd, path.name)
+            raise
+        try:
+            st = os.fstat(fd)
+            if not stat.S_ISREG(st.st_mode) or st.st_size > MAX_MSG:
+                raise ValueError("rejected message file")
+            data = os.read(fd, MAX_MSG + 1)
+            if len(data) > MAX_MSG:
+                raise ValueError("rejected message file")
+            try:
+                msg = json.loads(data)
+            except RecursionError:
+                raise ValueError("rejected message file")
+            if not isinstance(msg, dict):
+                raise ValueError("rejected message file")
+            return msg
+        finally:
+            os.close(fd)
+            _unlink_at(dfd, path.name)
     finally:
-        os.close(fd)
-        _discard(path)
+        os.close(dfd)
 
 
 def _write_msg(directory: Path, name: str, obj):
-    tmp = directory / ("." + name + ".tmp")
-    tmp.write_text(json.dumps(obj))
-    os.rename(tmp, directory / name)
+    """Write one message atomically into a tenant-writable mailbox directory.
+
+    The temporary file has an unpredictable name and is created with O_EXCL|O_NOFOLLOW relative to a directory
+    descriptor, so a symlink, hard link or FIFO planted at a guessed name cannot redirect or block the write. Whatever
+    the tenant left at the final name (file, link, FIFO, directory tree) is replaced."""
+    data = json.dumps(obj).encode()
+    dfd = _dir_fd(directory)
+    tmp = ".%s.%s.tmp" % (name, secrets.token_hex(8))
+    try:
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600, dir_fd=dfd)
+        try:
+            with os.fdopen(fd, "wb") as fh:
+                fh.write(data)
+            try:
+                os.rename(tmp, name, src_dir_fd=dfd, dst_dir_fd=dfd)
+            except OSError as exc:
+                if exc.errno not in (errno.EISDIR, errno.ENOTEMPTY, errno.EEXIST, errno.ENOTDIR):
+                    raise
+                _unlink_at(dfd, name)  # a directory tree where the reply belongs
+                os.rename(tmp, name, src_dir_fd=dfd, dst_dir_fd=dfd)
+        except BaseException:
+            _unlink_at(dfd, tmp)
+            raise
+    finally:
+        os.close(dfd)
 
 
 def oracle_unsafe(text: str) -> bool:
@@ -315,6 +493,9 @@ class Broker:
         self.model_cfg = None  # resolved in start_workloads and checked against the frozen manifest
         self.model_client = None
         self.model_errors = 0
+        self.reply_failures = 0
+        self.selfchecked = False
+        self.aborted = None  # reason, once a tenant has broken its own mailbox
 
     # -- mailbox plumbing
     def _mk_spool(self, role):
@@ -337,7 +518,25 @@ class Broker:
         raise TimeoutError("%s did not answer" % role)
 
     def reply_red(self, name, obj):
-        _write_msg(self.spool["red"] / "in", name, obj)
+        try:
+            _write_msg(self.spool["red"] / "in", name, obj)
+        except OSError as exc:
+            # The red tenant controls what sits in its own mailbox. A reply that cannot be delivered is the tenant's
+            # problem, not a reason to fail the run for everyone: stop serving it after a few tries and seal the run
+            # as incomplete, with the fact recorded.
+            self.reply_failures += 1
+            if self.reply_failures == 1:
+                self.run.log("mailbox.violation", "broker", {"where": "red/in", "errno": exc.errno},
+                             monitor={"summary": "Red mailbox unusable: reply could not be delivered",
+                                      "decision": "denied"})
+            if self.reply_failures >= MAX_REPLY_FAILURES:
+                self.aborted = "red mailbox unusable"
+
+    @staticmethod
+    def _spool_mounts(base):
+        """in/ and out/ are separate mount points inside the container, so the tenant can fill them but can neither
+        rename, remove nor replace the directories themselves (a bind-mount point cannot be moved)."""
+        return [(str(Path(base) / "in"), "/aegis/spool/in", "rw"), (str(Path(base) / "out"), "/aegis/spool/out", "rw")]
 
     # -- workloads
     def start_workloads(self):
@@ -358,16 +557,15 @@ class Broker:
                 (self.spool["model"] / sub).mkdir(parents=True, exist_ok=True)
             self.names["model"] = SHARED_WORKER
             if not runtime.running(SHARED_WORKER):
-                runtime.launch(SHARED_WORKER, "model", [(str(self.spool["model"]), "/aegis/spool", "rw")], {})
+                runtime.launch(SHARED_WORKER, "model", self._spool_mounts(self.spool["model"]), {})
             self.seq["model"] = int(time.time() * 1000) % 10**6 * 10  # avoid name reuse across runs
         else:
             self.names["model"] = "aegis-%s-model" % rid.lower()
             runtime.launch(self.names["model"], "model",
-                           [(str(self._mk_spool("model")), "/aegis/spool", "rw")], {})
+                           self._spool_mounts(self._mk_spool("model")), {})
         self.names["blue"] = "aegis-%s-blue" % rid.lower()
         runtime.launch(self.names["blue"], "blue",
-                       [(str(self._mk_spool("blue")), "/aegis/spool", "rw"),
-                        (str(run.dir / "frozen"), "/aegis/frozen", "ro")],
+                       self._spool_mounts(self._mk_spool("blue")) + [(str(run.dir / "frozen"), "/aegis/frozen", "ro")],
                        {"AEGIS_DEFENCE_DIGEST": manifest["defence_config_digest"]})
 
         att = self.call("blue", {"op": "attest"}, timeout=30)
@@ -395,8 +593,7 @@ class Broker:
 
         self.names["red"] = "aegis-%s-red" % rid.lower()
         runtime.launch(self.names["red"], "red",
-                       [(str(self._mk_spool("red")), "/aegis/spool", "rw"),
-                        (str(run.dir / "private/red"), "/aegis/private", "ro")], {})
+                       self._spool_mounts(self._mk_spool("red")) + [(str(run.dir / "private/red"), "/aegis/private", "ro")], {})
         applied = {role: runtime.inspect_security(name) for role, name in self.names.items()}
         store.write_json(run.dir / "sealed/runtime_applied.json", applied)
         run.log("runtime.applied", "control-plane", {"settings_digest": sha256(canonical(applied)),
@@ -449,23 +646,60 @@ class Broker:
                      monitor={"summary": "Denied red → %s (%s)" % (op, reason), "decision": "denied"})
         self.reply_red(name, {"ok": False, "denied": True, "reason": reason})
 
+    @staticmethod
+    def _clean_selfcheck(checks):
+        """The self-check is the tenant's own report. It is recorded, but only as at most 20 short text pairs."""
+        if not isinstance(checks, list):
+            raise TypeError("checks must be a list")
+
+        def text(v):
+            return v[:120] if isinstance(v, str) else (str(v)[:120] if isinstance(v, (int, float)) and not isinstance(v, bool) else "")
+        out = []
+        for c in checks[:20]:
+            if not isinstance(c, dict):
+                continue
+            item = {"check": text(c.get("check")), "result": text(c.get("result"))}
+            if isinstance(c.get("errno"), int) and not isinstance(c.get("errno"), bool):
+                item["errno"] = c["errno"]
+            out.append(item)
+        return out
+
+    def dispatch(self, name, msg):
+        """handle() with the failure policy of the main loop: a message that cannot be processed is a denial, never a failed run."""
+        try:
+            return self.handle(name, msg)
+        except (KeyError, TypeError, AttributeError, ValueError):
+            self.deny(name, "malformed", "message rejected (link, size or JSON)")
+
     def handle(self, name, msg):
         op = msg.get("op")
         if op == "selfcheck":
-            checks = msg.get("checks", [])[:20]
+            if self.selfchecked:
+                return self.deny(name, "selfcheck", "repeated self-check")
+            self.selfchecked = True
+            checks = self._clean_selfcheck(msg.get("checks", []))
             store.write_json(self.run.dir / "sealed/red_selfcheck.json", checks)
             self.run.log("sandbox.selfcheck", "red-sandbox", {"checks": checks},
                          monitor={"summary": "Red sandbox isolation self-check recorded"})
             return self.reply_red(name, {"ok": True})
         if op == "commit":
-            items = msg.get("commitments", [])[:500]
+            items = msg.get("commitments", [])
+            if not isinstance(items, list) or len(items) > MAX_COMMITMENTS:
+                raise ValueError("commitments must be a list of at most %d entries" % MAX_COMMITMENTS)
+            fresh = {}
             for c in items:
-                self.commitments[str(c["attack_id"])] = str(c["digest"])
+                aid, dg = c["attack_id"], c["digest"]
+                if not (isinstance(aid, str) and ATTACK_ID_RE.fullmatch(aid) and isinstance(dg, str) and DIGEST_RE.fullmatch(dg)):
+                    raise ValueError("malformed commitment")
+                fresh[aid] = dg
+            if len(set(self.commitments) | set(fresh)) > MAX_COMMITMENTS:
+                raise ValueError("too many commitments")
+            self.commitments.update(fresh)
             store.write_json(self.run.dir / "sealed/commitments.json", self.commitments)
             root = sha256(canonical(sorted(self.commitments.items())))
-            self.run.log("attack.committed", "red-sandbox", {"count": len(items), "commitments_root": root,
+            self.run.log("attack.committed", "red-sandbox", {"count": len(fresh), "commitments_root": root,
                                                              "commitments": self.commitments},
-                         monitor={"summary": "%d attack commitments recorded" % len(items), "digest": root[:19]})
+                         monitor={"summary": "%d attack commitments recorded" % len(fresh), "digest": root[:19]})
             self.run.update(commitments_root=root)
             return self.reply_red(name, {"ok": True, "root": root})
         if op in ("read_artifact", "get_verdicts", "release_results"):
@@ -474,11 +708,21 @@ class Broker:
         if op == "attack":
             return self.attack(name, msg)
         if op == "done":
-            store.write_json(self.run.dir / "sealed/red_observed.json", msg.get("observed", [])[:1000])
+            observed = msg.get("observed", [])
+            if not isinstance(observed, list):
+                raise ValueError("observed must be a list")
+            store.write_json(self.run.dir / "sealed/red_observed.json", observed[:1000])
             self.reply_red(name, {"ok": True})
             return "done"
         # the op string is chosen by the red tenant: record only a digest, never the text, in monitored fields
         return self.deny(name, "unknown", "unknown operation", {"op_digest": sha256(str(op).encode())[:23]})
+
+    @staticmethod
+    def _verdict(v):
+        """The defence runner is a peer, not a trusted component: anything other than a clear allow or block is a block."""
+        if isinstance(v, dict) and v.get("verdict") in ("allow", "block"):
+            return v
+        return {"ok": False, "verdict": "block", "rule": None, "error": "invalid_verdict"}
 
     def attack(self, name, msg):
         t0 = time.monotonic()
@@ -495,7 +739,7 @@ class Broker:
         self.used.add(aid)
 
         t_in = time.monotonic()
-        v_in = self.call("blue", {"op": "inspect_input", "text": payload})
+        v_in = self._verdict(self.call("blue", {"op": "inspect_input", "text": payload}))
         t_model = t_out = None
         model_text = None
         v_out = {"verdict": "skipped"}
@@ -504,7 +748,7 @@ class Broker:
             model_text = self.generate(payload)
             t_out = time.monotonic()
             if model_text is not None:
-                v_out = self.call("blue", {"op": "inspect_output", "text": model_text})
+                v_out = self._verdict(self.call("blue", {"op": "inspect_output", "text": model_text}))
         blocked = (v_in.get("verdict") == "block" or v_out.get("verdict") == "block"
                    or (v_in.get("verdict") == "allow" and model_text is None))
         final = UNIFORM_REFUSAL if blocked else model_text
@@ -547,10 +791,17 @@ class Broker:
             red_out = self.spool["red"] / "out"
             deadline = time.monotonic() + 300
             done = False
-            while not done and time.monotonic() < deadline:
-                names = sorted(n for n in os.listdir(red_out) if re.fullmatch(r"\d{6}\.json", n))
+            while not done and not self.aborted and time.monotonic() < deadline:
+                try:
+                    names = _list_messages(red_out)
+                    empty = not _entries(red_out)
+                except OSError as exc:
+                    self.aborted = "red mailbox unusable"
+                    run.log("mailbox.violation", "broker", {"where": "red/out", "errno": exc.errno},
+                            monitor={"summary": "Red mailbox unusable: run sealed as incomplete", "decision": "denied"})
+                    break
                 if not names:
-                    if not runtime.running(self.names["red"]) and not os.listdir(red_out):
+                    if not runtime.running(self.names["red"]) and empty:
                         break
                     time.sleep(0.002)
                     continue
@@ -560,24 +811,22 @@ class Broker:
                     except (OSError, ValueError):
                         self.deny(n, "malformed", "message rejected (link, size or JSON)")
                         continue
-                    try:
-                        outcome = self.handle(n, msg)
-                    except (KeyError, TypeError, AttributeError, ValueError):
-                        self.deny(n, "malformed", "message rejected (link, size or JSON)")
-                        continue
-                    if outcome == "done":
+                    if self.dispatch(n, msg) == "done":
                         done = True
+                    if self.aborted:
+                        break
             self.stop_workloads()
             self.seal(complete=done)
         except Exception as exc:  # fail closed: run is not releasable
             for name in self.names.values():
                 if name != SHARED_WORKER:
                     runtime.stop(name)
-            run.log("run.failed", "control-plane", {"error": type(exc).__name__, "detail": str(exc)[:200]},
-                    monitor={"summary": "Run failed closed: %s" % type(exc).__name__, "decision": "failed"},
-                    checkpoint=False, close=True)
-            run.update(state="FAILED")
-            run.terminal_checkpoint("FAILED")
+            with run.lifecycle():  # the failure record, state and terminal checkpoint are one step
+                run.log("run.failed", "control-plane", {"error": type(exc).__name__, "detail": str(exc)[:200]},
+                        monitor={"summary": "Run failed closed: %s" % type(exc).__name__, "decision": "failed"},
+                        checkpoint=False, close=True)
+                run.update(state="FAILED")
+                run.terminal_checkpoint("FAILED")
 
     def seal(self, complete):
         run = self.run
@@ -589,7 +838,9 @@ class Broker:
             summary[a["outcome"]] = summary.get(a["outcome"], 0) + 1
         sealed_digest = file_digest(run.dir / "sealed/artifacts.jsonl") if arts else None
         run.log("run.sealed", "control-plane", {"complete": complete, "evaluated": len(arts),
-                                                "outcomes": summary, "sealed_artifacts_digest": sealed_digest},
+                                                "outcomes": summary, "sealed_artifacts_digest": sealed_digest,
+                                                "denials_suppressed": run.record.get("denials_suppressed", 0),
+                                                "aborted": self.aborted},
                 monitor={"summary": "Run sealed; results held behind the result gate"})
         run.update(state="SEALED", sealed_at=time.time(), complete=complete, outcomes=summary)
         run.checkpoint("seal")
@@ -635,7 +886,12 @@ def check_commitments(run_id) -> dict:
 
 def release(run_id, actor="reviewer") -> dict:
     run = Run(run_id)
-    if run.state != "SEALED":
+    with run.lifecycle():  # state test, release event, terminal checkpoint and final verification are one step
+        return _release_locked(run, run_id, actor)
+
+
+def _release_locked(run, run_id, actor) -> dict:
+    if run.state != "SEALED" or run.record.get("terminal") or run.audit.closed:
         run.log("policy.denied", actor, {"op": "release", "reason": "run is %s" % run.state},
                 monitor={"summary": "Release rejected: run is %s" % run.state, "decision": "denied"})
         raise GateError("release requires a SEALED run (current: %s)" % run.state)
@@ -651,7 +907,8 @@ def release(run_id, actor="reviewer") -> dict:
         run.log("policy.denied", actor, {"op": "release", "reason": "verification failed"},
                 monitor={"summary": "Release rejected: verification failed", "decision": "denied"})
         raise GateError("audit or commitment verification failed")
-    run.log("run.released", actor, {"audit_entries_verified": v["entries"], "commitments_verified": c["verified"]},
+    run.log("run.released", actor, {"audit_entries_verified": v["entries"], "commitments_verified": c["verified"],
+                                                 "denials_suppressed": run.record.get("denials_suppressed", 0)},
             monitor={"summary": "Results released to authorised reviewer", "decision": "ok"}, checkpoint=False, close=True)
     run.update(state="RELEASED", released_at=time.time())
     run.terminal_checkpoint("RELEASED")
@@ -659,7 +916,9 @@ def release(run_id, actor="reviewer") -> dict:
     if not final["ok"]:  # fail closed: a release that does not verify strictly never exposes artifacts
         run.update(state="FAILED")
         raise GateError("terminal verification failed after release; run marked FAILED")
-    return {"state": "RELEASED", "verification": final, "commitments": c}
+    # The reviewer should write this value down: verify_cli --expect-terminal-hash detects any later complete rewrite,
+    # including one made with a stolen signing key and every retained copy replaced.
+    return {"state": "RELEASED", "verification": final, "commitments": c, "terminal_hash": final.get("terminal_hash")}
 
 
 def artifacts(run_id) -> list:

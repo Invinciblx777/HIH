@@ -1,0 +1,33 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.8, pytest-9.1.1, pluggy-1.7.0 -- <scratch>
+rootdir: <workspace>/aegislab
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collecting ... collected 24 items
+
+tests/test_phase2_audit.py::test_P2A01_valid_complete_bundle_passes_strict_and_reports_hash PASSED [  4%]
+tests/test_phase2_audit.py::test_P2A02_every_violation_makes_strict_verification_exit_nonzero_without_a_traceback[anchor_event_count_edited] PASSED [  8%]
+tests/test_phase2_audit.py::test_P2A02_every_violation_makes_strict_verification_exit_nonzero_without_a_traceback[anchor_state_edited] PASSED [ 12%]
+tests/test_phase2_audit.py::test_P2A02_every_violation_makes_strict_verification_exit_nonzero_without_a_traceback[checkpoint_removed_from_middle] PASSED [ 16%]
+tests/test_phase2_audit.py::test_P2A02_every_violation_makes_strict_verification_exit_nonzero_without_a_traceback[checkpoint_seq_is_text] PASSED [ 20%]
+tests/test_phase2_audit.py::test_P2A02_every_violation_makes_strict_verification_exit_nonzero_without_a_traceback[deleted_event] PASSED [ 25%]
+tests/test_phase2_audit.py::test_P2A02_every_violation_makes_strict_verification_exit_nonzero_without_a_traceback[duplicate_sequence] PASSED [ 29%]
+tests/test_phase2_audit.py::test_P2A02_every_violation_makes_strict_verification_exit_nonzero_without_a_traceback[empty_log] PASSED [ 33%]
+tests/test_phase2_audit.py::test_P2A02_every_violation_makes_strict_verification_exit_nonzero_without_a_traceback[entries_appended_after_terminal] PASSED [ 37%]
+tests/test_phase2_audit.py::test_P2A02_every_violation_makes_strict_verification_exit_nonzero_without_a_traceback[garbage_line] PASSED [ 41%]
+tests/test_phase2_audit.py::test_P2A02_every_violation_makes_strict_verification_exit_nonzero_without_a_traceback[invalid_signature] PASSED [ 45%]
+tests/test_phase2_audit.py::test_P2A02_every_violation_makes_strict_verification_exit_nonzero_without_a_traceback[log_is_not_objects] PASSED [ 50%]
+tests/test_phase2_audit.py::test_P2A02_every_violation_makes_strict_verification_exit_nonzero_without_a_traceback[missing_anchor_and_truncated] PASSED [ 54%]
+tests/test_phase2_audit.py::test_P2A02_every_violation_makes_strict_verification_exit_nonzero_without_a_traceback[missing_terminal_in_vault] PASSED [ 58%]
+tests/test_phase2_audit.py::test_P2A02_every_violation_makes_strict_verification_exit_nonzero_without_a_traceback[modified_event] PASSED [ 62%]
+tests/test_phase2_audit.py::test_P2A02_every_violation_makes_strict_verification_exit_nonzero_without_a_traceback[reordered_events] PASSED [ 66%]
+tests/test_phase2_audit.py::test_P2A02_every_violation_makes_strict_verification_exit_nonzero_without_a_traceback[truncated_tail] PASSED [ 70%]
+tests/test_phase2_audit.py::test_P2A03_foreign_run_material_is_rejected PASSED [ 75%]
+tests/test_phase2_audit.py::test_P2A04_in_progress_check_is_distinct_from_complete_verification PASSED [ 79%]
+tests/test_phase2_audit.py::test_P2A05_legacy_format_is_only_accepted_in_progress_mode PASSED [ 83%]
+tests/test_phase2_audit.py::test_P2A10_bundle_key_is_not_pinned_unless_the_reviewer_pins_it PASSED [ 87%]
+tests/test_phase2_audit.py::test_P2A11_recorded_terminal_hash_detects_a_rewrite_made_with_the_real_key PASSED [ 91%]
+tests/test_phase2_audit.py::test_P2A20_compromised_broker_can_sign_a_false_but_consistent_run PASSED [ 95%]
+tests/test_phase2_audit.py::test_P2A21_the_result_gate_does_not_depend_on_a_participant_supplied_verdict PASSED [100%]
+
+============================== 24 passed in 2.36s ==============================

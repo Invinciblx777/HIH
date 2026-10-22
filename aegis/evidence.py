@@ -89,6 +89,7 @@ def markdown(rep: dict) -> str:
     ] + ["- %s: `%s`" % (k, v_) for k, v_ in d.items()] + [
         "", "## Audit verification (against reviewer-held checkpoints)", "",
         "- Result: **%s**" % ("PASS" if v["ok"] else "FAIL"),
+        "- Terminal checkpoint hash (record it out of band; `verify_cli --expect-terminal-hash`): `%s`" % v.get("terminal_hash"),
         "- Entries: %d, checkpoints checked: %d, tail uncovered: %d" % (v["entries"], v["checkpoints_checked"], v["tail_uncovered"]),
     ] + ["- Finding: %s" % f for f in v["findings"]] + [
         "", "## Access-control events (denied)", "",

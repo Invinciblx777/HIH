@@ -1,0 +1,203 @@
+{
+  "applied": {
+    "blue": {
+      "cap_add": [],
+      "cap_dropped": 11,
+      "cpuset": "",
+      "memory_bytes": 268435456,
+      "nano_cpus": 1000000000,
+      "network_mode": "none",
+      "pids_limit": 64,
+      "readonly_rootfs": true,
+      "security_opt": [
+        "no-new-privileges"
+      ],
+      "selinux_label": "system_u:system_r:container_t:s0:c125,c148"
+    },
+    "model": {
+      "cap_add": [],
+      "cap_dropped": 11,
+      "cpuset": "",
+      "memory_bytes": 536870912,
+      "nano_cpus": 2000000000,
+      "network_mode": "none",
+      "pids_limit": 64,
+      "readonly_rootfs": true,
+      "security_opt": [
+        "no-new-privileges"
+      ],
+      "selinux_label": "system_u:system_r:container_t:s0:c123,c944"
+    },
+    "red": {
+      "cap_add": [],
+      "cap_dropped": 11,
+      "cpuset": "",
+      "memory_bytes": 268435456,
+      "nano_cpus": 1000000000,
+      "network_mode": "none",
+      "pids_limit": 64,
+      "readonly_rootfs": true,
+      "security_opt": [
+        "no-new-privileges"
+      ],
+      "selinux_label": "system_u:system_r:container_t:s0:c14,c273"
+    }
+  },
+  "environment": {
+    "cgroups": "v2",
+    "cpus": 16,
+    "cpuset_delegated": false,
+    "kernel": "7.2.11-200.fc44.x86_64",
+    "oci_runtime": "crun",
+    "oci_runtime_version": "crun version 1.28",
+    "podman": "5.8.9",
+    "rootless": true,
+    "seccomp_profile": "/usr/share/containers/seccomp.json",
+    "selinux": true
+  },
+  "note": "Settings read back with 'podman inspect' for the three workloads of one real run on the Phase 2 code, plus the flags requested, plus the red sandbox's own observations.",
+  "red_selfcheck": [
+    {
+      "check": "tcp 1.1.1.1:53",
+      "errno": 101,
+      "result": "failed"
+    },
+    {
+      "check": "tcp 10.0.2.2:8400",
+      "errno": 101,
+      "result": "failed"
+    },
+    {
+      "check": "tcp 127.0.0.1:8400",
+      "errno": 111,
+      "result": "failed"
+    },
+    {
+      "check": "path /aegis/frozen",
+      "result": "absent"
+    },
+    {
+      "check": "path /aegis/blue",
+      "result": "absent"
+    },
+    {
+      "check": "path /run/aegis",
+      "result": "absent"
+    },
+    {
+      "check": "path /aegis/sealed",
+      "result": "absent"
+    },
+    {
+      "check": "path /aegis/spool/blue",
+      "result": "absent"
+    },
+    {
+      "check": "path /aegis/spool/model",
+      "result": "absent"
+    },
+    {
+      "check": "path /aegis/state",
+      "result": "absent"
+    },
+    {
+      "check": "path /var/lib/aegis",
+      "result": "absent"
+    },
+    {
+      "check": "write rootfs",
+      "errno": 30,
+      "result": "denied"
+    },
+    {
+      "check": "write /aegis/private",
+      "errno": 30,
+      "result": "denied"
+    },
+    {
+      "check": "uid",
+      "result": "1000"
+    },
+    {
+      "check": "proc CapEff",
+      "result": "0000000000000000"
+    },
+    {
+      "check": "proc CapBnd",
+      "result": "0000000000000000"
+    },
+    {
+      "check": "proc NoNewPrivs",
+      "result": "1"
+    },
+    {
+      "check": "proc Seccomp",
+      "result": "2"
+    }
+  ],
+  "requested_flags": {
+    "blue": [
+      "--network",
+      "none",
+      "--read-only",
+      "--tmpfs",
+      "/tmp:rw,size=16m",
+      "--cap-drop",
+      "ALL",
+      "--security-opt",
+      "no-new-privileges",
+      "--userns",
+      "keep-id",
+      "--pids-limit",
+      "64",
+      "--memory",
+      "256m",
+      "--memory-swap",
+      "256m",
+      "--cpus",
+      "1.0"
+    ],
+    "model": [
+      "--network",
+      "none",
+      "--read-only",
+      "--tmpfs",
+      "/tmp:rw,size=16m",
+      "--cap-drop",
+      "ALL",
+      "--security-opt",
+      "no-new-privileges",
+      "--userns",
+      "keep-id",
+      "--pids-limit",
+      "64",
+      "--memory",
+      "512m",
+      "--memory-swap",
+      "512m",
+      "--cpus",
+      "2.0"
+    ],
+    "red": [
+      "--network",
+      "none",
+      "--read-only",
+      "--tmpfs",
+      "/tmp:rw,size=16m",
+      "--cap-drop",
+      "ALL",
+      "--security-opt",
+      "no-new-privileges",
+      "--userns",
+      "keep-id",
+      "--pids-limit",
+      "64",
+      "--memory",
+      "256m",
+      "--memory-swap",
+      "256m",
+      "--cpus",
+      "1.0"
+    ]
+  }
+}

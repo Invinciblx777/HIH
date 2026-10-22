@@ -1,0 +1,415 @@
+{
+ "argv": [
+  "evaluation/timing_closeout.py",
+  "--seed",
+  "20261102",
+  "--runs",
+  "4",
+  "--rtt-reps",
+  "5",
+  "--rtt-block",
+  "100",
+  "--out-dir",
+  "../evidence_phase2/contention_run_20261102"
+ ],
+ "broker_mailbox_rtt": {
+  "idle": {
+   "block_medians_ms": [
+    2.424,
+    2.231,
+    2.913,
+    2.419,
+    2.258
+   ],
+   "blocks": 5,
+   "max_ms": 5.65,
+   "median_ms": 2.37,
+   "min_ms": 2.16,
+   "n": 500,
+   "p90_ms": 4.3,
+   "p95_ms": 4.36,
+   "p99_ms": 4.64
+  },
+  "limited_1cpu_8proc": {
+   "block_medians_ms": [
+    2.324,
+    2.415,
+    2.324,
+    2.312,
+    2.26
+   ],
+   "blocks": 5,
+   "increase_vs_idle": {
+    "median_pct": -2.1,
+    "median_pct_ci95_block_bootstrap": [
+     -15.1,
+     2.9
+    ],
+    "p99_pct": -3.9,
+    "p99_pct_ci95_block_bootstrap": [
+     -20.0,
+     3.0
+    ]
+   },
+   "max_ms": 5.04,
+   "median_ms": 2.32,
+   "min_ms": 2.16,
+   "n": 500,
+   "p90_ms": 4.35,
+   "p95_ms": 4.39,
+   "p99_ms": 4.46
+  },
+  "unrestricted_16proc": {
+   "block_medians_ms": [
+    2.562,
+    2.31,
+    2.335,
+    2.321,
+    2.344
+   ],
+   "blocks": 5,
+   "increase_vs_idle": {
+    "median_pct": -1.7,
+    "median_pct_ci95_block_bootstrap": [
+     -14.8,
+     3.2
+    ],
+    "p99_pct": 11.6,
+    "p99_pct_ci95_block_bootstrap": [
+     -7.0,
+     19.7
+    ]
+   },
+   "max_ms": 6.85,
+   "median_ms": 2.33,
+   "min_ms": 2.23,
+   "n": 500,
+   "p90_ms": 4.37,
+   "p95_ms": 4.4,
+   "p99_ms": 5.18
+  }
+ },
+ "code_revision": {
+  "files": 40,
+  "note": "not a git repository; hash over aegis/ sandbox/ evaluation/ scripts/ tests/ samples/ (*.py, *.sh, *.json)",
+  "tree_sha256": "sha256:5b6833ce695f3863139a16f84268745dc0eef0ceff5360fde7bf5ce2bffcc9f8"
+ },
+ "conditions": {
+  "0": {
+   "added_median_latency_for_answered_requests_ms": 0.0,
+   "auc_refused_faster": 0.805,
+   "bucket_ms": 0,
+   "folds": 5,
+   "heldout_accuracy": 0.8,
+   "heldout_accuracy_ci95": [
+    0.652,
+    0.895
+   ],
+   "heldout_balanced_accuracy": 0.8,
+   "latency_answered": {
+    "max_ms": 80.23,
+    "median_ms": 77.0,
+    "min_ms": 73.91,
+    "n": 20,
+    "p90_ms": 77.18,
+    "p95_ms": 77.32,
+    "p99_ms": 80.23
+   },
+   "latency_refused": {
+    "max_ms": 80.25,
+    "median_ms": 32.58,
+    "min_ms": 27.95,
+    "n": 20,
+    "p90_ms": 77.0,
+    "p95_ms": 80.22,
+    "p99_ms": 80.25
+   },
+   "majority_baseline": 0.5,
+   "n_answered": 20,
+   "n_refused": 20,
+   "permutation_p": 0.001,
+   "permutations": 1000,
+   "run_wall_clock_s": {
+    "max_ms": 1694.0,
+    "median_ms": 1685.9,
+    "min_ms": 1678.0,
+    "n": 4,
+    "p90_ms": 1694.0,
+    "p95_ms": 1694.0,
+    "p99_ms": 1694.0
+   },
+   "total_requests": 40,
+   "usable_runs": 4
+  },
+  "100": {
+   "added_median_latency_for_answered_requests_ms": 49.3,
+   "auc_refused_faster": 0.636,
+   "bucket_ms": 100,
+   "folds": 5,
+   "heldout_accuracy": 0.5,
+   "heldout_accuracy_ci95": [
+    0.352,
+    0.648
+   ],
+   "heldout_balanced_accuracy": 0.5,
+   "latency_answered": {
+    "max_ms": 129.52,
+    "median_ms": 126.3,
+    "min_ms": 122.96,
+    "n": 20,
+    "p90_ms": 129.33,
+    "p95_ms": 129.36,
+    "p99_ms": 129.52
+   },
+   "latency_refused": {
+    "max_ms": 129.24,
+    "median_ms": 126.17,
+    "min_ms": 123.08,
+    "n": 20,
+    "p90_ms": 129.17,
+    "p95_ms": 129.24,
+    "p99_ms": 129.24
+   },
+   "majority_baseline": 0.5,
+   "n_answered": 20,
+   "n_refused": 20,
+   "permutation_p": 0.5225,
+   "permutations": 1000,
+   "run_wall_clock_s": {
+    "max_ms": 2468.8,
+    "median_ms": 2327.9,
+    "min_ms": 2318.5,
+    "n": 4,
+    "p90_ms": 2468.8,
+    "p95_ms": 2468.8,
+    "p99_ms": 2468.8
+   },
+   "total_requests": 40,
+   "usable_runs": 4
+  },
+  "250": {
+   "added_median_latency_for_answered_requests_ms": 199.69,
+   "auc_refused_faster": 0.453,
+   "bucket_ms": 250,
+   "folds": 5,
+   "heldout_accuracy": 0.625,
+   "heldout_accuracy_ci95": [
+    0.47,
+    0.758
+   ],
+   "heldout_balanced_accuracy": 0.625,
+   "latency_answered": {
+    "max_ms": 279.88,
+    "median_ms": 276.69,
+    "min_ms": 273.34,
+    "n": 20,
+    "p90_ms": 279.55,
+    "p95_ms": 279.76,
+    "p99_ms": 279.88
+   },
+   "latency_refused": {
+    "max_ms": 279.75,
+    "median_ms": 276.49,
+    "min_ms": 276.06,
+    "n": 20,
+    "p90_ms": 279.46,
+    "p95_ms": 279.58,
+    "p99_ms": 279.75
+   },
+   "majority_baseline": 0.5,
+   "n_answered": 20,
+   "n_refused": 20,
+   "permutation_p": 0.1379,
+   "permutations": 1000,
+   "run_wall_clock_s": {
+    "max_ms": 3888.8,
+    "median_ms": 3839.85,
+    "min_ms": 3828.2,
+    "n": 4,
+    "p90_ms": 3888.8,
+    "p95_ms": 3888.8,
+    "p99_ms": 3888.8
+   },
+   "total_requests": 40,
+   "usable_runs": 4
+  },
+  "500": {
+   "added_median_latency_for_answered_requests_ms": 450.83,
+   "auc_refused_faster": 0.623,
+   "bucket_ms": 500,
+   "folds": 5,
+   "heldout_accuracy": 0.55,
+   "heldout_accuracy_ci95": [
+    0.398,
+    0.693
+   ],
+   "heldout_balanced_accuracy": 0.55,
+   "latency_answered": {
+    "max_ms": 531.11,
+    "median_ms": 527.83,
+    "min_ms": 524.9,
+    "n": 20,
+    "p90_ms": 528.64,
+    "p95_ms": 529.55,
+    "p99_ms": 531.11
+   },
+   "latency_refused": {
+    "max_ms": 528.81,
+    "median_ms": 527.09,
+    "min_ms": 524.66,
+    "n": 20,
+    "p90_ms": 528.25,
+    "p95_ms": 528.58,
+    "p99_ms": 528.81
+   },
+   "majority_baseline": 0.5,
+   "n_answered": 20,
+   "n_refused": 20,
+   "permutation_p": 0.3526,
+   "permutations": 1000,
+   "run_wall_clock_s": {
+    "max_ms": 6351.8,
+    "median_ms": 6337.65,
+    "min_ms": 6327.1,
+    "n": 4,
+    "p90_ms": 6351.8,
+    "p95_ms": 6351.8,
+    "p99_ms": 6351.8
+   },
+   "total_requests": 40,
+   "usable_runs": 4
+  }
+ },
+ "config": {
+  "aegis_var": "/tmp/p2cont.rhcvZk",
+  "attacks_per_run": 10,
+  "classes_per_run": {
+   "answered": 5,
+   "refused": 5
+  },
+  "model": "stub worker, fixed ~40 ms sleep",
+  "padding_intervals_ms": [
+   0,
+   100,
+   250,
+   500
+  ],
+  "rtt_block": 100,
+  "rtt_reps": 5,
+  "rtt_warmup": 20,
+  "runs": 4,
+  "seed": 20261102
+ },
+ "confounders": [
+  "label (refused) is determined by attack id: 10 distinct payloads, 5 refused / 5 answered per run",
+  "stub model latency is a fixed ~40 ms sleep; a real model's latency varies and can cross bucket boundaries (not covered)",
+  "single host, laptop CPU, desktop session running, SELinux enforcing, rootless Podman, file-mailbox polling ~2 ms (RTT quantised)",
+  "runs are sequential; no concurrent tenants during the classification experiment",
+  "a single-threshold classifier is a weak adversary; a stronger one or a far larger n could extract more",
+  "the 100/250/500 ms settings were fixed before measurement; 250 ms is the shipped default chosen on 15 Oct data"
+ ],
+ "environment": {
+  "cgroups": "v2",
+  "cpus": 16,
+  "cpuset_delegated": false,
+  "kernel": "7.2.11-200.fc44.x86_64",
+  "oci_runtime": "crun",
+  "oci_runtime_version": "crun version 1.28",
+  "podman": "5.8.9",
+  "rootless": true,
+  "seccomp_profile": "/usr/share/containers/seccomp.json",
+  "selinux": true
+ },
+ "execution_id": "TX-20261022T200450Z-7657ac",
+ "finished_utc": "2026-10-22T20:06:17.122781+00:00",
+ "host": {
+  "cpu_model": "AMD Ryzen 7 7735HS with Radeon Graphics",
+  "cpus": 16,
+  "governor": "performance",
+  "loadavg": [
+   0.08349609375,
+   0.2822265625,
+   0.42529296875
+  ],
+  "loadavg_after": [
+   1.71875,
+   0.611328125,
+   0.52099609375
+  ],
+  "mem_available_mb": 5471,
+  "platform": "Linux-7.2.11-200.fc44.x86_64-x86_64-with-glibc2.43",
+  "python": "3.14.8",
+  "top_processes_by_cpu_before_start": [
+   "125 localsearch-ext",
+   "90.0 python",
+   "6.8 antigravity",
+   "3.4 brave",
+   "3.1 gnome-shell",
+   "2.7 brave"
+  ]
+ },
+ "raw_files_sha256": {
+  "raw_classification.jsonl": "121d1d28eab34fa94f1c9a1aa27b8a48771cedced45d6855f088aafdf4a9d6e4",
+  "raw_rtt.jsonl": "7a02856317ad2e0a722e7d6be63e5a3c9d85adcf140eab885e41ad11ec6af756",
+  "raw_runs.json": "2398dc9789339e63cecfa3642e3e084ad0c9c92e7f09bb26626091a2bd189b31",
+  "rtt_blocks.json": "a4c705ce3ebbd72602a4c729230bfee89dfd163421e2b888382390f32cb12956"
+ },
+ "rules": {
+  "classification": "per bucket, 20 runs x 10 attacks (5 refused, 5 answered); threshold fitted on training runs only, scored on held-out runs (grouped 5-fold by run); majority baseline = larger class share; permutation p from 1000 label shuffles of the full procedure; padding intervals fixed in advance (0/100/250/500 ms) and not tuned on these observations",
+  "latency_increase_pct": "100*(median(contention)-median(idle))/median(idle), pooled non-warm-up samples of this execution; same for p99; 95% interval by bootstrap over blocks (2000 resamples)",
+  "rtt": "blocks of 100 timed calls after 20 discarded warm-up calls; 10 blocks per condition; condition order shuffled within each repetition; a contention block is valid only if the neighbour container is running before and after",
+  "usable_run": "run ends SEALED with complete=true without exception and returns exactly 10 observations; others are listed in `unusable` and excluded from metrics (raw kept)",
+  "verdict_rule": "a padded setting is 'leak detected' if its permutation p < 0.05/9 (Bonferroni over 3 executions x 3 padded settings) in any execution; otherwise 'no leak detected (inconclusive as to absence)'; settings whose executions disagree at uncorrected p<0.05 are 'unstable'"
+ },
+ "sandbox_image_id": "f0825fec8c3be9c6337ada019305bfaa020819b47505917c38fec5142ec3e01a",
+ "seed": 20261102,
+ "source_sha256": {
+  "Containerfile": "0b6423381fe6899ff98ccdb7c8b1eb42021f2c06985932dfea08d88cdc7bb7a9",
+  "aegis/__init__.py": "47158bd9175dcb86f3fd3215a50b48f8ee26b10932abf38892f674398628a644",
+  "aegis/api.py": "d318fc8c091f79baa0eadffb0a1d681c4aa54f389d9d1298f712545ecfb7f2de",
+  "aegis/audit.py": "33f2bacf9bfeba23f1298d337946d8268c65139d097b20191b72759ef296cc81",
+  "aegis/crypto.py": "24e2623bf4a7f907fc479efe0770bbc1febe28646a9fce8a55e547a1e042f926",
+  "aegis/evidence.py": "bafaf5dfda95261ce742f497eddc414224fc0e0d57103a13c788967115406cdb",
+  "aegis/model_client.py": "1a752e41f18d0269fb6d1a6f498ecb79ca9eb32192d27f6f9aa96b816107bc2b",
+  "aegis/runs.py": "3de0ad8941b5783364af28977f2417256e96d2804c13b8f1a26f0afc6b7ef508",
+  "aegis/runtime.py": "85043330afc12bf9a798f6946bfab825c5be318e24f947a68f604256b3673d69",
+  "aegis/store.py": "80b3c6ee81ea2857f386788f4a25f3927685a469b5ffd1c24fa57bc37d7bda81",
+  "aegis/verify_cli.py": "84810dcc04df9bd9dc9d606333208180c0959e661755145d18857cc0087858d5",
+  "evaluation/check_claims.py": "b44b5325eceb27adb11d36f22f008bc3cb3e32f32aaae6d85c407ee6212011db",
+  "evaluation/isolation_matrix.py": "bb41bea3dd85c69b7bfb252de68396bd5da2bfad4a57c620a31b819db22785bc",
+  "evaluation/model_experiments.py": "1c951cedfb9ad0879a825fa0813f9527f9c222fc5f70a470c15aca0d1c238460",
+  "evaluation/phase2_matrix.py": "fb905d18ef681bfd7c02fbc010598fe7452259dd90cd88832eda8820b6195461",
+  "evaluation/revision.py": "8613c974eb9dfd30c1c5ef10ecd7296423783e4659f8f7c1621d8bbb9178f281",
+  "evaluation/run_evaluation.py": "d96966eaf3b3c4ad73e89fc6d2a1c76522ec30cd1563302d1bd0c27780148347",
+  "evaluation/run_validation.py": "a661455713b8e4d7e410d6ba9c1311ec35a4c1f8d14e4128da5459b8d65cbfcc",
+  "evaluation/timing_aggregate.py": "96fe3884a2a946edbd15ac0eec87a19045c515a688eaffb8aba173a6843493cd",
+  "evaluation/timing_closeout.py": "a88bfa637df3610f2de29726b0893ae3d6a9de84af1846e92047afcfc5e72065",
+  "evaluation/timing_eval.py": "6f793132c98c0a43e945e4afc7013298476fedcdf74e94746a802531d2ec7128",
+  "requirements.txt": "2dade7e6e03924544949eec51a72dc5b18b6678c8285a9486170df98488f513f",
+  "samples/attack_pack.json": "eba57929c4accb5e68b3d46fd4bfdf0b3a77ff8e196ff43b1b99d27be9fc0aea",
+  "samples/defence_config.json": "c6139a79babc49ecddf1a4564e7e750a52292dbc41585ab4f11ffaf097918d76",
+  "sandbox/defence_runner.py": "70c0b3e9288d95a66b48faa306adf1343e43dff897f139148a09f30cbd4c376f",
+  "sandbox/model_worker.py": "f4d89aa4274b2611ab8ab7200fab2a6d7cbbd8e0abcec33685f359559dc6b96c",
+  "sandbox/red_agent.py": "1f70fc31e16a0ad9aefdc0f8bdf5fcf7d2d14dfa06e1b43563f5730c526f81bb",
+  "sandbox/spool.py": "fb3b388cd5e59a78c9682ff4686d8f0de107b692b4be14e659568f90a077982e",
+  "scripts/demo_run.py": "4493ad7f955878071f559448c6972fec4e415c6b76aefb556f521788b672f21c",
+  "scripts/export_snapshot.py": "2c03204b74759ed122bdd1eb2888e483b540ea262a4cc7269a068dabad2361c3",
+  "scripts/quickstart.sh": "1d909a1b48625ba91480016ffe2c20b179afc116abddbe2bc6953eea301684b8",
+  "scripts/security_demo.py": "18a563307bcdb01d15ade35b854cbc02297deab6f563fe4f653d41c56d58e691",
+  "scripts/security_demo.sh": "69210d857d9216b033e09f0e15d484e81d9e1777f0390231a1ed821dcd36f1c2",
+  "tests/test_audit_integrity.py": "4d896036674e6b8f7b6bca599edccf29605547c2f8b2b54047766afd96acda23",
+  "tests/test_core.py": "e977af5a5756d0f3e93ba8814e7dab4579af707974ba2ca3234222541a124dd6",
+  "tests/test_isolation.py": "7155822e7f2c61183d44cbe5d3f4d1e0f41ce6f866c0601679702fedbe9dd000",
+  "tests/test_model_client.py": "ce00ad82c4df42e9f3155a22480f02db8789222788f9f9dcf49ba0251d50287f",
+  "tests/test_phase2_audit.py": "f4f5eace824dd9d25d4db86fe1b2eb0e826c4c9f0099c7d215ab2c5c41656f25",
+  "tests/test_phase2_broker.py": "d5fae6cf3fe9d842528715bc8aa0ed67bab0a1373fe3d19e3668d8d8b1af8743",
+  "tests/test_phase2_config.py": "571d01418927563d1a2b2f7f18bc391d40071b229124c9591bb8669b94c5bdc8",
+  "tests/test_phase2_container.py": "c1688cc56da74f49a80598a9fa4980657e4a53199ea7f47968375800ffeac7ae",
+  "tests/test_phase2_lifecycle.py": "b8f36c6f563ab3b72b73fab63b13ccc9077c48a0a8418f4d3d5f1599433b2c18"
+ },
+ "started_utc": "2026-10-22T20:04:50.147480+00:00",
+ "status": "COMPLETE",
+ "unusable": [],
+ "unusable_rtt_blocks": [],
+ "wall_clock_s": 87.0
+}
