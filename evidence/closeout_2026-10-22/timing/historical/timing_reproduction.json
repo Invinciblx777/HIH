@@ -1,0 +1,36 @@
+{
+ "saved_file": "timing.json",
+ "seed": 7,
+ "source_state": "var/validation_2026-10-22/timing",
+ "raw_sha256": "1322f4c0295f726e634e77976c5d7fd498cafba20b64d61ef887848edbc13b25",
+ "per_bucket": {
+  "0": {
+   "recomputed_accuracy": 0.8,
+   "saved_accuracy": 0.8,
+   "recomputed_p": 0.001,
+   "saved_p": 0.001,
+   "all_fields_identical": true
+  },
+  "100": {
+   "recomputed_accuracy": 0.435,
+   "saved_accuracy": 0.435,
+   "recomputed_p": 0.9391,
+   "saved_p": 0.9391,
+   "all_fields_identical": true
+  },
+  "250": {
+   "recomputed_accuracy": 0.41,
+   "saved_accuracy": 0.41,
+   "recomputed_p": 0.982,
+   "saved_p": 0.982,
+   "all_fields_identical": true
+  },
+  "500": {
+   "recomputed_accuracy": 0.58,
+   "saved_accuracy": 0.58,
+   "recomputed_p": 0.042,
+   "saved_p": 0.042,
+   "all_fields_identical": true
+  }
+ }
+}

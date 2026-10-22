@@ -1,0 +1,22 @@
+# timing_eval.py as written at 14:02:44Z (+ sed at 14:02:48Z) in the hardening session transcript (exec 1) vs the shipped file
+--- /tmp/claude-1000/-home-v0idsai-Projects-Hack-On-Hills/462ca6ee-45d1-45ba-a1de-ff4649f0d1f4/scratchpad/timing_eval_exec1_reconstructed.py	2026-10-22 23:54:18.864676921 +0530
++++ "/home/v0idsai/Projects/Hack On Hills/release_2026-10-22/aegislab/evaluation/timing_eval.py"	2026-10-22 20:03:19.000000000 +0530
+@@ -35,7 +35,9 @@
+ ROOT = Path(__file__).resolve().parent.parent
+ sys.path.insert(0, str(ROOT))
+ 
++sys.path.insert(0, str(ROOT / "evaluation"))
+ from aegis import runtime, runs, store  # noqa: E402
++from revision import code_revision  # noqa: E402
+ 
+ BUCKETS = (0, 100, 250, 500)
+ HOG = "import multiprocessing as m\ndef f():\n    while True: pass\nfor _ in range(%d): m.Process(target=f).start()"
+@@ -189,7 +191,7 @@
+     t0 = time.time()
+     runtime.build_image(ROOT)
+     load0 = os.getloadavg()
+-    res = {"started_at": t0, "seed": a.seed, "runs_per_condition": a.runs, "attacks_per_run": 10,
++    res = {"started_at": t0, "code_revision": code_revision(), "seed": a.seed, "runs_per_condition": a.runs, "attacks_per_run": 10,
+            "environment": {**runtime.environment(), "loadavg_before": load0}, "conditions": {}}
+     base_wall = None
+     for bucket in BUCKETS:

@@ -1,0 +1,5 @@
+$ sha256sum -c phase1_closeout/logs/00_baseline_dir_hashes.txt
+# started 2026-10-22T18:42:25Z
+_baseline/evidence_sha256_2026-10-22.txt: OK
+_baseline/submission_2026-10-22_baseline.tar.gz: OK
+# exit=0

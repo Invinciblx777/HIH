@@ -1,0 +1,12 @@
+$ phase1_closeout/scratch_validation/rel/aegislab/.venv/bin/python -m pytest -q tests
+# started 2026-10-22T18:35:02Z
+........................................................................ [ 50%]
+........................................................................ [100%]
+=============================== warnings summary ===============================
+.venv/lib64/python3.14/site-packages/fastapi/testclient.py:1
+  phase1_closeout/scratch_validation/rel/aegislab/.venv/lib64/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+144 passed, 1 warning in 12.87s
+# exit=0

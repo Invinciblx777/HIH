@@ -1,0 +1,25 @@
+$ sha256sum -c ../../_baseline/evidence_sha256_2026-10-22.txt
+# started 2026-10-22T18:42:25Z
+evidence/DEMO-001/audit.jsonl: OK
+evidence/DEMO-001/broker_public_key.b64: OK
+evidence/DEMO-001/evidence_report.md: OK
+evidence/DEMO-001/manifest.json: OK
+evidence/DEMO-001/reviewer_checkpoints.jsonl: OK
+evidence/results.json: OK
+evidence/RESULTS.md: OK
+var/reviewer_vault/DEMO-001.jsonl: OK
+var/runs/DEMO-001/audit.jsonl: OK
+var/runs/DEMO-001/blue_working_config.json: OK
+var/runs/DEMO-001/checkpoints.jsonl: OK
+var/runs/DEMO-001/frozen/defence_config.json: OK
+var/runs/DEMO-001/manifest.json: OK
+var/runs/DEMO-001/monitor.jsonl: OK
+var/runs/DEMO-001/private/red/attack_pack.json: OK
+var/runs/DEMO-001/run.json: OK
+var/runs/DEMO-001/sealed/artifacts.jsonl: OK
+var/runs/DEMO-001/sealed/canary.json: OK
+var/runs/DEMO-001/sealed/commitments.json: OK
+var/runs/DEMO-001/sealed/red_observed.json: OK
+var/runs/DEMO-001/sealed/red_selfcheck.json: OK
+var/runs/DEMO-001/sealed/runtime_applied.json: OK
+# exit=0

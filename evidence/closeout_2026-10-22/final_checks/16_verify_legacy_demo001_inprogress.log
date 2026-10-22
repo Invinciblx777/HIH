@@ -1,0 +1,18 @@
+$ phase1_closeout/scratch_validation/rel/aegislab/.venv/bin/python -m aegis.verify_cli --bundle evidence/DEMO-001 --allow-in-progress
+# started 2026-10-22T18:42:21Z
+WARNING: in-progress check only; completeness of the log is NOT established.
+{
+  "ok": true,
+  "entries": 25,
+  "chain_ok": true,
+  "checkpoints_checked": 4,
+  "checkpoint_ok": true,
+  "last_checkpoint_seq": 25,
+  "tail_uncovered": 0,
+  "terminal_required": false,
+  "terminal_verified": false,
+  "terminal_state": null,
+  "anchor_checked": null,
+  "findings": []
+}
+# exit=0

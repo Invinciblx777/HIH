@@ -1,5 +1,7 @@
 # Validation run, 22 Oct 2026
 
+> **Note added in the Phase 1 closeout (22–23 Oct):** the timing results in this folder (`timing.json`, `timing_execution_2.json`) are **historical**: they are stamped with the earlier code hash and the first execution reported alongside them has no raw file. The current timing results are in `../closeout_2026-10-22/timing/`; `timing.json` is the second and `timing_execution_2.json` the third of the earlier executions. No result file in this folder was changed; only this note was added to the README.
+
 Separate from, and never overwriting, the submitted 15 Oct results (`../results.json`, `../RESULTS.md`, `../DEMO-001/`). Do not mix the two: they were produced by different code (this folder: terminal anchor, fail-closed verifier, hardened broker) and a different kernel/Podman.
 
 ## Provenance

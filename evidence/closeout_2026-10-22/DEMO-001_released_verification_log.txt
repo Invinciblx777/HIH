@@ -1,0 +1,161 @@
+$ --bundle scratch_verify/genuine
+{
+  "ok": true,
+  "entries": 25,
+  "chain_ok": true,
+  "checkpoints_checked": 3,
+  "checkpoint_ok": true,
+  "last_checkpoint_seq": 25,
+  "tail_uncovered": 0,
+  "terminal_required": true,
+  "terminal_verified": true,
+  "terminal_state": "RELEASED",
+  "anchor_checked": true,
+  "findings": []
+}
+exit=0
+
+$ --bundle scratch_verify/tampered_truncated
+{
+  "ok": false,
+  "entries": 22,
+  "chain_ok": true,
+  "checkpoints_checked": 3,
+  "checkpoint_ok": false,
+  "last_checkpoint_seq": 25,
+  "tail_uncovered": 0,
+  "terminal_required": true,
+  "terminal_verified": false,
+  "terminal_state": "RELEASED",
+  "anchor_checked": true,
+  "findings": [
+    {
+      "checkpoint_seq": 24,
+      "issue": "log has 22 entries but a signed checkpoint covers seq 24: truncation"
+    },
+    {
+      "checkpoint_seq": 25,
+      "issue": "log has 22 entries but a signed checkpoint covers seq 25: truncation"
+    },
+    {
+      "checkpoint_seq": 25,
+      "issue": "log has 22 entries but the terminal checkpoint binds 25: truncation"
+    },
+    {
+      "checkpoint_seq": 25,
+      "issue": "final entry 'attack.evaluated' is not a terminal lifecycle event"
+    },
+    {
+      "checkpoint_seq": 25,
+      "issue": "terminal state RELEASED does not match the final lifecycle event"
+    }
+  ]
+}
+exit=1
+
+$ --bundle scratch_verify/tampered_modified
+{
+  "ok": false,
+  "entries": 25,
+  "chain_ok": false,
+  "checkpoints_checked": 3,
+  "checkpoint_ok": true,
+  "last_checkpoint_seq": 25,
+  "tail_uncovered": 0,
+  "terminal_required": true,
+  "terminal_verified": true,
+  "terminal_state": "RELEASED",
+  "anchor_checked": true,
+  "findings": [
+    {
+      "seq": 13,
+      "issue": "entry content does not match its hash"
+    }
+  ]
+}
+exit=1
+
+$ --bundle scratch_verify/tampered_no_anchor_truncated
+{
+  "ok": false,
+  "entries": 22,
+  "chain_ok": true,
+  "checkpoints_checked": 3,
+  "checkpoint_ok": false,
+  "last_checkpoint_seq": 25,
+  "tail_uncovered": 0,
+  "terminal_required": true,
+  "terminal_verified": false,
+  "terminal_state": "RELEASED",
+  "anchor_checked": null,
+  "findings": [
+    {
+      "checkpoint_seq": 24,
+      "issue": "log has 22 entries but a signed checkpoint covers seq 24: truncation"
+    },
+    {
+      "checkpoint_seq": 25,
+      "issue": "log has 22 entries but a signed checkpoint covers seq 25: truncation"
+    },
+    {
+      "checkpoint_seq": 25,
+      "issue": "log has 22 entries but the terminal checkpoint binds 25: truncation"
+    },
+    {
+      "checkpoint_seq": 25,
+      "issue": "final entry 'attack.evaluated' is not a terminal lifecycle event"
+    },
+    {
+      "checkpoint_seq": 25,
+      "issue": "terminal state RELEASED does not match the final lifecycle event"
+    }
+  ]
+}
+exit=1
+
+$ --bundle scratch_verify/legacy_DEMO-001
+{
+  "ok": false,
+  "entries": 25,
+  "chain_ok": true,
+  "checkpoints_checked": 4,
+  "checkpoint_ok": true,
+  "last_checkpoint_seq": 25,
+  "tail_uncovered": 0,
+  "terminal_required": true,
+  "terminal_verified": false,
+  "terminal_state": null,
+  "anchor_checked": null,
+  "findings": [
+    {
+      "issue": "no signed terminal checkpoint: completeness of the log cannot be established (legacy checkpoints only)"
+    }
+  ]
+}
+exit=1
+
+$ --bundle scratch_verify/legacy_DEMO-001 --allow-in-progress
+WARNING: in-progress check only; completeness of the log is NOT established.
+{
+  "ok": true,
+  "entries": 25,
+  "chain_ok": true,
+  "checkpoints_checked": 4,
+  "checkpoint_ok": true,
+  "last_checkpoint_seq": 25,
+  "tail_uncovered": 0,
+  "terminal_required": false,
+  "terminal_verified": false,
+  "terminal_state": null,
+  "anchor_checked": null,
+  "findings": []
+}
+exit=0
+
+ed47765f7721bdfad6bc3f17879520913423e3a1437f1c0f826ab63e5a13069f  scratch_bundle/DEMO-001/audit.jsonl
+23d2b679d59275754279396e7680176a7b7403d5d0d93b02f486526e7311a88f  scratch_bundle/DEMO-001/broker_public_key.b64
+e68373a1d2489786cfc7941608647baaeebd3674200bfbb62f304736396d5c9a  scratch_bundle/DEMO-001/bundle.json
+c62991969bb406c406641b34a0ba1f639fee1de00e3ccbebb4a019053348a70c  scratch_bundle/DEMO-001/evidence_report.md
+dc17d2d2b5d10becb05e477849e4b02d27377e3239475d8efcc4c8d9864e328c  scratch_bundle/DEMO-001/manifest.json
+359e9120e4b49014d247cf59667aec2bdab07162603d6c622a981aac08c9d7ec  scratch_bundle/DEMO-001/reviewer_checkpoints.jsonl
+468db6eb7686a389f4ad7fd8b42e6884b893f6093fd5eaae5daf90800a3573a0  scratch_bundle/DEMO-001/terminal_anchor.json

@@ -1,0 +1,103 @@
+$ phase1_closeout/scratch_validation/rel/aegislab/.venv/bin/python evaluation/check_claims.py
+# started 2026-10-22T18:42:23Z
+obj claim                                                          source                     found
+2   181/181 unauthorized cases denied                              isolation_matrix.json      181/181
+2   0 unauthorized successes                                       isolation_matrix.json      0
+2   0 marker hits in 216 public bodies                             isolation_matrix.json      0 in 216
+2   92/92 traversal cases rejected                                 isolation_matrix.json      92/92
+3   19 tamper categories                                           audit_tamper.json          19
+3   every category 30/30 detected                                  audit_tamper.json          19/19 categories 30/30
+3   clean logs 30/30 accepted, terminal verified 30/30             audit_tamper.json          30 / 30
+3   truncation: 0/30 old rules, 30/30 fail-closed                  audit_tamper.json          0 / 30
+3   CLI: 10/10 genuine accepted, 40/40 tampered rejected           audit_tamper.json          10/10, 40/40
+5   real model: 0/80 and 0/80 canary leaks                         model_experiments.json     0/80, 0/80
+5   real model: 0 hits in 270 responses, 66 markers                model_experiments.json     0 in 270, 66 markers
+5   real model: 21/21 unauthorized reads refused                   model_experiments.json     21/21
+5   reused server: 162 cached prompt tokens vs 0 fresh             model_experiments.json     162 vs 0
+1   E2 re-run: 150/150 forbidden requests denied, 90/90 connects failed, 240/240 foreign paths absent e1_e9_rerun/results.json   150/150, 90/90, 240/240
+
+14/14 quoted numbers match their source files
+
+TIMING: recomputed from raw per-request / per-round-trip files
+ok   three timing executions are saved under evidence/closeout_2026-10-22/timing                          closeout/timing            3 found
+ok   exec1_seed20261022: COMPLETE, no unusable run or RTT block                                           result.json                COMPLETE, 0 unusable runs, 0 unusable blocks
+ok   exec1_seed20261022: raw files unchanged since the run                                                sha256 in result.json      changed: none
+ok   exec1:   0 ms held-out accuracy recomputed from 200 raw requests                                     raw_classification.jsonl   0.795 (result.json 0.795)
+ok   exec1: 100 ms held-out accuracy recomputed from 200 raw requests                                     raw_classification.jsonl   0.510 (result.json 0.510)
+ok   exec1: 250 ms held-out accuracy recomputed from 200 raw requests                                     raw_classification.jsonl   0.530 (result.json 0.530)
+ok   exec1: 500 ms held-out accuracy recomputed from 200 raw requests                                     raw_classification.jsonl   0.510 (result.json 0.510)
+ok   exec1: RTT idle                 median/p99 recomputed from 1000 raw round trips                      raw_rtt.jsonl              2.64 / 4.66 ms (result.json 2.64 / 4.66)
+ok   exec1: RTT limited_1cpu_8proc   median/p99 recomputed from 1000 raw round trips                      raw_rtt.jsonl              2.53 / 4.61 ms (result.json 2.53 / 4.61)
+ok   exec1: RTT unrestricted_16proc  median/p99 recomputed from 1000 raw round trips                      raw_rtt.jsonl              3.63 / 6.75 ms (result.json 3.63 / 6.75)
+ok   exec2_seed20261023: COMPLETE, no unusable run or RTT block                                           result.json                COMPLETE, 0 unusable runs, 0 unusable blocks
+ok   exec2_seed20261023: raw files unchanged since the run                                                sha256 in result.json      changed: none
+ok   exec2:   0 ms held-out accuracy recomputed from 200 raw requests                                     raw_classification.jsonl   0.795 (result.json 0.795)
+ok   exec2: 100 ms held-out accuracy recomputed from 200 raw requests                                     raw_classification.jsonl   0.515 (result.json 0.515)
+ok   exec2: 250 ms held-out accuracy recomputed from 200 raw requests                                     raw_classification.jsonl   0.555 (result.json 0.555)
+ok   exec2: 500 ms held-out accuracy recomputed from 200 raw requests                                     raw_classification.jsonl   0.510 (result.json 0.510)
+ok   exec2: RTT idle                 median/p99 recomputed from 1000 raw round trips                      raw_rtt.jsonl              2.84 / 5.10 ms (result.json 2.84 / 5.10)
+ok   exec2: RTT limited_1cpu_8proc   median/p99 recomputed from 1000 raw round trips                      raw_rtt.jsonl              2.88 / 5.15 ms (result.json 2.88 / 5.15)
+ok   exec2: RTT unrestricted_16proc  median/p99 recomputed from 1000 raw round trips                      raw_rtt.jsonl              4.16 / 8.18 ms (result.json 4.16 / 8.18)
+ok   exec3_seed20261024: COMPLETE, no unusable run or RTT block                                           result.json                COMPLETE, 0 unusable runs, 0 unusable blocks
+ok   exec3_seed20261024: raw files unchanged since the run                                                sha256 in result.json      changed: none
+ok   exec3:   0 ms held-out accuracy recomputed from 200 raw requests                                     raw_classification.jsonl   0.800 (result.json 0.800)
+ok   exec3: 100 ms held-out accuracy recomputed from 200 raw requests                                     raw_classification.jsonl   0.545 (result.json 0.545)
+ok   exec3: 250 ms held-out accuracy recomputed from 200 raw requests                                     raw_classification.jsonl   0.495 (result.json 0.495)
+ok   exec3: 500 ms held-out accuracy recomputed from 200 raw requests                                     raw_classification.jsonl   0.495 (result.json 0.495)
+ok   exec3: RTT idle                 median/p99 recomputed from 1000 raw round trips                      raw_rtt.jsonl              2.59 / 4.79 ms (result.json 2.59 / 4.79)
+ok   exec3: RTT limited_1cpu_8proc   median/p99 recomputed from 1000 raw round trips                      raw_rtt.jsonl              2.65 / 4.75 ms (result.json 2.65 / 4.75)
+ok   exec3: RTT unrestricted_16proc  median/p99 recomputed from 1000 raw round trips                      raw_rtt.jsonl              3.93 / 7.80 ms (result.json 3.93 / 7.80)
+ok   RTT increase over idle recomputed from raw equals the stored increase                                result.json                [37.5, 46.5, 51.7] vs [37.5, 46.5, 51.7]
+ok   README_FIRST.md quotes acc0 = 0.795–0.800                                                            recomputed                 present
+ok   README_FIRST.md quotes acc250 = 0.495–0.555                                                          recomputed                 present
+ok   README_FIRST.md quotes cost250 = +198 to +201 ms                                                     recomputed                 present
+ok   Judge_QA.md quotes acc0 = 0.795–0.800                                                                recomputed                 present
+ok   Judge_QA.md quotes acc100 = 0.510–0.545                                                              recomputed                 present
+ok   Judge_QA.md quotes acc250 = 0.495–0.555                                                              recomputed                 present
+ok   Judge_QA.md quotes acc500 = 0.495–0.510                                                              recomputed                 present
+ok   Judge_QA.md quotes cost250 = +198 to +201 ms                                                         recomputed                 present
+ok   Judge_QA.md quotes idle = 2.59–2.84 ms                                                               recomputed                 present
+ok   Judge_QA.md quotes limited = 2.53–2.88 ms                                                            recomputed                 present
+ok   Judge_QA.md quotes unres = 3.63–4.16 ms                                                              recomputed                 present
+ok   Judge_QA.md quotes unres_inc = +37.5% to +51.7%                                                      recomputed                 present
+ok   Judge_QA.md quotes unres_p99 = 6.75–8.18 ms                                                          recomputed                 present
+ok   VALIDATION_ADDENDUM_2026-10-22.md quotes acc0 = 0.795–0.800                                          recomputed                 present
+ok   VALIDATION_ADDENDUM_2026-10-22.md quotes acc100 = 0.510–0.545                                        recomputed                 present
+ok   VALIDATION_ADDENDUM_2026-10-22.md quotes acc250 = 0.495–0.555                                        recomputed                 present
+ok   VALIDATION_ADDENDUM_2026-10-22.md quotes acc500 = 0.495–0.510                                        recomputed                 present
+ok   VALIDATION_ADDENDUM_2026-10-22.md quotes pmin = 0.136                                                recomputed                 present
+ok   VALIDATION_ADDENDUM_2026-10-22.md quotes pool250 = 0.527 (95% CI 0.487–0.566, n=600)                 recomputed                 present
+ok   VALIDATION_ADDENDUM_2026-10-22.md quotes cost250 = +198 to +201 ms                                   recomputed                 present
+ok   VALIDATION_ADDENDUM_2026-10-22.md quotes idle = 2.59–2.84 ms                                         recomputed                 present
+ok   VALIDATION_ADDENDUM_2026-10-22.md quotes limited = 2.53–2.88 ms                                      recomputed                 present
+ok   VALIDATION_ADDENDUM_2026-10-22.md quotes limited_inc = -4.2% to +2.3%                                recomputed                 present
+ok   VALIDATION_ADDENDUM_2026-10-22.md quotes unres = 3.63–4.16 ms                                        recomputed                 present
+ok   VALIDATION_ADDENDUM_2026-10-22.md quotes unres_inc = +37.5% to +51.7%                                recomputed                 present
+ok   VALIDATION_ADDENDUM_2026-10-22.md quotes unres_p99 = 6.75–8.18 ms                                    recomputed                 present
+ok   VALIDATION_ADDENDUM_2026-10-22.md quotes unres_p99_inc = +44.8% to +62.8%                            recomputed                 present
+ok   RELEASE_READINESS_REPORT.md quotes acc250 = 0.495–0.555                                              recomputed                 present
+ok   RELEASE_READINESS_REPORT.md quotes cost250 = +198 to +201 ms                                         recomputed                 present
+ok   RELEASE_READINESS_REPORT.md quotes unres_inc = +37.5% to +51.7%                                      recomputed                 present
+ok   aegislab/README.md quotes acc0 = 0.795–0.800                                                         recomputed                 present
+ok   aegislab/README.md quotes acc250 = 0.495–0.555                                                       recomputed                 present
+ok   aegislab/THREAT_MODEL.md quotes acc250 = 0.495–0.555                                                 recomputed                 present
+ok   aegislab/THREAT_MODEL.md quotes unres_inc = +37.5% to +51.7%                                         recomputed                 present
+ok   deck:slide6 quotes acc250 = 0.495–0.555                                                              recomputed                 present
+ok   deck:notes6 quotes acc0 = 0.795–0.800                                                                recomputed                 present
+ok   deck:notes6 quotes acc250 = 0.495–0.555                                                              recomputed                 present
+ok   deck:notes6 quotes cost250 = +198 to +201 ms                                                         recomputed                 present
+ok   deck:notes7 quotes acc250 = 0.495–0.555                                                              recomputed                 present
+FAIL README_FIRST.md: no unsourced / superseded number presented as current                               STALE list                 \b4\.62\b in 'Unrestricted CPU hog: 4.62 ms median, +70%.'; \+70% in 'Unrestricted CPU hog: 4.62 ms median, +70%.'
+ok   Judge_QA.md: no unsourced / superseded number presented as current                                   STALE list                 none
+ok   VALIDATION_ADDENDUM_2026-10-22.md: no unsourced / superseded number presented as current             STALE list                 none
+ok   RELEASE_READINESS_REPORT.md: no unsourced / superseded number presented as current                   STALE list                 none
+ok   aegislab/README.md: no unsourced / superseded number presented as current                            STALE list                 none
+ok   aegislab/THREAT_MODEL.md: no unsourced / superseded number presented as current                      STALE list                 none
+ok   deck:slide6: no unsourced / superseded number presented as current                                   STALE list                 none
+ok   deck:notes6: no unsourced / superseded number presented as current                                   STALE list                 none
+ok   deck:notes7: no unsourced / superseded number presented as current                                   STALE list                 none
+ok   aegislab/evidence/closeout_2026-10-22/README.md: no unsourced / superseded number presented as curre STALE list                 none
+
+77/78 timing checks pass
+timing claims as they must be quoted: {"acc0": "0.795–0.800", "acc100": "0.510–0.545", "acc250": "0.495–0.555", "acc500": "0.495–0.510", "pmin": "0.136", "pool250": "0.527 (95% CI 0.487–0.566, n=600)", "cost250": "+198 to +201 ms", "idle": "2.59–2.84 ms", "limited": "2.53–2.88 ms", "limited_inc": "-4.2% to +2.3%", "unres": "3.63–4.16 ms", "unres_inc": "+37.5% to +51.7%", "unres_p99": "6.75–8.18 ms", "unres_p99_inc": "+44.8% to +62.8%"}
+# exit=1

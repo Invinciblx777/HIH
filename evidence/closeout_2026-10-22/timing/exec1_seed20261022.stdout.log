@@ -1,0 +1,117 @@
+execution TX-20261022T175008Z-4fbc95 seed 20261022
+  [ 1/80] TX-B0-01 wall=1.9205 ok
+  [ 2/80] TX-B100-01 wall=2.479 ok
+  [ 3/80] TX-B500-01 wall=6.457 ok
+  [ 4/80] TX-B250-01 wall=3.9922 ok
+  [ 5/80] TX-B500-02 wall=6.4677 ok
+  [ 6/80] TX-B250-02 wall=3.9586 ok
+  [ 7/80] TX-B0-02 wall=1.8898 ok
+  [ 8/80] TX-B100-02 wall=2.5414 ok
+  [ 9/80] TX-B500-03 wall=6.5193 ok
+  [10/80] TX-B250-03 wall=3.9768 ok
+  [11/80] TX-B0-03 wall=1.9005 ok
+  [12/80] TX-B100-03 wall=2.4743 ok
+  [13/80] TX-B500-04 wall=6.5439 ok
+  [14/80] TX-B250-04 wall=4.6754 ok
+  [15/80] TX-B0-04 wall=2.1841 ok
+  [16/80] TX-B100-04 wall=2.8701 ok
+  [17/80] TX-B250-05 wall=4.1349 ok
+  [18/80] TX-B0-05 wall=2.3666 ok
+  [19/80] TX-B500-05 wall=7.1262 ok
+  [20/80] TX-B100-05 wall=2.4975 ok
+  [21/80] TX-B500-06 wall=6.592 ok
+  [22/80] TX-B250-06 wall=4.1315 ok
+  [23/80] TX-B0-06 wall=1.9626 ok
+  [24/80] TX-B100-06 wall=2.6222 ok
+  [25/80] TX-B0-07 wall=1.8305 ok
+  [26/80] TX-B500-07 wall=6.4692 ok
+  [27/80] TX-B250-07 wall=4.0271 ok
+  [28/80] TX-B100-07 wall=2.4768 ok
+  [29/80] TX-B100-08 wall=2.4398 ok
+  [30/80] TX-B500-08 wall=6.4533 ok
+  [31/80] TX-B250-08 wall=4.0236 ok
+  [32/80] TX-B0-08 wall=1.884 ok
+  [33/80] TX-B500-09 wall=6.4954 ok
+  [34/80] TX-B100-09 wall=2.5922 ok
+  [35/80] TX-B0-09 wall=1.818 ok
+  [36/80] TX-B250-09 wall=3.9704 ok
+  [37/80] TX-B100-10 wall=2.5373 ok
+  [38/80] TX-B250-10 wall=3.947 ok
+  [39/80] TX-B0-10 wall=1.7887 ok
+  [40/80] TX-B500-10 wall=6.5134 ok
+  [41/80] TX-B250-11 wall=4.1602 ok
+  [42/80] TX-B500-11 wall=6.7338 ok
+  [43/80] TX-B0-11 wall=1.961 ok
+  [44/80] TX-B100-11 wall=2.5246 ok
+  [45/80] TX-B100-12 wall=2.4554 ok
+  [46/80] TX-B250-12 wall=3.9537 ok
+  [47/80] TX-B500-12 wall=6.4803 ok
+  [48/80] TX-B0-12 wall=1.7752 ok
+  [49/80] TX-B100-13 wall=2.4716 ok
+  [50/80] TX-B500-13 wall=6.4738 ok
+  [51/80] TX-B0-13 wall=1.8829 ok
+  [52/80] TX-B250-13 wall=3.9588 ok
+  [53/80] TX-B0-14 wall=1.8271 ok
+  [54/80] TX-B100-14 wall=2.4918 ok
+  [55/80] TX-B250-14 wall=3.95 ok
+  [56/80] TX-B500-14 wall=6.4326 ok
+  [57/80] TX-B500-15 wall=6.477 ok
+  [58/80] TX-B250-15 wall=3.9437 ok
+  [59/80] TX-B100-15 wall=2.4151 ok
+  [60/80] TX-B0-15 wall=1.7916 ok
+  [61/80] TX-B250-16 wall=3.9565 ok
+  [62/80] TX-B100-16 wall=2.4237 ok
+  [63/80] TX-B500-16 wall=6.4347 ok
+  [64/80] TX-B0-16 wall=1.7965 ok
+  [65/80] TX-B500-17 wall=6.471 ok
+  [66/80] TX-B250-17 wall=3.969 ok
+  [67/80] TX-B0-17 wall=1.8522 ok
+  [68/80] TX-B100-17 wall=2.4405 ok
+  [69/80] TX-B500-18 wall=6.4454 ok
+  [70/80] TX-B100-18 wall=2.748 ok
+  [71/80] TX-B0-18 wall=2.0645 ok
+  [72/80] TX-B250-18 wall=3.9118 ok
+  [73/80] TX-B500-19 wall=6.4144 ok
+  [74/80] TX-B250-19 wall=3.9043 ok
+  [75/80] TX-B0-19 wall=1.8077 ok
+  [76/80] TX-B100-19 wall=2.4025 ok
+  [77/80] TX-B250-20 wall=3.935 ok
+  [78/80] TX-B500-20 wall=6.4951 ok
+  [79/80] TX-B100-20 wall=2.442 ok
+  [80/80] TX-B0-20 wall=1.8117 ok
+bucket   0: n=200 acc=0.795 baseline=0.500 p=0.0010 auc=0.767
+bucket 100: n=200 acc=0.510 baseline=0.500 p=0.4336 auc=0.571
+bucket 250: n=200 acc=0.530 baseline=0.500 p=0.3037 auc=0.573
+bucket 500: n=200 acc=0.510 baseline=0.500 p=0.4006 auc=0.488
+rtt
+  rtt block  0 idle                     median=3.02 busy=10.2% valid=True
+  rtt block  1 unrestricted_16proc      median=3.99 busy=100.0% valid=True
+  rtt block  2 limited_1cpu_8proc       median=2.53 busy=17.8% valid=True
+  rtt block  3 unrestricted_16proc      median=2.47 busy=100.0% valid=True
+  rtt block  4 limited_1cpu_8proc       median=2.59 busy=17.6% valid=True
+  rtt block  5 idle                     median=3.34 busy=9.9% valid=True
+  rtt block  6 unrestricted_16proc      median=4.13 busy=100.0% valid=True
+  rtt block  7 limited_1cpu_8proc       median=2.52 busy=20.0% valid=True
+  rtt block  8 idle                     median=2.43 busy=10.5% valid=True
+  rtt block  9 unrestricted_16proc      median=4.12 busy=100.0% valid=True
+  rtt block 10 limited_1cpu_8proc       median=2.48 busy=18.8% valid=True
+  rtt block 11 idle                     median=3.09 busy=9.8% valid=True
+  rtt block 12 unrestricted_16proc      median=4.01 busy=100.0% valid=True
+  rtt block 13 limited_1cpu_8proc       median=3.37 busy=17.5% valid=True
+  rtt block 14 idle                     median=2.43 busy=9.8% valid=True
+  rtt block 15 unrestricted_16proc      median=3.44 busy=100.0% valid=True
+  rtt block 16 limited_1cpu_8proc       median=3.41 busy=19.9% valid=True
+  rtt block 17 idle                     median=2.75 busy=18.1% valid=True
+  rtt block 18 idle                     median=2.68 busy=19.7% valid=True
+  rtt block 19 unrestricted_16proc      median=4.61 busy=100.0% valid=True
+  rtt block 20 limited_1cpu_8proc       median=3.41 busy=18.9% valid=True
+  rtt block 21 idle                     median=2.61 busy=11.5% valid=True
+  rtt block 22 limited_1cpu_8proc       median=3.51 busy=18.4% valid=True
+  rtt block 23 unrestricted_16proc      median=3.61 busy=100.0% valid=True
+  rtt block 24 idle                     median=3.45 busy=11.7% valid=True
+  rtt block 25 limited_1cpu_8proc       median=2.48 busy=16.8% valid=True
+  rtt block 26 unrestricted_16proc      median=2.79 busy=100.0% valid=True
+  rtt block 27 unrestricted_16proc      median=3.27 busy=100.0% valid=True
+  rtt block 28 limited_1cpu_8proc       median=2.66 busy=19.4% valid=True
+  rtt block 29 idle                     median=2.57 busy=11.5% valid=True
+status COMPLETE wall 494.9 s
