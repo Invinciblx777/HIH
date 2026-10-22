@@ -1,0 +1,175 @@
+{
+  "categories": {
+    "component level (runs.* called directly)": {
+      "allowed": 0,
+      "attempted": 11,
+      "denied": 11,
+      "expected_allow": 0,
+      "expected_deny": 11,
+      "secret_hits": 0,
+      "test_errors": 0,
+      "unexpectedly_permitted": 0,
+      "wrongly_denied": 0
+    },
+    "identity mix-up": {
+      "allowed": 0,
+      "attempted": 10,
+      "denied": 10,
+      "expected_allow": 0,
+      "expected_deny": 10,
+      "secret_hits": 0,
+      "test_errors": 0,
+      "unexpectedly_permitted": 0,
+      "wrongly_denied": 0
+    },
+    "public read endpoints": {
+      "allowed": 102,
+      "attempted": 108,
+      "denied": 6,
+      "expected_allow": 102,
+      "expected_deny": 6,
+      "secret_hits": 0,
+      "test_errors": 0,
+      "unexpectedly_permitted": 0,
+      "wrongly_denied": 0
+    },
+    "role x operation x state: change defence config": {
+      "allowed": 2,
+      "attempted": 36,
+      "denied": 34,
+      "expected_allow": 2,
+      "expected_deny": 34,
+      "secret_hits": 0,
+      "test_errors": 0,
+      "unexpectedly_permitted": 0,
+      "wrongly_denied": 0
+    },
+    "role x operation x state: freeze": {
+      "allowed": 1,
+      "attempted": 36,
+      "denied": 35,
+      "expected_allow": 1,
+      "expected_deny": 35,
+      "secret_hits": 0,
+      "test_errors": 0,
+      "unexpectedly_permitted": 0,
+      "wrongly_denied": 0
+    },
+    "role x operation x state: read artifacts": {
+      "allowed": 3,
+      "attempted": 36,
+      "denied": 33,
+      "expected_allow": 3,
+      "expected_deny": 33,
+      "secret_hits": 0,
+      "test_errors": 0,
+      "unexpectedly_permitted": 0,
+      "wrongly_denied": 0
+    },
+    "role x operation x state: read evidence": {
+      "allowed": 10,
+      "attempted": 36,
+      "denied": 26,
+      "expected_allow": 10,
+      "expected_deny": 26,
+      "secret_hits": 0,
+      "test_errors": 0,
+      "unexpectedly_permitted": 0,
+      "wrongly_denied": 0
+    },
+    "role x operation x state: read evidence.md": {
+      "allowed": 10,
+      "attempted": 36,
+      "denied": 26,
+      "expected_allow": 10,
+      "expected_deny": 26,
+      "secret_hits": 0,
+      "test_errors": 0,
+      "unexpectedly_permitted": 0,
+      "wrongly_denied": 0
+    },
+    "role x operation x state: release": {
+      "allowed": 1,
+      "attempted": 36,
+      "denied": 35,
+      "expected_allow": 1,
+      "expected_deny": 35,
+      "secret_hits": 0,
+      "test_errors": 0,
+      "unexpectedly_permitted": 0,
+      "wrongly_denied": 0
+    },
+    "role x operation x state: start": {
+      "allowed": 0,
+      "attempted": 35,
+      "denied": 35,
+      "expected_allow": 0,
+      "expected_deny": 35,
+      "secret_hits": 0,
+      "test_errors": 0,
+      "unexpectedly_permitted": 0,
+      "wrongly_denied": 0
+    },
+    "role x operation x state: tamper test": {
+      "allowed": 12,
+      "attempted": 36,
+      "denied": 24,
+      "expected_allow": 12,
+      "expected_deny": 24,
+      "secret_hits": 0,
+      "test_errors": 0,
+      "unexpectedly_permitted": 0,
+      "wrongly_denied": 0
+    },
+    "unknown run id": {
+      "allowed": 0,
+      "attempted": 144,
+      "denied": 144,
+      "expected_allow": 0,
+      "expected_deny": 144,
+      "secret_hits": 0,
+      "test_errors": 0,
+      "unexpectedly_permitted": 0,
+      "wrongly_denied": 0
+    }
+  },
+  "generated_at": 1792699930.7577028,
+  "kind": "Phase 2 extended access matrix (container-free)",
+  "mismatches": [],
+  "not_tested": [
+    "operations that launch containers when permitted (start, create)",
+    "run-scoped identities (tokens are global per role)",
+    "WebSocket or other transports (none exist)",
+    "any path not in the documented policy table"
+  ],
+  "roles": [
+    "observer",
+    "bad_token",
+    "red_participant",
+    "blue_participant",
+    "reviewer",
+    "operator"
+  ],
+  "states": [
+    "CREATED",
+    "FROZEN",
+    "RUNNING",
+    "SEALED",
+    "RELEASED",
+    "FAILED"
+  ],
+  "token_values_the_client_could_not_send": [
+    "unicode"
+  ],
+  "totals": {
+    "allowed": 141,
+    "attempted": 560,
+    "denied": 419,
+    "expected_allow": 141,
+    "expected_deny": 419,
+    "secret_hits": 0,
+    "test_errors": 0,
+    "unexpectedly_permitted": 0,
+    "wrongly_denied": 0
+  }
+}

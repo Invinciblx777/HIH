@@ -1,0 +1,18 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.8, pytest-9.1.1, pluggy-1.7.0 -- <scratch>
+rootdir: <workspace>/aegislab
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collecting ... collected 9 items
+
+tests/test_phase2_container.py::test_P2C01_tenant_cannot_move_or_remove_its_mailbox_directories PASSED [ 11%]
+tests/test_phase2_container.py::test_P2C02_symlink_planted_from_inside_the_sandbox_does_not_redirect_the_broker PASSED [ 22%]
+tests/test_phase2_container.py::test_P2C10_effective_sandbox_settings_seen_from_inside PASSED [ 33%]
+tests/test_phase2_container.py::test_P2C11_process_limit_is_enforced_and_bounded PASSED [ 44%]
+tests/test_phase2_container.py::test_P2C12_memory_limit_kills_a_runaway_allocation PASSED [ 55%]
+tests/test_phase2_container.py::test_P2C13_model_worker_role_sees_only_its_own_mailbox_and_cannot_reach_run_files PASSED [ 66%]
+tests/test_phase2_container.py::test_P2C14_defence_runner_role_cannot_modify_its_frozen_config_or_see_tenant_data PASSED [ 77%]
+tests/test_phase2_container.py::test_P2C20_exception_after_the_workloads_started_leaves_no_container_and_a_verifying_failed_run PASSED [ 88%]
+tests/test_phase2_container.py::test_P2C21_red_sandbox_killed_mid_run_ends_sealed_incomplete_and_cleans_up PASSED [100%]
+
+============================== 9 passed in 5.39s ===============================

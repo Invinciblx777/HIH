@@ -73,3 +73,22 @@ Measured results are quoted from the files named in the last column of section 4
 6. **Real-model evidence is narrow:** one 0.5B model, llama.cpp, CPU, application-visible leakage only.
 7. **Key custody:** see row 7.
 8. **Timing:** the mitigation costs latency (row 5), reduces but did not eliminate a measurable signal at 100 ms, and was only judged indistinguishable from chance at 250/500 ms with n=200.
+
+## 6. Phase 2 adversarial addendum (23 Oct 2026)
+
+Attacks were executed against the local prototype in disposable state directories and, for the sandbox boundary, inside real rootless Podman containers (`tests/test_phase2_*.py`, `evaluation/phase2_matrix.py`; results and before/after logs in `evidence/phase2_2026-10-23/`). Findings, fixes and counts are in `PHASE2_SECURITY_REPORT.md`. This table says, per attacker, what the design is meant to stop and what it trusts away.
+
+| # | Attacker | Meant to be stopped | What was executed | Trusted away (not defended) |
+|---|---|---|---|---|
+| 1 | Malicious red tenant (code in the red sandbox) | Reading blue config or other tenants' data; writing outside its mailbox; forging identity; blocking the broker | Links, hard links, FIFOs, sockets, directories planted at predictable names; mailbox directory replaced; hostile and oversized messages; floods; identity fields in messages | Learning allow/refuse outcomes through authorised outputs (documented timing and refusal channel) |
+| 2 | Malicious blue tenant (config author) | Seeing red payloads before release; stalling or crashing the defence runner | Catastrophic regular expression; invalid configs; changing the config around the freeze | Choosing a config that blocks everything (it is scored as such) |
+| 3 | Model worker | Reading any file other than its own mailbox; reaching the network; altering the run | Probe from inside the model-role container; odd or oversized replies | A model that simply answers badly |
+| 4 | Observer (no or unknown token) | Anything beyond the redacted monitoring stream | Role x operation x state matrix incl. RUNNING and FAILED; unknown run ids; marker scan of every public body | Learning that a run exists and its lifecycle state (public by design) |
+| 5 | Authenticated but wrongly privileged user | Operations outside the role | Same matrix; token mix-ups; tokens in URL, cookie, other headers; components called without the API | Tokens are global per role, not run-scoped (local demo identities) |
+| 6 | Process writing in its permitted area | Redirecting or blocking the broker | See 1 | A tenant destroying its own mailbox ends only its own run (sealed incomplete) |
+| 7 | Resource exhaustion / interference | Unbounded growth of the signed log; stalls | Denial floods (anonymous and tenant), process and memory limits in the sandbox, CPU-contention comparison | Cache and memory-bandwidth channels; a neighbour on the same host |
+| 8 | Log editor without the signing key | Undetected modification, deletion, reorder, truncation | 16 mutation classes, foreign-run material, key substitution, via the CLI on copies | None beyond the key and retained-copy assumptions |
+| 9 | Compromised trusted broker | Not stopped | A false but consistent run was produced and verified (accepted limitation, shown on a fixture) | Everything the broker writes or signs |
+| 10 | Signing-key theft plus control of every retained copy | Only if the reviewer wrote down the terminal hash | A full re-signed history verifies; `--expect-terminal-hash` rejects it | A reviewer who kept nothing out of band |
+
+The reviewer-side countermeasures added in Phase 2 are optional pins: `verify_cli --pubkey` (also with `--bundle`) and `--expect-terminal-hash`. They do not make the broker trustworthy; they remove the reviewer's dependence on files the attacker can rewrite.

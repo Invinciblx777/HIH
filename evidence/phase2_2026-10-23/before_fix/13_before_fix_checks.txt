@@ -1,0 +1,13 @@
+### growth under anonymous denied reads (SEALED run)
+-- Phase 1 code
+600 anonymous denied reads: elapsed 2.6s  audit entries 603  vault checkpoints 602  monitor lines 1204  audit bytes 196171
+-- Phase 2 code
+600 anonymous denied reads: elapsed 1.8s  audit entries 104  vault checkpoints 103  monitor lines 206  audit bytes 34019
+
+### Phase 1 code on the new race tests (P2L10, P2L11, P2B46)
+E       AssertionError: [{'checkpoint_seq': 8, 'issue': 'terminal checkpoint is not the last checkpoint'}]
+E           AssertionError: ('err', GateError('audit or commitment verification failed'))
+E       AssertionError: duplicate or missing checkpoint index
+3 failed, 97 deselected, 1 warning in 0.40s
+
+### Phase 1 defence runner with input_patterns=['(a+)+$'] and text 'a'*45+'b', 3 s cap (timeout 3 python ...): exit status 124 = still running when the cap hit (observed 23 Oct 2026)

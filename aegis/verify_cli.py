@@ -15,12 +15,14 @@ accepted with ``--allow-in-progress``. Legacy bundles without terminal checkpoin
 Tamper tests always operate on an in-memory copy and never modify stored logs.
 """
 import argparse
+import base64
 import copy
 import json
 import sys
 from pathlib import Path
 
 from .audit import entry_hash, read_jsonl, verify
+from .crypto import sha256
 
 TAMPER_MODES = {
     "modify": "Change the outcome field of one attack.evaluated entry",
@@ -112,7 +114,10 @@ def main(argv=None):
                                      "broker_public_key.b64, terminal_anchor.json, bundle.json)")
     ap.add_argument("--audit")
     ap.add_argument("--checkpoints")
-    ap.add_argument("--pubkey", help="base64 Ed25519 public key, pinned out of band")
+    ap.add_argument("--pubkey", help="base64 Ed25519 public key, pinned out of band. With --bundle it replaces the key "
+                                     "shipped inside the bundle (which anyone who can rewrite the bundle can also replace)")
+    ap.add_argument("--expect-terminal-hash", help="hash of the terminal checkpoint the reviewer recorded when the run was "
+                                                   "released (printed by the release call and by this tool as terminal_hash)")
     ap.add_argument("--anchor", help="signed terminal checkpoint retained separately")
     ap.add_argument("--run-id")
     ap.add_argument("--expect-state", choices=["RELEASED", "FAILED"])
@@ -122,21 +127,44 @@ def main(argv=None):
                     help="accept a log without terminal evidence (run not finished, or a legacy bundle); "
                          "completeness is then NOT established")
     a = ap.parse_args(argv)
-    if a.bundle:
-        b = load_bundle(a.bundle)
-        audit, cps, pub, anchor = b["audit"], b["checkpoints"], b["pubkey"], b["anchor"]
-        run_id, state = a.run_id or b["run_id"], a.expect_state or b["state"]
-    else:
-        if not (a.audit and a.checkpoints and a.pubkey):
-            ap.error("give --bundle, or --audit, --checkpoints and --pubkey")
-        audit, cps, pub = a.audit, a.checkpoints, a.pubkey
-        anchor = json.loads(Path(a.anchor).read_text()) if a.anchor else None
-        run_id, state = a.run_id, a.expect_state
-    res = verify(read_jsonl(audit), read_jsonl(cps), pub, expect_sealed=not a.allow_in_progress, require_terminal=not a.allow_in_progress,
-                 run_id=run_id, expected_state=state, expected_events=a.expect_events, anchor=anchor)
+    notes = []
+    try:
+        if a.bundle:
+            b = load_bundle(a.bundle)
+            audit, cps, pub, anchor = b["audit"], b["checkpoints"], b["pubkey"], b["anchor"]
+            run_id, state = a.run_id or b["run_id"], a.expect_state or b["state"]
+            key_source = "bundle (NOT pinned: whoever can rewrite the bundle can replace this key; pass --pubkey)"
+            if a.pubkey:
+                if a.pubkey.strip() != pub:
+                    notes.append("the key inside the bundle differs from the pinned key; the pinned key is used")
+                pub, key_source = a.pubkey.strip(), "pinned (--pubkey)"
+            if not (a.run_id or a.expect_state):
+                notes.append("run id and state were taken from bundle.json, which is not trusted; pass --run-id and --expect-state")
+        else:
+            if not (a.audit and a.checkpoints and a.pubkey):
+                ap.error("give --bundle, or --audit, --checkpoints and --pubkey")
+            audit, cps, pub = a.audit, a.checkpoints, a.pubkey.strip()
+            anchor = json.loads(Path(a.anchor).read_text()) if a.anchor else None
+            run_id, state = a.run_id, a.expect_state
+            key_source = "pinned (--pubkey)"
+        entries, checkpoints = read_jsonl(audit), read_jsonl(cps)
+        key_id = sha256(base64.b64decode(pub, validate=True))[:23]
+    except (ValueError, OSError, KeyError) as exc:
+        res = {"ok": False, "terminal_verified": False,
+               "findings": [{"issue": "evidence could not be read: %s" % type(exc).__name__}]}
+        print(json.dumps(res, indent=2))
+        return 1
+    res = verify(entries, checkpoints, pub, expect_sealed=not a.allow_in_progress, require_terminal=not a.allow_in_progress,
+                 run_id=run_id, expected_state=state, expected_events=a.expect_events, anchor=anchor,
+                 expected_terminal_hash=a.expect_terminal_hash)
+    res["key_id"], res["key_source"] = key_id, key_source
+    if notes:
+        res["notes"] = notes
     print(json.dumps(res, indent=2))
     if res["ok"] and not res["terminal_verified"]:
         print("WARNING: in-progress check only; completeness of the log is NOT established.", file=sys.stderr)
+    if res["ok"] and key_source.startswith("bundle"):
+        print("NOTE: the public key came from the bundle itself and is not pinned.", file=sys.stderr)
     return 0 if res["ok"] else 1
 
 

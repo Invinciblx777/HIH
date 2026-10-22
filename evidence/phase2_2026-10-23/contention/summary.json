@@ -1,0 +1,180 @@
+{
+  "note": "Reduced executions (4 runs per padding setting, 5 blocks of 100 round trips per condition, n=500 per condition) of evaluation/timing_closeout.py on the Phase 2 code. Only the round-trip comparison is reported; the classification part is too small to say anything.",
+  "executions": [
+    {
+      "dir": "contention_run1",
+      "seed": 20261101,
+      "run_id": "TX-20261022T195334Z-32d944",
+      "conditions": {
+        "idle": {
+          "n": 500,
+          "median_ms": 2.511,
+          "p99_ms": 5.242,
+          "median_vs_idle_pct": 0.0,
+          "block_medians_ms": [
+            3.27,
+            2.28,
+            2.31,
+            2.94,
+            2.27
+          ],
+          "host_cpu_busy_pct_range": [
+            1.3,
+            2.7
+          ]
+        },
+        "limited_1cpu_8proc": {
+          "n": 500,
+          "median_ms": 2.368,
+          "p99_ms": 4.503,
+          "median_vs_idle_pct": -5.7,
+          "block_medians_ms": [
+            2.37,
+            2.34,
+            2.38,
+            2.37,
+            2.37
+          ],
+          "host_cpu_busy_pct_range": [
+            6.9,
+            9.1
+          ]
+        },
+        "unrestricted_16proc": {
+          "n": 500,
+          "median_ms": 2.387,
+          "p99_ms": 5.19,
+          "median_vs_idle_pct": -4.9,
+          "block_medians_ms": [
+            2.4,
+            2.64,
+            2.35,
+            2.32,
+            2.38
+          ],
+          "host_cpu_busy_pct_range": [
+            100.0,
+            100.0
+          ]
+        }
+      }
+    },
+    {
+      "dir": "contention_run_20261102",
+      "seed": 20261102,
+      "run_id": "TX-20261022T200450Z-7657ac",
+      "conditions": {
+        "idle": {
+          "n": 500,
+          "median_ms": 2.371,
+          "p99_ms": 4.645,
+          "median_vs_idle_pct": 0.0,
+          "block_medians_ms": [
+            2.42,
+            2.23,
+            2.91,
+            2.42,
+            2.26
+          ],
+          "host_cpu_busy_pct_range": [
+            1.6,
+            1.9
+          ]
+        },
+        "limited_1cpu_8proc": {
+          "n": 500,
+          "median_ms": 2.322,
+          "p99_ms": 4.468,
+          "median_vs_idle_pct": -2.1,
+          "block_medians_ms": [
+            2.32,
+            2.42,
+            2.32,
+            2.31,
+            2.26
+          ],
+          "host_cpu_busy_pct_range": [
+            7.2,
+            8.5
+          ]
+        },
+        "unrestricted_16proc": {
+          "n": 500,
+          "median_ms": 2.332,
+          "p99_ms": 5.186,
+          "median_vs_idle_pct": -1.7,
+          "block_medians_ms": [
+            2.56,
+            2.31,
+            2.33,
+            2.32,
+            2.34
+          ],
+          "host_cpu_busy_pct_range": [
+            100.0,
+            100.0
+          ]
+        }
+      }
+    },
+    {
+      "dir": "contention_run_20261103",
+      "seed": 20261103,
+      "run_id": "TX-20261022T200632Z-eaf009",
+      "conditions": {
+        "idle": {
+          "n": 500,
+          "median_ms": 2.36,
+          "p99_ms": 4.763,
+          "median_vs_idle_pct": 0.0,
+          "block_medians_ms": [
+            4.23,
+            2.3,
+            2.24,
+            2.38,
+            2.38
+          ],
+          "host_cpu_busy_pct_range": [
+            1.1,
+            1.9
+          ]
+        },
+        "limited_1cpu_8proc": {
+          "n": 500,
+          "median_ms": 2.341,
+          "p99_ms": 4.496,
+          "median_vs_idle_pct": -0.8,
+          "block_medians_ms": [
+            2.35,
+            2.37,
+            2.25,
+            2.34,
+            2.33
+          ],
+          "host_cpu_busy_pct_range": [
+            8.3,
+            9.0
+          ]
+        },
+        "unrestricted_16proc": {
+          "n": 500,
+          "median_ms": 2.375,
+          "p99_ms": 5.018,
+          "median_vs_idle_pct": 0.6,
+          "block_medians_ms": [
+            2.32,
+            2.31,
+            2.3,
+            2.31,
+            2.53
+          ],
+          "host_cpu_busy_pct_range": [
+            100.0,
+            100.0
+          ]
+        }
+      }
+    }
+  ],
+  "reading": "Medians under the limited (1 CPU) and unrestricted (16-process) neighbours were within -5.7% and +0.6% of idle in all three executions. The Phase 1 executions (22 Oct) measured +37.5% to +51.7% for the unrestricted neighbour; that increase did NOT reproduce here. Host CPU was 1-3% busy in the idle blocks now, against 10-20% in Phase 1. The cause was not isolated. Neither result shows immunity to interference; the effect depends on host conditions that were not controlled."
+}

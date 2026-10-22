@@ -1,0 +1,178 @@
+[
+ {
+  "order_index": 0,
+  "bucket_ms": 250,
+  "rep": 0,
+  "run_id": "TX-B250-01",
+  "started_utc": "2026-10-22T19:53:34.749728+00:00",
+  "wall_s": 4.238,
+  "state": "SEALED",
+  "n_obs": 10,
+  "complete": true
+ },
+ {
+  "order_index": 1,
+  "bucket_ms": 100,
+  "rep": 0,
+  "run_id": "TX-B100-01",
+  "started_utc": "2026-10-22T19:53:39.134551+00:00",
+  "wall_s": 2.3026,
+  "state": "SEALED",
+  "n_obs": 10,
+  "complete": true
+ },
+ {
+  "order_index": 2,
+  "bucket_ms": 500,
+  "rep": 0,
+  "run_id": "TX-B500-01",
+  "started_utc": "2026-10-22T19:53:41.577335+00:00",
+  "wall_s": 6.3162,
+  "state": "SEALED",
+  "n_obs": 10,
+  "complete": true
+ },
+ {
+  "order_index": 3,
+  "bucket_ms": 0,
+  "rep": 0,
+  "run_id": "TX-B0-01",
+  "started_utc": "2026-10-22T19:53:48.036611+00:00",
+  "wall_s": 1.6912,
+  "state": "SEALED",
+  "n_obs": 10,
+  "complete": true
+ },
+ {
+  "order_index": 4,
+  "bucket_ms": 100,
+  "rep": 1,
+  "run_id": "TX-B100-02",
+  "started_utc": "2026-10-22T19:53:49.869795+00:00",
+  "wall_s": 2.3257,
+  "state": "SEALED",
+  "n_obs": 10,
+  "complete": true
+ },
+ {
+  "order_index": 5,
+  "bucket_ms": 500,
+  "rep": 1,
+  "run_id": "TX-B500-02",
+  "started_utc": "2026-10-22T19:53:52.337404+00:00",
+  "wall_s": 6.3322,
+  "state": "SEALED",
+  "n_obs": 10,
+  "complete": true
+ },
+ {
+  "order_index": 6,
+  "bucket_ms": 250,
+  "rep": 1,
+  "run_id": "TX-B250-02",
+  "started_utc": "2026-10-22T19:53:58.810450+00:00",
+  "wall_s": 3.837,
+  "state": "SEALED",
+  "n_obs": 10,
+  "complete": true
+ },
+ {
+  "order_index": 7,
+  "bucket_ms": 0,
+  "rep": 1,
+  "run_id": "TX-B0-02",
+  "started_utc": "2026-10-22T19:54:02.789847+00:00",
+  "wall_s": 1.7002,
+  "state": "SEALED",
+  "n_obs": 10,
+  "complete": true
+ },
+ {
+  "order_index": 8,
+  "bucket_ms": 100,
+  "rep": 2,
+  "run_id": "TX-B100-03",
+  "started_utc": "2026-10-22T19:54:04.644215+00:00",
+  "wall_s": 2.3061,
+  "state": "SEALED",
+  "n_obs": 10,
+  "complete": true
+ },
+ {
+  "order_index": 9,
+  "bucket_ms": 500,
+  "rep": 2,
+  "run_id": "TX-B500-03",
+  "started_utc": "2026-10-22T19:54:07.093227+00:00",
+  "wall_s": 6.2955,
+  "state": "SEALED",
+  "n_obs": 10,
+  "complete": true
+ },
+ {
+  "order_index": 10,
+  "bucket_ms": 250,
+  "rep": 2,
+  "run_id": "TX-B250-03",
+  "started_utc": "2026-10-22T19:54:13.530052+00:00",
+  "wall_s": 3.8326,
+  "state": "SEALED",
+  "n_obs": 10,
+  "complete": true
+ },
+ {
+  "order_index": 11,
+  "bucket_ms": 0,
+  "rep": 2,
+  "run_id": "TX-B0-03",
+  "started_utc": "2026-10-22T19:54:17.508573+00:00",
+  "wall_s": 1.7385,
+  "state": "SEALED",
+  "n_obs": 10,
+  "complete": true
+ },
+ {
+  "order_index": 12,
+  "bucket_ms": 500,
+  "rep": 3,
+  "run_id": "TX-B500-04",
+  "started_utc": "2026-10-22T19:54:19.387887+00:00",
+  "wall_s": 6.3393,
+  "state": "SEALED",
+  "n_obs": 10,
+  "complete": true
+ },
+ {
+  "order_index": 13,
+  "bucket_ms": 0,
+  "rep": 3,
+  "run_id": "TX-B0-04",
+  "started_utc": "2026-10-22T19:54:25.872936+00:00",
+  "wall_s": 1.7204,
+  "state": "SEALED",
+  "n_obs": 10,
+  "complete": true
+ },
+ {
+  "order_index": 14,
+  "bucket_ms": 100,
+  "rep": 3,
+  "run_id": "TX-B100-04",
+  "started_utc": "2026-10-22T19:54:27.735693+00:00",
+  "wall_s": 2.3533,
+  "state": "SEALED",
+  "n_obs": 10,
+  "complete": true
+ },
+ {
+  "order_index": 15,
+  "bucket_ms": 250,
+  "rep": 3,
+  "run_id": "TX-B250-04",
+  "started_utc": "2026-10-22T19:54:30.229403+00:00",
+  "wall_s": 3.8652,
+  "state": "SEALED",
+  "n_obs": 10,
+  "complete": true
+ }
+]

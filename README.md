@@ -48,7 +48,7 @@ python -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt
 podman pull docker.io/library/python:3.12-slim
 
-pytest -q tests                                   # 144 tests; includes the security regression suites and one Podman end-to-end run
+pytest -q tests                                   # 297 tests; includes the security regression suites, the Phase 2 attack tests and Podman-based tests (skipped without Podman)
 AEGIS_VAR=var/mine python scripts/demo_run.py DEMO-001 --bundle-dir var/mine/bundles/DEMO-001
 python -m aegis.verify_cli --bundle var/mine/bundles/DEMO-001
 scripts/security_demo.sh                          # judge-facing demonstration (a few seconds once the image is built), fresh temp state, exits 0 only if every check behaves

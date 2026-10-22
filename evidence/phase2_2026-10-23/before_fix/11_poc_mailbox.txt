@@ -1,0 +1,12 @@
+== tree: old
+container: {"plant_symlink_at_temp_name": "ok", "replace_in_with_symlink": "ok"}
+victim audit.jsonl intact: True
+files the broker created outside the mailbox: ['000002.json', '000003.json']
+== tree: new
+container: {"plant_symlink_at_temp_name": "ok", "replace_in_with_symlink": "denied 30"}
+victim audit.jsonl intact: True
+files the broker created outside the mailbox: []
+== tree: old, temp-name symlink only
+container: {"plant_symlink_at_temp_name": "ok", "replace_in_with_symlink": "denied 0"}
+victim audit.jsonl intact: False
+files the broker created outside the mailbox: []

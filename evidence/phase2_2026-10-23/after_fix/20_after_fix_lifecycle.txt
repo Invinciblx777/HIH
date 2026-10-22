@@ -1,0 +1,33 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.8, pytest-9.1.1, pluggy-1.7.0 -- <scratch>
+rootdir: <workspace>/aegislab
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collecting ... collected 18 items
+
+tests/test_phase2_lifecycle.py::test_P2L01_concurrent_release_has_exactly_one_winner PASSED [  5%]
+tests/test_phase2_lifecycle.py::test_P2L02_concurrent_start_launches_exactly_one_broker PASSED [ 11%]
+tests/test_phase2_lifecycle.py::test_P2L03_concurrent_create_has_exactly_one_winner PASSED [ 16%]
+tests/test_phase2_lifecycle.py::test_P2L04_failed_creation_does_not_block_the_run_id PASSED [ 22%]
+tests/test_phase2_lifecycle.py::test_P2L05_defence_config_update_racing_freeze_never_lands_after_the_freeze PASSED [ 27%]
+tests/test_phase2_lifecycle.py::test_P2L06_state_updates_are_not_lost_under_concurrent_writers PASSED [ 33%]
+tests/test_phase2_lifecycle.py::test_P2L10_denied_read_that_pauses_before_its_checkpoint_cannot_follow_the_terminal_checkpoint PASSED [ 38%]
+tests/test_phase2_lifecycle.py::test_P2L11_denied_reads_racing_release_stress PASSED [ 44%]
+tests/test_phase2_lifecycle.py::test_P2L12_events_after_release_never_enter_the_signed_chain PASSED [ 50%]
+tests/test_phase2_lifecycle.py::test_P2L13_release_is_not_repeatable_and_does_not_change_the_evidence PASSED [ 55%]
+tests/test_phase2_lifecycle.py::test_P2L20_exception_while_recording_an_event_fails_closed PASSED [ 61%]
+tests/test_phase2_lifecycle.py::test_P2L21_failed_run_never_exposes_artifacts_through_the_api PASSED [ 66%]
+tests/test_phase2_lifecycle.py::test_P2L22_worker_failure_mid_run_ends_failed_and_verifies PASSED [ 72%]
+tests/test_phase2_lifecycle.py::test_P2L23_failure_path_racing_a_release_attempt_stays_consistent PASSED [ 77%]
+tests/test_phase2_lifecycle.py::test_P2L30_anonymous_denial_flood_is_bounded_and_the_run_still_verifies PASSED [ 83%]
+tests/test_phase2_lifecycle.py::test_P2L31_denial_flood_after_release_is_bounded PASSED [ 88%]
+tests/test_phase2_lifecycle.py::test_P2L32_oversized_or_negative_policy_values_are_rejected PASSED [ 94%]
+tests/test_phase2_lifecycle.py::test_P2L40_extended_access_matrix_has_no_unauthorized_success PASSED [100%]
+
+=============================== warnings summary ===============================
+../../../../../../..<scratch>
+  <scratch> StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 18 passed, 1 warning in 7.98s =========================

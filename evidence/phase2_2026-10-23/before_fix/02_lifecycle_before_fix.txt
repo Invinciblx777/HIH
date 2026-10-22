@@ -1,0 +1,16 @@
+E           AssertionError: ["GateError('terminal verification failed after release; run marked FAILED')", "GateError('terminal verification faile...iled after release; run marked FAILED')", "GateError('terminal verification failed after release; run marked FAILED')"]
+_____________ test_P2L04_failed_creation_does_not_block_the_run_id _____________
+tmp_path = PosixPath('<tmp>/pytest-45/test_P2L04_failed_creation_doe0')
+    def test_P2L04_failed_creation_does_not_block_the_run_id(tmp_path):
+E           AssertionError: ('err', GateError('terminal verification failed after release; run marked FAILED'))
+FAILED tests/test_phase2_lifecycle.py::test_P2L01_concurrent_release_has_exactly_one_winner
+FAILED tests/test_phase2_lifecycle.py::test_P2L02_concurrent_start_launches_exactly_one_broker
+FAILED tests/test_phase2_lifecycle.py::test_P2L04_failed_creation_does_not_block_the_run_id
+FAILED tests/test_phase2_lifecycle.py::test_P2L05_defence_config_update_racing_freeze_never_lands_after_the_freeze
+FAILED tests/test_phase2_lifecycle.py::test_P2L06_state_updates_are_not_lost_under_concurrent_writers
+FAILED tests/test_phase2_lifecycle.py::test_P2L10_denied_read_that_pauses_before_its_checkpoint_cannot_follow_the_terminal_checkpoint
+FAILED tests/test_phase2_lifecycle.py::test_P2L11_denied_reads_racing_release_stress
+FAILED tests/test_phase2_lifecycle.py::test_P2L30_anonymous_denial_flood_is_bounded_and_the_run_still_verifies
+FAILED tests/test_phase2_lifecycle.py::test_P2L31_denial_flood_after_release_is_bounded
+FAILED tests/test_phase2_lifecycle.py::test_P2L32_oversized_or_negative_policy_values_are_rejected
+10 failed, 8 passed, 1 warning in 4.90s
