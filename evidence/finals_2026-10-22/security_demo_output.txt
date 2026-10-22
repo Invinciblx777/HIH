@@ -1,0 +1,67 @@
+/tmp/claude-1000/-home-v0idsai-Projects-Hack-On-Hills/59262938-c1e9-4929-8eb6-5c8d5f1a98c9/scratchpad/clean/.venv/lib64/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+AegisLab security demonstration  (state dir /tmp/aegis-demo-hrh5x77o, deterministic stub model, no network)
+
+== 1. Roles and boundaries ==
+  red sandbox     : reads only its own attack pack (ro), talks only to the broker mailbox, no network
+  blue defence    : reads only the FROZEN defence config (ro), sees payloads only through the broker
+  model worker    : fresh container per run, own mailbox only
+  broker (host)   : the single path between them; identity = which mailbox the message arrived in
+  reviewer/operator/observer : API roles with different rights over the same run
+
+== 2. A legitimate operation completes (run DEMO-S1: create, freeze, start) ==
+  [PASS] operator froze the configuration
+  [PASS] blue participant cannot change the config after freeze - HTTP 409
+  [PASS] operator started the run
+  [PASS] run reached SEALED (results held behind the gate) - SEALED
+
+== 3. Unauthorized cross-boundary operations are denied ==
+  [PASS] denied: observer reads sealed artifacts - HTTP 403
+  [PASS] denied: red participant reads sealed artifacts - HTTP 403
+  [PASS] denied: blue participant reads sealed artifacts - HTTP 403
+  [PASS] denied: reviewer reads artifacts before release - HTTP 403
+  [PASS] denied: red participant releases the run - HTTP 403
+  [PASS] denied: observer reads the evidence report - HTTP 403
+  [PASS] denied: forged identity token - HTTP 401
+  [PASS] denied: path traversal in run id - HTTP 404
+  [PASS] denied: signing key via the static file server - HTTP 404
+  [PASS] no attack payload text in anything an observer/red/blue can fetch
+  [PASS] sandbox red agent's 5 forbidden requests were denied by the broker and logged - 5 logged
+  [PASS] network connections from the red sandbox all failed - 3 attempts
+
+== 4. Lifecycle: reviewer verifies and releases (SEALED -> RELEASED) ==
+  [PASS] reviewer released the run - HTTP 200
+  [PASS] participants may read artifacts only after release
+
+== 5. Signed audit evidence verified independently (fresh bundle, pinned key) ==
+  [PASS] hash chain, chained checkpoints and terminal checkpoint verify - 31 entries, 9 checkpoints, terminal state RELEASED
+     verify offline: python -m aegis.verify_cli --bundle /tmp/aegis-demo-hrh5x77o/bundles/DEMO-S1
+
+== 6. Tampering on COPIES of the evidence is detected (the original is never modified) ==
+  [PASS] tamper 'modify' -> verification FAILED - entry content does not match its hash
+  [PASS] tamper 'delete' -> verification FAILED - sequence gap, duplicate or reorder (expected 19)
+  [PASS] tamper 'reorder' -> verification FAILED - sequence gap, duplicate or reorder (expected 19)
+  [PASS] tamper 'duplicate_seq' -> verification FAILED - sequence gap, duplicate or reorder (expected 20)
+  [PASS] tamper 'truncate' -> verification FAILED - log has 28 entries but a signed checkpoint covers seq 29: truncation
+  [PASS] tamper 'truncate_unprotected' -> verification FAILED - no signed terminal checkpoint: completeness of the log cannot be established
+  [PASS] tamper 'truncate_vs_anchor' -> verification FAILED - log has 28 entries but the terminal checkpoint binds 31: truncation
+  [PASS] tamper 'rehash' -> verification FAILED - chain head differs from signed checkpoint
+  [PASS] tamper 'drop_checkpoint' -> verification FAILED - checkpoint index gap or reorder (expected cp_seq 5, got 6)
+  [PASS] tamper 'reorder_checkpoints' -> verification FAILED - checkpoint index gap or reorder (expected cp_seq 1, got 2)
+  [PASS] tamper 'drop_terminal' -> verification FAILED - no signed terminal checkpoint: completeness of the log cannot be established
+  [PASS] tamper 'forge_signature' -> verification FAILED - checkpoint signature invalid
+  [PASS] original bundle byte-identical after all tamper tests
+  [PASS] CLI-level: copy with the last 3 events removed is rejected - log has 28 entries but a signed checkpoint covers seq 29: truncation
+  Verification of the tampered copy: FAILED (as it must)
+
+== 7. Residual risk: where the guarantee stops ==
+  [LIMIT] a forger who holds the signing key AND replaces every retained copy produces history that verifies as consistent - NOT a success of the control; the signing key and the reviewer's retained copy must stay out of reach of whoever can edit the run directory
+  timing channel (stub model, held-out, n=200 per setting, 2 saved executions; chance = 0.50): no padding accuracy 0.80/0.80; 250 ms buckets 0.41/0.52
+  reading: padding reduces the signal at a cost of ~200 ms per answered request; not shown to remove it (one weak classifier, constant-latency stub; see VALIDATION_ADDENDUM section 4).
+  other documented limits: containers share the host kernel; local demo tokens, not SSO; JSON files, single host;
+  the stub is not an LLM (see evidence/validation_2026-10-22/model_experiments.json for the optional real-model test).
+
+== 8. Summary ==
+  33/33 checks behaved as expected   run id DEMO-S1   state dir /tmp/aegis-demo-hrh5x77o
+  1 documented limit(s) demonstrated (not counted as passes): a forger who holds the signing key AND replaces every retain...
+  (the state dir is disposable: delete it any time)

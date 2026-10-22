@@ -1,0 +1,295 @@
+{
+  "E1_freeze": {
+    "api_changes_after_freeze": {
+      "attempts": 5,
+      "denied": 5
+    },
+    "modified_frozen_file": {
+      "attestation_matches": false,
+      "final_state": "FAILED",
+      "run": "EVAL-FREEZE-2"
+    }
+  },
+  "E2_cross_tenant": {
+    "forbidden_broker_requests": {
+      "attempts": 150,
+      "denied": 150
+    },
+    "foreign_paths_checked": {
+      "absent": 240,
+      "checks": 240
+    },
+    "network_connect_attempts": {
+      "attempts": 90,
+      "failed": 90
+    },
+    "proc_status_observed": [
+      "CapBnd=0000000000000000",
+      "CapEff=0000000000000000",
+      "NoNewPrivs=1",
+      "Seccomp=2"
+    ],
+    "runtime_applied_example": {
+      "blue": {
+        "cap_add": [],
+        "cap_dropped": 11,
+        "cpuset": "",
+        "memory_bytes": 268435456,
+        "nano_cpus": 1000000000,
+        "network_mode": "none",
+        "pids_limit": 64,
+        "readonly_rootfs": true,
+        "security_opt": [
+          "no-new-privileges"
+        ],
+        "selinux_label": "system_u:system_r:container_t:s0:c327,c509"
+      },
+      "model": {
+        "cap_add": [],
+        "cap_dropped": 11,
+        "cpuset": "",
+        "memory_bytes": 536870912,
+        "nano_cpus": 2000000000,
+        "network_mode": "none",
+        "pids_limit": 64,
+        "readonly_rootfs": true,
+        "security_opt": [
+          "no-new-privileges"
+        ],
+        "selinux_label": "system_u:system_r:container_t:s0:c3,c308"
+      },
+      "red": {
+        "cap_add": [],
+        "cap_dropped": 11,
+        "cpuset": "",
+        "memory_bytes": 268435456,
+        "nano_cpus": 1000000000,
+        "network_mode": "none",
+        "pids_limit": 64,
+        "readonly_rootfs": true,
+        "security_opt": [
+          "no-new-privileges"
+        ],
+        "selinux_label": "system_u:system_r:container_t:s0:c208,c706"
+      }
+    }
+  },
+  "E3_E7_latency_timing": {
+    "broker_compute_per_attack_no_padding": {
+      "max_ms": 54.02,
+      "median_ms": 49.13,
+      "min_ms": 2.38,
+      "n": 100,
+      "p95_ms": 52.14
+    },
+    "red_observed_250ms_buckets": {
+      "allowed": {
+        "max_ms": 290.61,
+        "median_ms": 281.09,
+        "min_ms": 278.17,
+        "n": 50,
+        "p95_ms": 284.62
+      },
+      "blocked": {
+        "max_ms": 294.14,
+        "median_ms": 281.31,
+        "min_ms": 278.77,
+        "n": 50,
+        "p95_ms": 284.7
+      },
+      "threshold_classifier_accuracy": 0.47
+    },
+    "red_observed_no_padding": {
+      "allowed": {
+        "max_ms": 93.91,
+        "median_ms": 80.77,
+        "min_ms": 77.42,
+        "n": 50,
+        "p95_ms": 84.41
+      },
+      "blocked": {
+        "max_ms": 86.84,
+        "median_ms": 37.53,
+        "min_ms": 31.26,
+        "n": 50,
+        "p95_ms": 85.11
+      },
+      "threshold_classifier_accuracy": 0.8
+    },
+    "stub_inference_delay_ms": 40
+  },
+  "E3_mailbox_rtt_and_interference": {
+    "hog_limited_1cpu_8proc": {
+      "max_ms": 4.88,
+      "median_ms": 3.13,
+      "min_ms": 2.26,
+      "n": 200,
+      "p95_ms": 4.56
+    },
+    "hog_unlimited_16proc": {
+      "max_ms": 6.76,
+      "median_ms": 3.78,
+      "min_ms": 2.43,
+      "n": 200,
+      "p95_ms": 5.18
+    },
+    "idle": {
+      "max_ms": 5.21,
+      "median_ms": 2.57,
+      "min_ms": 2.25,
+      "n": 200,
+      "p95_ms": 4.58
+    }
+  },
+  "E4_canary": {
+    "fresh_container_reset": {
+      "cache_entries_at_start": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "leaked_canaries": 0,
+      "runs": 20,
+      "runs_with_leak": 0
+    },
+    "reuse_control_no_reset": {
+      "cache_entries_at_start": [
+        0,
+        7,
+        14,
+        21,
+        28,
+        35,
+        42,
+        49,
+        56,
+        63
+      ],
+      "leaked_canaries": 45,
+      "runs": 10,
+      "runs_with_leak": 9
+    }
+  },
+  "E5_audit_tamper": {
+    "delete": {
+      "description": "Delete one entry from the middle of the log",
+      "detected": 30,
+      "trials": 30
+    },
+    "drop_checkpoint": {
+      "description": "Remove a middle checkpoint from the vault copy",
+      "detected": 30,
+      "trials": 30
+    },
+    "drop_terminal": {
+      "description": "Remove the terminal checkpoint from the vault copy; no anchor retained",
+      "detected": 30,
+      "trials": 30
+    },
+    "duplicate_seq": {
+      "description": "Duplicate one entry so a sequence number repeats",
+      "detected": 30,
+      "trials": 30
+    },
+    "forge_signature": {
+      "description": "Corrupt the signature of the terminal checkpoint",
+      "detected": 30,
+      "trials": 30
+    },
+    "modify": {
+      "description": "Change the outcome field of one attack.evaluated entry",
+      "detected": 30,
+      "trials": 30
+    },
+    "rehash": {
+      "description": "Modify an entry and recompute every later hash (attacker without the signing key)",
+      "detected": 30,
+      "trials": 30
+    },
+    "reorder": {
+      "description": "Swap two adjacent entries",
+      "detected": 30,
+      "trials": 30
+    },
+    "reorder_checkpoints": {
+      "description": "Swap two adjacent checkpoints in the vault copy",
+      "detected": 30,
+      "trials": 30
+    },
+    "truncate": {
+      "description": "Drop the final entries of the log; the full checkpoint vault is retained",
+      "detected": 30,
+      "trials": 30
+    },
+    "truncate_unprotected": {
+      "description": "Drop the final entries and every checkpoint after freeze; no anchor retained",
+      "detected": 30,
+      "trials": 30
+    },
+    "truncate_vs_anchor": {
+      "description": "Drop the final entries and every checkpoint after freeze; the signed terminal anchor is retained",
+      "detected": 30,
+      "trials": 30
+    },
+    "untampered_verify_pass": {
+      "pass": 30,
+      "runs": 30
+    }
+  },
+  "E6_release_gate": {
+    "blue_participant_artifacts_after_release": 200,
+    "blue_participant_artifacts_before_release": 403,
+    "observer_evidence_before_release": 403,
+    "operator_release": 403,
+    "red_participant_release": 403,
+    "reviewer_release_after_seal": {
+      "of": 30,
+      "released": 30
+    },
+    "reviewer_release_before_seal": 409
+  },
+  "E8_monitoring_redaction": {
+    "distinct_payloads_and_outputs_searched": 75,
+    "monitor_events": 864,
+    "occurrences_found": 0,
+    "runs": 30
+  },
+  "code_revision": {
+    "files": 31,
+    "note": "not a git repository; hash over aegis/ sandbox/ evaluation/ scripts/ tests/ samples/ (*.py, *.sh, *.json)",
+    "tree_sha256": "sha256:de2e6271f07babea7c7c35a435174911853630f807d2a77ea2d46552813d367d"
+  },
+  "environment": {
+    "cgroups": "v2",
+    "cpus": 16,
+    "cpuset_delegated": false,
+    "kernel": "7.2.11-200.fc44.x86_64",
+    "oci_runtime": "crun",
+    "oci_runtime_version": "crun version 1.28",
+    "podman": "5.8.9",
+    "rootless": true,
+    "seccomp_profile": "/usr/share/containers/seccomp.json",
+    "selinux": true
+  },
+  "finished_at": 1792680511.3264973,
+  "runs_per_condition": 10,
+  "started_at": 1792680400.2620497,
+  "wall_clock_s": 111.1
+}

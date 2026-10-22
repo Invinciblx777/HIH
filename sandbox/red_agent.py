@@ -29,13 +29,19 @@ def self_checks():
             checks.append({"check": "tcp %s:%d" % (host, port), "result": "connected"})
         except OSError as exc:
             checks.append({"check": "tcp %s:%d" % (host, port), "result": "failed", "errno": exc.errno})
-    for path in ("/aegis/frozen", "/aegis/blue", "/run/aegis"):
+    for path in ("/aegis/frozen", "/aegis/blue", "/run/aegis", "/aegis/sealed", "/aegis/spool/blue",
+                 "/aegis/spool/model", "/aegis/state", "/var/lib/aegis"):
         checks.append({"check": "path " + path, "result": "visible" if os.path.exists(path) else "absent"})
     try:
         open("/usr/aegis-write-test", "w").close()
         checks.append({"check": "write rootfs", "result": "writable"})
     except OSError as exc:
         checks.append({"check": "write rootfs", "result": "denied", "errno": exc.errno})
+    try:
+        open("/aegis/private/attack_pack.tamper", "w").close()
+        checks.append({"check": "write /aegis/private", "result": "writable"})
+    except OSError as exc:
+        checks.append({"check": "write /aegis/private", "result": "denied", "errno": exc.errno})
     checks.append({"check": "uid", "result": str(os.getuid())})
     try:
         for line in open("/proc/self/status"):

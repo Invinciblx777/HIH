@@ -1,0 +1,253 @@
+{
+  "attacks_per_run": 10,
+  "broker_mailbox_rtt": {
+    "cpu_hog_limited_1cpu_8proc": {
+      "max_ms": 6.25,
+      "median_ms": 2.92,
+      "min_ms": 2.26,
+      "n": 500,
+      "p90_ms": 4.52,
+      "p95_ms": 4.58,
+      "p99_ms": 4.73
+    },
+    "cpu_hog_unlimited_16proc": {
+      "max_ms": 8.98,
+      "median_ms": 3.91,
+      "min_ms": 2.39,
+      "n": 500,
+      "p90_ms": 4.6,
+      "p95_ms": 4.66,
+      "p99_ms": 5.53
+    },
+    "idle": {
+      "max_ms": 5.46,
+      "median_ms": 2.54,
+      "min_ms": 2.28,
+      "n": 500,
+      "p90_ms": 4.48,
+      "p95_ms": 4.53,
+      "p99_ms": 4.65
+    }
+  },
+  "code_revision": {
+    "files": 31,
+    "note": "not a git repository; hash over aegis/ sandbox/ evaluation/ scripts/ tests/ samples/ (*.py, *.sh, *.json)",
+    "tree_sha256": "sha256:de2e6271f07babea7c7c35a435174911853630f807d2a77ea2d46552813d367d"
+  },
+  "conditions": {
+    "0": {
+      "added_median_latency_for_answered_requests_ms": 0.0,
+      "auc_refused_faster": 0.803,
+      "bucket_ms": 0,
+      "folds": 5,
+      "heldout_accuracy": 0.795,
+      "heldout_accuracy_ci95": [
+        0.734,
+        0.845
+      ],
+      "heldout_balanced_accuracy": 0.795,
+      "latency_answered": {
+        "max_ms": 100.37,
+        "median_ms": 81.23,
+        "min_ms": 74.78,
+        "n": 100,
+        "p90_ms": 86.77,
+        "p95_ms": 87.03,
+        "p99_ms": 91.44
+      },
+      "latency_refused": {
+        "max_ms": 96.97,
+        "median_ms": 37.63,
+        "min_ms": 31.29,
+        "n": 100,
+        "p90_ms": 83.7,
+        "p95_ms": 84.01,
+        "p99_ms": 87.28
+      },
+      "majority_baseline": 0.5,
+      "n_answered": 100,
+      "n_refused": 100,
+      "permutation_p": 0.001,
+      "permutations": 1000,
+      "run_wall_clock_s": {
+        "max_ms": 1890.31,
+        "median_ms": 1813.89,
+        "min_ms": 1775.11,
+        "n": 20,
+        "p90_ms": 1839.87,
+        "p95_ms": 1860.92,
+        "p99_ms": 1890.31
+      },
+      "total_requests": 200
+    },
+    "100": {
+      "added_median_latency_for_answered_requests_ms": 49.24,
+      "auc_refused_faster": 0.415,
+      "bucket_ms": 100,
+      "folds": 5,
+      "heldout_accuracy": 0.605,
+      "heldout_accuracy_ci95": [
+        0.536,
+        0.67
+      ],
+      "heldout_balanced_accuracy": 0.605,
+      "latency_answered": {
+        "max_ms": 133.96,
+        "median_ms": 130.47,
+        "min_ms": 127.04,
+        "n": 100,
+        "p90_ms": 133.36,
+        "p95_ms": 133.56,
+        "p99_ms": 133.89
+      },
+      "latency_refused": {
+        "max_ms": 137.05,
+        "median_ms": 130.94,
+        "min_ms": 127.56,
+        "n": 100,
+        "p90_ms": 133.73,
+        "p95_ms": 134.47,
+        "p99_ms": 136.81
+      },
+      "majority_baseline": 0.5,
+      "n_answered": 100,
+      "n_refused": 100,
+      "permutation_p": 0.014,
+      "permutations": 1000,
+      "run_wall_clock_s": {
+        "max_ms": 2456.65,
+        "median_ms": 2438.23,
+        "min_ms": 2414.25,
+        "n": 20,
+        "p90_ms": 2455.0,
+        "p95_ms": 2456.0,
+        "p99_ms": 2456.65
+      },
+      "total_requests": 200
+    },
+    "250": {
+      "added_median_latency_for_answered_requests_ms": 201.67,
+      "auc_refused_faster": 0.542,
+      "bucket_ms": 250,
+      "folds": 5,
+      "heldout_accuracy": 0.52,
+      "heldout_accuracy_ci95": [
+        0.451,
+        0.588
+      ],
+      "heldout_balanced_accuracy": 0.52,
+      "latency_answered": {
+        "max_ms": 301.05,
+        "median_ms": 282.9,
+        "min_ms": 277.89,
+        "n": 100,
+        "p90_ms": 288.0,
+        "p95_ms": 291.56,
+        "p99_ms": 297.73
+      },
+      "latency_refused": {
+        "max_ms": 302.82,
+        "median_ms": 282.18,
+        "min_ms": 277.15,
+        "n": 100,
+        "p90_ms": 287.94,
+        "p95_ms": 289.22,
+        "p99_ms": 296.5
+      },
+      "majority_baseline": 0.5,
+      "n_answered": 100,
+      "n_refused": 100,
+      "permutation_p": 0.3776,
+      "permutations": 1000,
+      "run_wall_clock_s": {
+        "max_ms": 4168.19,
+        "median_ms": 4005.83,
+        "min_ms": 3928.0,
+        "n": 20,
+        "p90_ms": 4119.82,
+        "p95_ms": 4130.42,
+        "p99_ms": 4168.19
+      },
+      "total_requests": 200
+    },
+    "500": {
+      "added_median_latency_for_answered_requests_ms": 450.57,
+      "auc_refused_faster": 0.508,
+      "bucket_ms": 500,
+      "folds": 5,
+      "heldout_accuracy": 0.48,
+      "heldout_accuracy_ci95": [
+        0.412,
+        0.549
+      ],
+      "heldout_balanced_accuracy": 0.48,
+      "latency_answered": {
+        "max_ms": 547.7,
+        "median_ms": 531.8,
+        "min_ms": 527.95,
+        "n": 100,
+        "p90_ms": 533.54,
+        "p95_ms": 534.32,
+        "p99_ms": 536.85
+      },
+      "latency_refused": {
+        "max_ms": 537.51,
+        "median_ms": 531.51,
+        "min_ms": 526.36,
+        "n": 100,
+        "p90_ms": 534.5,
+        "p95_ms": 535.52,
+        "p99_ms": 537.35
+      },
+      "majority_baseline": 0.5,
+      "n_answered": 100,
+      "n_refused": 100,
+      "permutation_p": 0.6753,
+      "permutations": 1000,
+      "run_wall_clock_s": {
+        "max_ms": 6485.75,
+        "median_ms": 6456.49,
+        "min_ms": 6431.56,
+        "n": 20,
+        "p90_ms": 6474.26,
+        "p95_ms": 6478.12,
+        "p99_ms": 6485.75
+      },
+      "total_requests": 200
+    }
+  },
+  "confounders": [
+    "label (refused) is determined by attack id: 10 distinct payloads, 5 refused / 5 answered per run; results describe these payloads",
+    "stub model latency is a fixed ~40 ms sleep; a real model's latency varies and can cross bucket boundaries (not covered)",
+    "laptop CPU with frequency scaling, desktop session running, SELinux enforcing, rootless Podman, file-mailbox polling ~2-3 ms",
+    "runs are sequential on one host; no concurrent tenants during the classification experiment",
+    "a single-threshold classifier is a weak adversary; a stronger one (or a far larger n) could extract more"
+  ],
+  "environment": {
+    "cgroups": "v2",
+    "cpus": 16,
+    "cpuset_delegated": false,
+    "kernel": "7.2.11-200.fc44.x86_64",
+    "loadavg_after": [
+      2.83544921875,
+      2.39208984375,
+      2.57861328125
+    ],
+    "loadavg_before": [
+      3.8017578125,
+      3.9326171875,
+      2.97216796875
+    ],
+    "oci_runtime": "crun",
+    "oci_runtime_version": "crun version 1.28",
+    "podman": "5.8.9",
+    "rootless": true,
+    "seccomp_profile": "/usr/share/containers/seccomp.json",
+    "selinux": true
+  },
+  "finished_at": 1792680980.8126369,
+  "runs_per_condition": 20,
+  "seed": 11,
+  "started_at": 1792680522.89031,
+  "wall_clock_s": 457.9
+}

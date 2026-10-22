@@ -6,6 +6,7 @@ var/
   tenants/red/attack_pack.json    red team private storage
   tenants/blue/defence_config.json blue team private storage
   reviewer_vault/<run>.jsonl      checkpoints retained outside the run directory
+  anchors/<run>.terminal.json     signed terminal checkpoint, written once, mode 0444
   canaries.jsonl                  canary registry (control plane only)
   runs/<run>/
     run.json                      lifecycle state
@@ -33,6 +34,16 @@ def p(*parts) -> Path:
 
 def run_dir(run_id: str) -> Path:
     return p("runs", run_id)
+
+
+def vault_path(run_id: str) -> Path:
+    """Reviewer vault. AEGIS_VAULT may point at separately mounted or append-only storage."""
+    return Path(os.environ.get("AEGIS_VAULT") or p("reviewer_vault")) / (run_id + ".jsonl")
+
+
+def anchor_path(run_id: str) -> Path:
+    """Terminal anchor store. AEGIS_ANCHORS may point at storage the run-directory writer cannot reach."""
+    return Path(os.environ.get("AEGIS_ANCHORS") or p("anchors")) / (run_id + ".terminal.json")
 
 
 def write_json(path: Path, obj):

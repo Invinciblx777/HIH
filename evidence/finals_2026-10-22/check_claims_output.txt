@@ -1,0 +1,20 @@
+obj claim                                                          source                     found
+2   181/181 unauthorized cases denied                              isolation_matrix.json      181/181
+2   0 unauthorized successes                                       isolation_matrix.json      0
+2   0 marker hits in 216 public bodies                             isolation_matrix.json      0 in 216
+2   92/92 traversal cases rejected                                 isolation_matrix.json      92/92
+3   19 tamper categories                                           audit_tamper.json          19
+3   every category 30/30 detected                                  audit_tamper.json          19/19 categories 30/30
+3   clean logs 30/30 accepted, terminal verified 30/30             audit_tamper.json          30 / 30
+3   truncation: 0/30 old rules, 30/30 fail-closed                  audit_tamper.json          0 / 30
+3   CLI: 10/10 genuine accepted, 40/40 tampered rejected           audit_tamper.json          10/10, 40/40
+5   real model: 0/80 and 0/80 canary leaks                         model_experiments.json     0/80, 0/80
+5   real model: 0 hits in 270 responses, 66 markers                model_experiments.json     0 in 270, 66 markers
+5   real model: 21/21 unauthorized reads refused                   model_experiments.json     21/21
+5   reused server: 162 cached prompt tokens vs 0 fresh             model_experiments.json     162 vs 0
+2   timing, no padding: held-out accuracy about 0.80 in both saved executions timing*.json               0.80/0.80
+2   timing, 250 ms: 0.41 and 0.52 (chance 0.50), cost about +200 ms timing*.json               0.41/0.52, +198 ms
+1   broker mailbox RTT idle median 2.5-2.7 ms (n=500)              timing*.json               2.64/2.54
+1   E2 re-run: 150/150 forbidden requests denied, 90/90 connects failed, 240/240 foreign paths absent e1_e9_rerun/results.json   150/150, 90/90, 240/240
+
+17/17 quoted numbers match their source files
