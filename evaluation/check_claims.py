@@ -13,6 +13,10 @@ closeout executions, never from a number typed into this script:
      is meant to quote it (Markdown files and the deck's slide and speaker-note text);
   5. numbers that have no saved source (timing execution 1, a console record only) may appear in the current documents only
      on a line that says it is historical / unverified.
+Part C (Phase 3, LLM experiments): every figure is recomputed from the raw observations.jsonl of the experiment runs listed in
+evidence/phase3_2026-10-23/llm/INDEX.json (result and observation hashes, source-file hashes, denominators, exact intervals,
+control sensitivity), and the Phase 3 report must quote the recomputed figures verbatim. The classification stored in a run is
+printed, never assumed; a stored figure that differs from the recomputed one is a failure.
 """
 import hashlib
 import json
@@ -166,6 +170,189 @@ def timing_rows(full):
     return rows, claims
 
 
+# ----------------------------------------------------------------------------------------------- Phase 3 (Part C)
+P3 = ROOT / "evidence" / "phase3_2026-10-23" / "llm"
+P3_REPORT = "PHASE3_LLM_SECURITY_REPORT.md"
+
+
+def _jsonl(path):
+    return [json.loads(l) for l in Path(path).read_text().splitlines() if l.strip()]
+
+
+def phase3_rows():
+    """Returns (rows, claims). Each row: (claim, source, found, ok). Nothing here is typed in as a desired result."""
+    rows, claims = [], {}
+    if not (P3 / "INDEX.json").exists():
+        return [("Phase 3 LLM evidence present", "INDEX.json", "not present (skipped)", True)], claims
+    sys.path.insert(0, str(HERE))
+    from llm_common import auc_with_permutation, rate, sha256_file, source_hashes
+    index = json.loads((P3 / "INDEX.json").read_text())
+    latest = {}
+    for e in index:  # a later entry of the same experiment supersedes an earlier one; earlier runs stay on disk
+        latest[e["experiment"]] = e
+    runs_ = {}
+    for exp, e in sorted(latest.items()):
+        d = P3 / e["dir"]
+        res = json.loads((d / "result.json").read_text())
+        obs = _jsonl(d / "observations.jsonl")
+        runs_[exp] = (res, obs)
+        drift = [k for k, h in res["source_sha256"].items() if (ROOT / k).exists() and sha256_file(ROOT / k) != h]
+        rows += [
+            ("%s: result.json hash equals INDEX entry" % exp, e["dir"], e["result_sha256"][:12], sha256_file(d / "result.json") == e["result_sha256"]),
+            ("%s: observations.jsonl hash and count recorded" % exp, e["dir"], "%d observations" % len(obs),
+             sha256_file(d / "observations.jsonl") == res["observations_sha256"] and len(obs) == res["observation_count"]),
+            ("%s: security-relevant sources unchanged since the run" % exp, e["dir"], "no drift" if not drift else "DRIFT: " + ", ".join(drift), not drift),
+            ("%s: provenance fields present" % exp, e["dir"], res["run_id"],
+             all(k in res for k in ("run_id", "timestamp_utc", "model_backend", "config", "seed", "fixture_version", "environment", "limitations", "classification"))
+             and res["model_backend"].get("model_sha256") and res["classification"] in ("pass", "fail", "inconclusive", "not_run")),
+        ]
+    # ---- E1: canary matrix
+    if "E1_canary_matrix" in runs_:
+        res, obs = runs_["E1_canary_matrix"]
+        cells = {}
+        for o in obs:
+            c = cells.setdefault((o["condition"], o["ordering"]), {"trials": 0, "leaking": 0, "sessions": set(), "leak_sessions": set()})
+            c["trials"] += 1
+            c["leaking"] += bool(o["leaks"])
+            c["sessions"].add(o["session"])
+            if o["leaks"]:
+                c["leak_sessions"].add(o["session"])
+        stored = {(c["condition"], c["ordering"]): c for c in res["summary"]["cells"]}
+        agree = all(k in stored and stored[k]["trials"] == v["trials"] and stored[k]["trials_leaking"] == v["leaking"]
+                    and stored[k]["sessions_leaking"] == len(v["leak_sessions"]) and stored[k]["sessions"] == len(v["sessions"]) for k, v in cells.items())
+        rows.append(("E1: every cell's trials / leaking trials / leaking sessions recomputed from observations", "E1 observations", "%d cells" % len(cells), agree and len(cells) == len(stored)))
+        iso = [v for k, v in cells.items() if k[0].startswith(("reused_server", "fresh_server"))]
+        it, il = sum(v["trials"] for v in iso), sum(v["leaking"] for v in iso)
+        isn, isl = sum(len(v["sessions"]) for v in iso), sum(len(v["leak_sessions"]) for v in iso)
+        neg = [v for k, v in cells.items() if k[0].startswith("negative")]
+        nt, nl = sum(v["trials"] for v in neg), sum(v["leaking"] for v in neg)
+        ph = next(v for k, v in cells.items() if k[0] == "positive_control_shared_history")
+        pg = next(v for k, v in cells.items() if k[0] == "positive_control_sharing_gateway")
+        r_t, r_s = rate(il, it), rate(isl, isn)
+        pooled = res["summary"]["isolation_pooled"]
+        rows.append(("E1: pooled interval equals the exact interval recomputed here", "result.json",
+                     "%s / %s" % (r_t["upper95_one_sided_exact"], r_s["upper95_one_sided_exact"]),
+                     pooled["trial_rate"] == r_t and pooled["session_rate"] == r_s))
+        claims["e1_trials"] = "%d of %d isolation trials leaked (%d of %d sessions)" % (il, it, isl, isn)
+        claims["e1_bound"] = "one-sided 95%% upper bound %.2f%% of trials, %.2f%% of sessions" % (100 * r_t["upper95_one_sided_exact"], 100 * r_s["upper95_one_sided_exact"])
+        claims["e1_neg"] = "%d of %d negative-control trials leaked" % (nl, nt)
+        claims["e1_pos"] = "positive controls: shared history %d of %d sessions, sharing gateway %d of %d sessions" % (
+            len(ph["leak_sessions"]), len(ph["sessions"]), len(pg["leak_sessions"]), len(pg["sessions"]))
+        claims["e1_class"] = "E1 classification: %s" % res["classification"]
+    # ---- E2: pipeline canary
+    if "E2_pipeline_canary" in runs_:
+        res, obs = runs_["E2_pipeline_canary"]
+        by = {}
+        for o in obs:
+            cond = o["condition"]
+            c = by.setdefault(cond, {"runs": set(), "attacks": 0, "model": set(), "red": 0, "flag": 0, "withheld": 0, "reached": 0})
+            c["runs"].add(o["run"])
+            c["attacks"] += 1
+            c["reached"] += o["verdict_in"] == "allow"
+            if o["foreign_in_model_output"]:
+                c["model"].add(o["run"])
+            c["red"] += bool(o["foreign_in_final_output"])
+            c["flag"] += bool(o["broker_canary_leaks"])
+            c["withheld"] += o["outcome"] in ("withheld_canary", "withheld_secret")
+        stored = {c["condition"]: c for c in res["summary"]["cells"]}
+        agree = all(stored[k]["runs"] == len(v["runs"]) and stored[k]["attacks_total"] == v["attacks"] and stored[k]["runs_with_foreign_in_model_output"] == len(v["model"])
+                    and stored[k]["foreign_canary_in_final_output_seen_by_red"] == v["red"] and stored[k]["broker_flagged_attacks"] == v["flag"] for k, v in by.items())
+        rows.append(("E2: per-condition runs / attacks / foreign-canary counts recomputed from observations", "E2 observations", "%d conditions" % len(by), agree and set(by) == set(stored)))
+        iso = [v for k, v in by.items() if not k.startswith(("negative", "positive"))]
+        ir, il_, ia = sum(len(v["runs"]) for v in iso), sum(len(v["model"]) for v in iso), sum(v["attacks"] for v in iso)
+        ired = sum(v["red"] for v in iso)
+        pos = next(v for k, v in by.items() if k.startswith("positive"))
+        neg = next(v for k, v in by.items() if k.startswith("negative"))
+        claims["e2_iso"] = "%d of %d isolation runs (%d attacks) had a foreign canary in raw model output; %d reached red" % (il_, ir, ia, ired)
+        claims["e2_pos"] = "context-sharing control: foreign canary in raw model output in %d of %d runs, %d attacks withheld from red, %d reached red" % (
+            len(pos["model"]), len(pos["runs"]), pos["withheld"], pos["red"])
+        claims["e2_neg"] = "negative control: %d of %d runs" % (len(neg["model"]), len(neg["runs"]))
+        claims["e2_class"] = "E2 classification: %s" % res["classification"]
+    # ---- E3: KV / prompt cache
+    if "E3_kv_cache_oracle" in runs_:
+        res, obs = runs_["E3_kv_cache_oracle"]
+        stored = {c["cell"]: c for c in res["summary"]["cells"]}
+        ok = True
+        out = {}
+        for cell in stored:
+            rows_ = [o for o in obs if o["cell"] == cell]
+            pos = [o["cached_tokens"] or 0 for o in rows_ if o["guess_correct"]]
+            neg = [o["cached_tokens"] or 0 for o in rows_ if not o["guess_correct"]]
+            a = auc_with_permutation(pos, neg, perms=1000)
+            wp = [o["wall_ms"] for o in rows_ if o["guess_correct"]]
+            wn = [o["wall_ms"] for o in rows_ if not o["guess_correct"]]
+            w = auc_with_permutation(wn, wp, perms=1000)  # P(wrong guess slower than correct guess)
+            out[cell] = (a, len(pos), len(neg), w)
+            ok &= a == stored[cell]["cached_tokens_oracle"] and w == stored[cell]["client_wall_ms_oracle_wrong_slower"]
+        rows.append(("E3: cached-token AUC and permutation p recomputed for %d cells" % len(stored), "E3 observations", "%d cells" % len(stored), ok))
+        on = [c for c in out if "cache_on" in c and "fresh" not in c]
+        off = [c for c in out if "cache_off" in c]
+        claims["e3_on"] = "cache_prompt=true: cached-token AUC %s with %d+%d trials per cell in %d cells" % (
+            "/".join("%.2f" % out[c][0]["auc"] for c in on), out[on[0]][1], out[on[0]][2], len(on))
+        claims["e3_wall"] = "client-visible latency, wrong guess slower than correct guess (AUC): cache_prompt=true %s, cache_prompt=false %s" % (
+            "/".join("%.2f" % out[c][3]["auc"] for c in on), "/".join("%.2f" % out[c][3]["auc"] for c in off))
+        claims["e3_off"] = "cache_prompt=false (AegisLab default): cached tokens observed in %d of %d trials" % (
+            sum((o["cached_tokens"] or 0) > 0 for o in obs if o["cell"] in off), sum(o["cell"] in off for o in obs))
+        fresh = [o for o in obs if "fresh" in o["cell"]]
+        claims["e3_fresh"] = "fresh process per trial: cached tokens observed in %d of %d trials" % (sum((o["cached_tokens"] or 0) > 0 for o in fresh), len(fresh))
+        claims["e3_class"] = "E3 classification: %s" % res["classification"]
+    # ---- E4: injection and output isolation
+    if "E4_injection_output_isolation" in runs_:
+        res, obs = runs_["E4_injection_output_isolation"]
+        s = res["summary"]
+        reached = sum(o["verdict_in"] == "allow" for o in obs)
+        red = sum(bool(o["markers_in_final_output"] or o["foreign_in_final_output"]) for o in obs)
+        rows.append(("E4: attack, reached-model and red-visible-hit counts recomputed from observations", "E4 observations", "%d / %d / %d" % (len(obs), reached, red),
+                     s["attacks_total"] == len(obs) and s["attacks_reaching_model"] == reached and s["markers_or_foreign_canaries_in_red_visible_output"] == red))
+        g = s["gate_replay"]
+        claims["e4"] = "%d injection attacks (%d reached the model): %d protected values in red-visible output; %d of %d replayed model-generated gate messages denied, %d changed run state" % (
+            len(obs), reached, red, g["denied_or_rejected"], g["attempts"], g["state_changed"])
+        claims["e4_class"] = "E4 classification: %s" % res["classification"]
+    # ---- E5: failure handling
+    if "E5_failure_handling" in runs_:
+        res, obs = runs_["E5_failure_handling"]
+        cases = {o["case"]: o for o in obs}
+        k = cases["kill_server_during_request"]
+        sus, inter, flap, hlt, down = (cases[n] for n in ("sustained_failure_after_3_attacks", "intermittent_two_isolated_errors", "every_other_request_fails", "healthy_control", "unreachable_at_start"))
+        recomputed = {
+            "kill_mid_request_gives_fixed_error_without_hang": k["adapter_error_kind"] in ("unavailable", "timeout", "bad_response") and not k["hung_past_timeout"] and not k["returned_text"],
+            "recovers_after_restart": k.get("next_request_after_restart_ok") is True,
+            "sustained_failure_fails_run_closed": sus["final_state"] == "FAILED" and sus["terminal_verified"] and sus["audit_verifies"] and sus["release_attempt_status"] != 200,
+            "no_artifacts_readable_from_failed_run": all(c != 200 for c in sus["artifact_read_status_before_release"].values()),
+            "intermittent_errors_mark_run_incomplete": inter["final_state"] == "SEALED" and inter["complete"] is False and inter["model_backend_errors"] == 2,
+            "flapping_backend_marks_run_incomplete": flap["final_state"] == "FAILED" or flap["complete"] is False,
+            "healthy_control_complete": hlt["final_state"] == "SEALED" and hlt["complete"] is True and hlt["model_backend_errors"] == 0,
+            "unreachable_start_fails_closed": down["final_state"] == "FAILED" and down["audit_verifies"] and down["evaluated"] == 0,
+            "api_key_in_no_run_file": not any(o.get("api_key_in_run_files") for o in obs),
+        }
+        rows.append(("E5: all failure-handling checks recomputed from the recorded cases", "E5 observations", "%d/%d" % (sum(recomputed.values()), len(recomputed)),
+                     recomputed == res["summary"]["checks"]))
+        claims["e5"] = "failure handling: %d of %d checks hold" % (sum(recomputed.values()), len(recomputed))
+        claims["e5_class"] = "E5 classification: %s" % res["classification"]
+    # ---- P0 revalidation of the earlier model experiments on the Phase 2 and Phase 3 trees
+    for label, rel in (("Phase 2 tree (unmodified rc2)", "revalidation_rc2_unmodified/model_experiments_rc2_unmodified.json"),
+                       ("Phase 3 tree", "revalidation_candidate_tree/model_experiments_phase3_tree.json")):
+        f = P3 / rel
+        if not f.exists():
+            rows.append(("M1-M6 revalidation on the %s present" % label, rel, "missing", False))
+            continue
+        m = json.loads(f.read_text())
+        m1_, m45_ = m["M1_canary_isolation"], m["M4_M5_access_and_monitoring"]
+        m6_ = m["M6_failure_behaviour"]
+        key = "m_rc2" if "rc2" in rel else "m_p3"
+        claims[key] = "%s: canary leaks %d/%d and %d/%d, marker hits %d in %d responses, API key in run files: %d, failure cases ending FAILED with a verified terminal checkpoint: %d of 3" % (
+            label, m1_["cache_prompt_false"]["leaks"], m1_["cache_prompt_false"]["probe_trials"], m1_["cache_prompt_true"]["leaks"], m1_["cache_prompt_true"]["probe_trials"],
+            m45_["marker_hits"], m45_["responses_scanned"], len(m45_["api_key_found_in_run_files"]),
+            sum(m6_[c]["final_state"] == "FAILED" and m6_[c]["terminal_checkpoint_verified"] for c in ("timeout_50ms", "wrong_api_key", "server_down_before_run")))
+        rows.append(("M1-M6 revalidation on the %s: raw file readable, tree hash recorded" % label, rel, m["code_revision"]["tree_sha256"][:19], True))
+    # ---- the report must quote exactly these figures
+    rep = REL / P3_REPORT
+    text = rep.read_text() if rep.exists() else None
+    for k, v in sorted(claims.items()):
+        rows.append(("%s quotes: %s" % (P3_REPORT, v[:90]), "recomputed", "present" if text and v in text else ("report missing" if text is None else "NOT FOUND"), bool(text and v in text)))
+    return rows, claims
+
+
 def main():
     full = "--full" in sys.argv[1:]
     iso, aud, mod = load("isolation_matrix.json"), load("audit_tamper.json"), load("model_experiments.json")
@@ -206,7 +393,14 @@ def main():
     tbad = sum(not r[3] for r in trows)
     print("\n%d/%d timing checks pass" % (len(trows) - tbad, len(trows)))
     print("timing claims as they must be quoted: " + json.dumps(claims, ensure_ascii=False))
-    return 1 if (bad or tbad) else 0
+    prow, pclaims = phase3_rows()
+    print("\nPHASE 3 (LLM experiments): recomputed from the raw observation files")
+    for claim, src, found, ok in prow:
+        print("%-4s %-100s %-26s %s" % ("ok" if ok else "FAIL", claim[:100], src[:26], found))
+    pbad = sum(not r[3] for r in prow)
+    print("\n%d/%d Phase 3 checks pass" % (len(prow) - pbad, len(prow)))
+    print("Phase 3 claims as they must be quoted: " + json.dumps(pclaims, ensure_ascii=False))
+    return 1 if (bad or tbad or pbad) else 0
 
 
 if __name__ == "__main__":

@@ -59,7 +59,7 @@ def gate(fn, *a, **kw):
 
 def public_view(rec: dict) -> dict:
     keys = ("id", "state", "created_at", "frozen_at", "started_at", "sealed_at", "released_at", "policy", "tags",
-            "attack_count", "evaluated", "manifest_digest", "commitments_root", "model_cache_at_start", "complete")
+            "attack_count", "evaluated", "manifest_digest", "commitments_root", "model_cache_at_start", "complete", "model_backend_errors")
     out = {k: rec.get(k) for k in keys}
     out["outcomes"] = rec.get("outcomes") if rec.get("state") == "RELEASED" else None
     return out

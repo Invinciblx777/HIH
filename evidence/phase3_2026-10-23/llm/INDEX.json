@@ -1,0 +1,42 @@
+[
+  {
+    "run_id": "P3-20261023T053717Z-E2_pipeline_canary",
+    "experiment": "E2_pipeline_canary",
+    "classification": "pass",
+    "dir": "P3-20261023T053717Z-E2_pipeline_canary",
+    "result_sha256": "f0e704dfabbc40bc30a5be38af5193d71c64862520d28302bf6cd8ea4842c721",
+    "timestamp_utc": "2026-10-23T05:37:16Z"
+  },
+  {
+    "run_id": "P3-20261023T054023Z-E3_kv_cache_oracle",
+    "experiment": "E3_kv_cache_oracle",
+    "classification": "pass",
+    "dir": "P3-20261023T054023Z-E3_kv_cache_oracle",
+    "result_sha256": "37d8d767ced4e192bfa04d1d6bd42db0d0be04fee8a19bcb27480a9c414ba21c",
+    "timestamp_utc": "2026-10-23T05:40:23Z"
+  },
+  {
+    "run_id": "P3-20261023T054116Z-E4_injection_output_isolation",
+    "experiment": "E4_injection_output_isolation",
+    "classification": "pass",
+    "dir": "P3-20261023T054116Z-E4_injection_output_isolation",
+    "result_sha256": "6850518a91eb9c353c83c78db6f6491e20a95e9cfce630cad26c8daf0571f511",
+    "timestamp_utc": "2026-10-23T05:41:16Z"
+  },
+  {
+    "run_id": "P3-20261023T054144Z-E5_failure_handling",
+    "experiment": "E5_failure_handling",
+    "classification": "pass",
+    "dir": "P3-20261023T054144Z-E5_failure_handling",
+    "result_sha256": "8de645fc41aed8e931fe3b9c2718ded6469d4f711133fef77ab7087e111fd0e4",
+    "timestamp_utc": "2026-10-23T05:41:44Z"
+  },
+  {
+    "run_id": "P3-20261023T084629Z-E1_canary_matrix",
+    "experiment": "E1_canary_matrix",
+    "classification": "pass",
+    "dir": "P3-20261023T084629Z-E1_canary_matrix",
+    "result_sha256": "54450bd736a23590b2aa363386c18dc6d15f82933ac7035ce8878b0280b07a64",
+    "timestamp_utc": "2026-10-23T08:46:29Z"
+  }
+]

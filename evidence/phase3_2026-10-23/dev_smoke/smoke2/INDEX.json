@@ -1,0 +1,26 @@
+[
+  {
+    "run_id": "P3-20261023T040140Z-E1_canary_matrix",
+    "experiment": "E1_canary_matrix",
+    "classification": "pass",
+    "dir": "P3-20261023T040140Z-E1_canary_matrix",
+    "result_sha256": "f4f45375e20b29c2c37108a9d5cb561de0f419342d7e84ecb44724d89ab9d936",
+    "timestamp_utc": "2026-10-23T04:01:40Z"
+  },
+  {
+    "run_id": "P3-20261023T040221Z-E5_failure_handling",
+    "experiment": "E5_failure_handling",
+    "classification": "pass",
+    "dir": "P3-20261023T040221Z-E5_failure_handling",
+    "result_sha256": "16f46b995bbaffc73a577888383cc43f5ee2e4915b54f501bd96844017f3764d",
+    "timestamp_utc": "2026-10-23T04:02:21Z"
+  },
+  {
+    "run_id": "P3-20261023T040240Z-E4_injection_output_isolation",
+    "experiment": "E4_injection_output_isolation",
+    "classification": "pass",
+    "dir": "P3-20261023T040240Z-E4_injection_output_isolation",
+    "result_sha256": "111e3fec8ad1db608eb4af391f99fb99ef1486c843ec9cd392ae731821e04aaa",
+    "timestamp_utc": "2026-10-23T04:02:40Z"
+  }
+]

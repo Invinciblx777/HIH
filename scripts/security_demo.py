@@ -8,7 +8,8 @@ inputs. Every step prints PASS or FAIL against an expected outcome; a deliberate
 valid. Exit status 0 only if every step behaved as expected.
 
 Steps: 1 roles & boundaries  2 legitimate run  3 denied cross-boundary operations  4 lifecycle to RELEASED
-       5 signed audit verified  6 tampering on COPIES detected  7 residual-risk example  8 summary
+       5 signed audit verified  6 tampering on COPIES detected  7 residual-risk example  8 LLM-specific evidence
+       (read from saved real-model runs, recomputed from their raw observations)  9 summary
 """
 import argparse
 import copy
@@ -63,6 +64,47 @@ def limit(label, demonstrated, detail=""):
     """A documented boundary of the guarantee, shown in yellow. It is never counted as a passed security check."""
     LIMITS.append((label, bool(demonstrated)))
     print("  %s[LIMIT]%s %s%s" % (Y, N, label, (" - " + detail) if detail else ""))
+
+
+def llm_section():
+    """Prints what the saved Phase 3 LLM experiment runs show. Nothing here is measured by the demo itself (the demo runs the
+    stub); every figure is recomputed from the raw observation files by evaluation/check_claims.py, and each line names its artifact."""
+    sys.path.insert(0, str(ROOT / "evaluation"))
+    import check_claims
+    base = ROOT / "evidence" / "phase3_2026-10-23" / "llm"
+    if not (base / "INDEX.json").exists():
+        print("  [NOT RUN] no saved real-model experiment runs in this tree (evidence/phase3_2026-10-23/llm/INDEX.json missing)")
+        return
+    rows, claims = check_claims.phase3_rows()
+    index = {}
+    for e in json.loads((base / "INDEX.json").read_text()):
+        index[e["experiment"]] = e
+    first = json.loads((base / index[sorted(index)[0]]["dir"] / "result.json").read_text())
+    mb = first["model_backend"]
+    print("  this demo        : stub model worker (deterministic, not an LLM; it emulates a shared cache for the reuse control)")
+    print("  real-model runs  : %s (sha256 %s...), %s, %s" % (mb["model_class"], mb["model_sha256"][:12], mb["inference_server"], mb["bind"]))
+    print("  gpu / accelerator: NOT used. Hardware, GPU-memory and CUDA-context isolation are UNTESTED.")
+    names = {"E1_canary_matrix": ("E1 cross-session canary matrix, direct adapter", "e1_trials", "e1_bound", "e1_neg", "e1_pos"),
+             "E2_pipeline_canary": ("E2 same property through the full pipeline (broker + sandboxes + model)", "e2_iso", "e2_neg", "e2_pos"),
+             "E3_kv_cache_oracle": ("E3 KV / prompt-cache state", "e3_on", "e3_off", "e3_fresh"),
+             "E4_injection_output_isolation": ("E4 prompt injection and output isolation", "e4"),
+             "E5_failure_handling": ("E5 model-server failure handling", "e5")}
+    for exp, (title, *keys) in names.items():
+        if exp not in index:
+            print("  %s: NOT RUN" % title)
+            continue
+        e = index[exp]
+        print("  %s  [%s]" % (title, e["classification"].upper()))
+        for k in keys:
+            if k in claims:
+                print("      " + claims[k])
+        print("      artifact: evidence/phase3_2026-10-23/llm/%s/{result.json,observations.jsonl}" % e["dir"])
+    shared = [c for c in claims if c.startswith("e3")]
+    print("  shared-cache mechanism: %s" % ("exercised (llama.cpp CPU slot KV cache; see E3 lines above)" if shared else "not run"))
+    print("  untested: GPU/KV memory on an accelerator, hardware side channels, other inference servers and models, adaptive or multi-turn attackers,")
+    print("            a model that follows injections reliably (the 0.5B model rarely does), production-scale concurrency.")
+    check("saved LLM experiment runs agree with their raw observations, hashes and source files (%d checks)" % len(rows), all(r[3] for r in rows),
+          "; ".join(r[0][:60] for r in rows if not r[3])[:200])
 
 
 def main():
@@ -189,7 +231,10 @@ def main():
     print("  other documented limits: containers share the host kernel; local demo tokens, not SSO; JSON files, single host;")
     print("  the stub is not an LLM (see evidence/validation_2026-10-22/model_experiments.json for the optional real-model test).")
 
-    step(8, "Summary")
+    step(8, "LLM-specific evidence (saved real-model runs; the demo itself ran the stub)")
+    llm_section()
+
+    step(9, "Summary")
     ok = sum(1 for _, o in RESULTS if o)
     print("  %d/%d checks behaved as expected   run id %s   state dir %s" % (ok, len(RESULTS), run_id, STATE))
     print("  %d documented limit(s) demonstrated (not counted as passes): %s" % (

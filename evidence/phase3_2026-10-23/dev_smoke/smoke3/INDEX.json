@@ -1,0 +1,10 @@
+[
+  {
+    "run_id": "P3-20261023T051836Z-E2_pipeline_canary",
+    "experiment": "E2_pipeline_canary",
+    "classification": "pass",
+    "dir": "P3-20261023T051836Z-E2_pipeline_canary",
+    "result_sha256": "5977e96127888be5606154e95aa77d1e3ec7ddc96e08882b6e1ec7193a31e6bb",
+    "timestamp_utc": "2026-10-23T05:18:36Z"
+  }
+]

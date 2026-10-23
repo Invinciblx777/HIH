@@ -145,6 +145,10 @@ Identity header: `X-Aegis-Token`.
 
 CPU tooling isolation (these containers) is separate from GPU inference isolation. A real model server should run behind its own boundary, with prefix/KV caching disabled across tenants, a process restart or verified cache flush per run, and the canary probe kept as the verification step.
 
+## Language-model backend (optional, Phase 3 evidence)
+
+The default model worker is a deterministic stub. `AEGIS_MODEL_BACKEND=openai_compatible` makes the broker call a loopback OpenAI-compatible endpoint instead (see `aegis/model_client.py`); nothing is enabled implicitly, there is no stub fallback, and the whole exchange is bounded by `AEGIS_MODEL_TIMEOUT_S`. The broker withholds model output that carries another run's canary or a control-plane secret, and marks a run incomplete when the model service returned an error. Experiments: `evaluation/llm_isolation.py` (E1 to E5, needs a local `llama-server` and a GGUF file), results and how to reproduce them in `evidence/phase3_2026-10-23/README.md`, claims recomputed by `evaluation/check_claims.py`.
+
 ## Design choices
 
 - **Terminal anchor instead of "more checkpoints".** Truncation cannot be shown by the log itself. The broker signs one terminal checkpoint when a run reaches RELEASED or FAILED, the chain is closed atomically with the final event (later events go to an unsigned `post_terminal.jsonl`), and verification requires that checkpoint. Where the vault and anchor store live decides how strong this is: `AEGIS_VAULT` / `AEGIS_ANCHORS` can point at storage the run-directory writer cannot reach.

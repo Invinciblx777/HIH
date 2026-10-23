@@ -40,7 +40,9 @@ def build(run_id: str) -> dict:
     probes = [a for a in arts if pack.get(a["attack_id"], {}).get("category") == "cross-run canary probe"]
     prior = [c for c in read_jsonl(store.p("canaries.jsonl")) if c["run_id"] != run_id]
     return {
-        "label": "Measured result from the local AegisLab prototype (stub model worker). Not a production system.",
+        "label": "Measured result from the local AegisLab prototype (%s). Not a production system." % (
+            "stub model worker" if (manifest.get("model") or {"backend": "stub"}).get("backend", "stub") == "stub" else
+            "real model through the %s backend, model %s" % (manifest["model"]["backend"], manifest["model"].get("model"))),
         "generated_at": time.time(),
         "run": {k: rec.get(k) for k in ("id", "state", "created_at", "frozen_at", "started_at", "sealed_at",
                                          "released_at", "policy", "tags", "manifest_digest", "commitments_root")},
@@ -66,6 +68,10 @@ def build(run_id: str) -> dict:
                       "verdict_in": a["verdict_in"].get("verdict"), "verdict_out": a["verdict_out"].get("verdict"),
                       "outcome": a["outcome"], "answered_ms": a["answered_ms"]} for a in arts],
         "outcome_summary": rec.get("outcomes"),
+        "completeness": {"complete": rec.get("complete"), "evaluated": len(arts), "attack_count": rec.get("attack_count"),
+                         "model_backend_errors": rec.get("model_backend_errors", 0),
+                         "note": "complete is false when the tenant mailbox failed or the model backend returned an error for any attack; "
+                                 "such attacks are outcome model_error and are not evidence that the defence held"},
         "canary": {"probes": len(probes), "prior_canaries_checked": len(prior),
                    "leaks": sum(len(a["canary_leaks"]) for a in arts)},
         "audit_verification": verify_run(run_id),
@@ -100,6 +106,8 @@ def markdown(rep: dict) -> str:
         "- Cache entries at start: %s" % rep["model_state"]["cache_entries_at_start"],
         "- Reset: %s" % (rep["model_state"]["reset"] or {}).get("action", (rep["model_state"]["reset"] or {}).get("note")),
         "- Model backend: %s" % json.dumps(rep["model_backend"], sort_keys=True),
+        "", "## Completeness", "",
+        "- Complete: %(complete)s; evaluated %(evaluated)s of %(attack_count)s attacks; model backend errors: %(model_backend_errors)s" % rep["completeness"],
         "", "## Cross-run canary probe", "",
         "- Probes: %(probes)d, prior canaries checked: %(prior_canaries_checked)d, leaks: %(leaks)d" % rep["canary"],
         "", "## Outcomes", "", "| Attack | Category | Input | Output | Outcome |", "|---|---|---|---|---|",
