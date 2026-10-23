@@ -52,6 +52,7 @@ pytest -q tests                                   # 297 tests; includes the secu
 AEGIS_VAR=var/mine python scripts/demo_run.py DEMO-001 --bundle-dir var/mine/bundles/DEMO-001
 python -m aegis.verify_cli --bundle var/mine/bundles/DEMO-001
 scripts/security_demo.sh                          # judge-facing demonstration (a few seconds once the image is built), fresh temp state, exits 0 only if every check behaves
+scripts/judge_demo.sh                              # PRESENTATION MODE (Phase 4): short, offline, deterministic; LLM evidence is PRECOMPUTED, no model runs; --pause, --record F.json
 AEGIS_VAR=var/mine AEGIS_DEMO_MODE=1 uvicorn aegis.api:app --host 127.0.0.1 --port 8400   # console
 ```
 
@@ -167,7 +168,7 @@ web/          web console (vanilla JS); web/snapshot = static export
 tests/        pytest suite (test_core, test_audit_integrity, test_isolation, test_model_client)
 evaluation/   run_evaluation.py (E1-E9), run_validation.py, isolation_matrix.py, timing_eval.py, model_experiments.py
 evidence/     15 Oct results (results.json, RESULTS.md, DEMO-001/) and validation_2026-10-22/ (new, separate)
-scripts/      quickstart.sh, security_demo.sh/.py, demo_run.py, export_snapshot.py
+scripts/      quickstart.sh, security_demo.sh/.py, judge_demo.sh/.py (presentation mode), demo_run.py, export_snapshot.py
 THREAT_MODEL.md  threat table, trust model, residual risk
 var/          runtime state (created on first run; contains demo keys, not committed)
 ```

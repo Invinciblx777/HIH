@@ -1,0 +1,527 @@
+{
+ "mode": "judge_demo presentation mode",
+ "recorded_utc": "2026-10-23T10:28:05Z",
+ "checks": "17/17",
+ "lines": [
+  {
+   "t": 0.0,
+   "kind": "text",
+   "text": "AegisLab judge demo (PRESENTATION MODE)  state dir /tmp/aegis-judge-ymgssp45"
+  },
+  {
+   "t": 0.0,
+   "kind": "text",
+   "text": "deterministic stub model, no network, no model download. Original demo path: scripts/security_demo.sh (unchanged)."
+  },
+  {
+   "t": 0.334,
+   "kind": "text",
+   "text": ""
+  },
+  {
+   "t": 0.334,
+   "kind": "step",
+   "text": "== 1. Threat model: who must not see what =="
+  },
+  {
+   "t": 0.334,
+   "kind": "text",
+   "text": "  red team       holds attack payloads            must not read the defence rules"
+  },
+  {
+   "t": 0.334,
+   "kind": "text",
+   "text": "  blue team      holds the frozen defence config  must not see payloads before release"
+  },
+  {
+   "t": 0.334,
+   "kind": "text",
+   "text": "  model worker   answers prompts                  must not carry one session's data into another"
+  },
+  {
+   "t": 0.334,
+   "kind": "text",
+   "text": "  reviewer       receives the result              must be able to detect a changed record"
+  },
+  {
+   "t": 0.334,
+   "kind": "text",
+   "text": "  enforcement: sandboxes have no network; the broker is the only path and binds identity to the mailbox;"
+  },
+  {
+   "t": 0.334,
+   "kind": "text",
+   "text": "  roles are checked server-side; the log is hash-chained and signed; the verifier is a separate program."
+  },
+  {
+   "t": 0.334,
+   "kind": "text",
+   "text": "  trusted, not defended: the broker and its signing key, the host kernel and container runtime."
+  },
+  {
+   "t": 0.334,
+   "kind": "text",
+   "text": ""
+  },
+  {
+   "t": 0.334,
+   "kind": "step",
+   "text": "== 2. A legitimate evaluation (run JD-1, stub model) =="
+  },
+  {
+   "t": 0.503,
+   "kind": "pass",
+   "text": "  [PASS] operator froze the configuration"
+  },
+  {
+   "t": 0.507,
+   "kind": "pass",
+   "text": "  [PASS] operator started the run"
+  },
+  {
+   "t": 2.309,
+   "kind": "pass",
+   "text": "  [PASS] run reached SEALED: results held behind the gate: SEALED"
+  },
+  {
+   "t": 2.309,
+   "kind": "pass",
+   "text": "  [PASS] the red sandbox's forbidden requests were denied by the broker and logged: 5 logged"
+  },
+  {
+   "t": 2.309,
+   "kind": "text",
+   "text": ""
+  },
+  {
+   "t": 2.309,
+   "kind": "step",
+   "text": "== 3. Blocked unauthorized operations =="
+  },
+  {
+   "t": 2.323,
+   "kind": "pass",
+   "text": "  [PASS] denied: red participant reads sealed artifacts: HTTP 403"
+  },
+  {
+   "t": 2.323,
+   "kind": "pass",
+   "text": "  [PASS] denied: reviewer reads artifacts before release: HTTP 403"
+  },
+  {
+   "t": 2.323,
+   "kind": "pass",
+   "text": "  [PASS] denied: red participant releases the run: HTTP 403"
+  },
+  {
+   "t": 2.323,
+   "kind": "pass",
+   "text": "  [PASS] denied: forged identity token: HTTP 401"
+  },
+  {
+   "t": 2.323,
+   "kind": "text",
+   "text": "  hostile mailbox: a real rootless sandbox (no network, read-only root, no capabilities) attacks the broker's mailbox"
+  },
+  {
+   "t": 2.568,
+   "kind": "text",
+   "text": "    inside sandbox: symlink_at_guessed_temp_name   succeeded"
+  },
+  {
+   "t": 2.568,
+   "kind": "text",
+   "text": "    inside sandbox: fifo_at_guessed_temp_name      succeeded"
+  },
+  {
+   "t": 2.568,
+   "kind": "text",
+   "text": "    inside sandbox: rename_mailbox_dir             refused (errno 30)"
+  },
+  {
+   "t": 2.568,
+   "kind": "text",
+   "text": "    inside sandbox: remove_mailbox_dir             refused (errno 30)"
+  },
+  {
+   "t": 2.568,
+   "kind": "pass",
+   "text": "  [PASS] broker replies were delivered as regular files despite the planted symlink and FIFO: ['000002.json', '000003.json']"
+  },
+  {
+   "t": 2.568,
+   "kind": "pass",
+   "text": "  [PASS] the victim file outside the mailbox is intact (symlink not followed)"
+  },
+  {
+   "t": 2.568,
+   "kind": "pass",
+   "text": "  [PASS] nothing was created outside the mailbox: []"
+  },
+  {
+   "t": 2.568,
+   "kind": "pass",
+   "text": "  [PASS] the broker did not block on the FIFO: 0.000 s for two writes"
+  },
+  {
+   "t": 2.568,
+   "kind": "historical",
+   "text": "  [HISTORICAL] same attack on the Phase 1 broker (recorded 2026-10-23, evidence/phase2_2026-10-23/before_fix/11_poc_mailbox.txt):"
+  },
+  {
+   "t": 2.568,
+   "kind": "text",
+   "text": "    == tree: old, temp-name symlink only"
+  },
+  {
+   "t": 2.568,
+   "kind": "text",
+   "text": "    container: {\"plant_symlink_at_temp_name\": \"ok\", \"replace_in_with_symlink\": \"denied 0\"}"
+  },
+  {
+   "t": 2.568,
+   "kind": "text",
+   "text": "    victim audit.jsonl intact: False"
+  },
+  {
+   "t": 2.568,
+   "kind": "text",
+   "text": "    files the broker created outside the mailbox: []"
+  },
+  {
+   "t": 2.568,
+   "kind": "text",
+   "text": "    reading: on the Phase 1 broker the planted symlink was followed and the victim file was overwritten (intact: False)"
+  },
+  {
+   "t": 2.568,
+   "kind": "text",
+   "text": "  regression tests: P2B01 P2B02 P2B03 P2B05 P2B06 P2B32 (tests/test_phase2_broker.py), P2C01 P2C02 (tests/test_phase2_container.py)"
+  },
+  {
+   "t": 2.569,
+   "kind": "text",
+   "text": ""
+  },
+  {
+   "t": 2.569,
+   "kind": "step",
+   "text": "== 4. A completed audit bundle is verified strictly =="
+  },
+  {
+   "t": 2.576,
+   "kind": "pass",
+   "text": "  [PASS] reviewer released the run (SEALED -> RELEASED): HTTP 200"
+  },
+  {
+   "t": 2.581,
+   "kind": "text",
+   "text": "  $ python -m aegis.verify_cli --bundle <bundle> --run-id JD-1 --expect-state RELEASED --pubkey <pinned> --expect-terminal-hash <noted at release>"
+  },
+  {
+   "t": 2.643,
+   "kind": "text",
+   "text": "    ok                   True"
+  },
+  {
+   "t": 2.643,
+   "kind": "text",
+   "text": "    entries              28"
+  },
+  {
+   "t": 2.643,
+   "kind": "text",
+   "text": "    checkpoints_checked  6"
+  },
+  {
+   "t": 2.643,
+   "kind": "text",
+   "text": "    terminal_verified    True"
+  },
+  {
+   "t": 2.643,
+   "kind": "text",
+   "text": "    terminal_state       RELEASED"
+  },
+  {
+   "t": 2.643,
+   "kind": "text",
+   "text": "    key_source           pinned (--pubkey)"
+  },
+  {
+   "t": 2.643,
+   "kind": "pass",
+   "text": "  [PASS] strict verification of the complete bundle (key and terminal hash pinned): exit 0"
+  },
+  {
+   "t": 2.643,
+   "kind": "text",
+   "text": ""
+  },
+  {
+   "t": 2.643,
+   "kind": "step",
+   "text": "== 5. A tampered copy is rejected =="
+  },
+  {
+   "t": 2.644,
+   "kind": "text",
+   "text": "  the last 3 audit entries were removed from a COPY; the original bundle is not touched"
+  },
+  {
+   "t": 2.644,
+   "kind": "text",
+   "text": "  $ python -m aegis.verify_cli --bundle <tampered copy> ... (same options)"
+  },
+  {
+   "t": 2.707,
+   "kind": "text",
+   "text": "    ok                   False"
+  },
+  {
+   "t": 2.707,
+   "kind": "text",
+   "text": "    entries              25"
+  },
+  {
+   "t": 2.707,
+   "kind": "text",
+   "text": "    checkpoints_checked  6"
+  },
+  {
+   "t": 2.707,
+   "kind": "text",
+   "text": "    terminal_verified    False"
+  },
+  {
+   "t": 2.707,
+   "kind": "text",
+   "text": "    terminal_state       RELEASED"
+  },
+  {
+   "t": 2.707,
+   "kind": "text",
+   "text": "    key_source           pinned (--pubkey)"
+  },
+  {
+   "t": 2.707,
+   "kind": "text",
+   "text": "    finding: log has 25 entries but a signed checkpoint covers seq 26: truncation"
+  },
+  {
+   "t": 2.707,
+   "kind": "text",
+   "text": "    finding: log has 25 entries but a signed checkpoint covers seq 27: truncation"
+  },
+  {
+   "t": 2.707,
+   "kind": "text",
+   "text": "    finding: log has 25 entries but a signed checkpoint covers seq 28: truncation"
+  },
+  {
+   "t": 2.707,
+   "kind": "pass",
+   "text": "  [PASS] verification of the tampered copy FAILED, as it must: exit 1"
+  },
+  {
+   "t": 2.769,
+   "kind": "pass",
+   "text": "  [PASS] the original bundle still verifies"
+  },
+  {
+   "t": 2.769,
+   "kind": "text",
+   "text": ""
+  },
+  {
+   "t": 2.769,
+   "kind": "step",
+   "text": "== 6. LLM isolation evidence: PRECOMPUTED from saved real-model runs (this demo does not run a model) =="
+  },
+  {
+   "t": 3.373,
+   "kind": "precomputed",
+   "text": "  [PRECOMPUTED] model Qwen2.5-0.5B-Instruct Q4_K_M (0.5B parameters), llama.cpp llama-server (CPU build), 127.0.0.1 only, random port, random API key per server, CPU only"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "  the stub model ran steps 2 to 5. The figures below are from the saved runs, recomputed now from raw observations."
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "  E1  run P3-20261023T084629Z-E1_canary_matrix"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "      0 of 1040 isolation trials leaked (0 of 104 sessions)"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "      one-sided 95% upper bound 0.29% of trials, 2.84% of sessions"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "      0 of 320 negative-control trials leaked"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "      positive controls: shared history 16 of 16 sessions, sharing gateway 13 of 16 sessions"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "      raw: evidence/phase3_2026-10-23/llm/P3-20261023T084629Z-E1_canary_matrix/observations.jsonl"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "  E2  run P3-20261023T053717Z-E2_pipeline_canary"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "      0 of 26 isolation runs (312 attacks) had a foreign canary in raw model output"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "      0 reached red"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "      negative control: 0 of 4 runs"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "      context-sharing control: foreign canary in raw model output in 2 of 4 runs, 15 attacks withheld from red, 0 reached red"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "      raw: evidence/phase3_2026-10-23/llm/P3-20261023T053717Z-E2_pipeline_canary/observations.jsonl"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "  E3  run P3-20261023T054023Z-E3_kv_cache_oracle"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "      cache_prompt=true: cached-token AUC 1.00/1.00 with 30+30 trials per cell in 2 cells"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "      cache_prompt=false (AegisLab default): cached tokens observed in 0 of 120 trials"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "      fresh process per trial: cached tokens observed in 0 of 14 trials"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "      raw: evidence/phase3_2026-10-23/llm/P3-20261023T054023Z-E3_kv_cache_oracle/observations.jsonl"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "  E4  run P3-20261023T054116Z-E4_injection_output_isolation"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "      72 injection attacks (69 reached the model): 0 protected values in red-visible output"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "      282 of 282 replayed model-generated gate messages denied, 0 changed run state"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "      raw: evidence/phase3_2026-10-23/llm/P3-20261023T054116Z-E4_injection_output_isolation/observations.jsonl"
+  },
+  {
+   "t": 3.373,
+   "kind": "pass",
+   "text": "  [PASS] saved LLM runs agree with their raw observations, hashes and source files: 48 checks"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "  scope: one 0.5B model, ten probe wordings, CPU llama.cpp on loopback. GPU memory, accelerator KV cache and hardware side"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "  channels were NOT tested. Zero observed leaks in a finite experiment do not prove zero risk."
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": ""
+  },
+  {
+   "t": 3.373,
+   "kind": "step",
+   "text": "== 7. Residual risks (stated, not hidden) =="
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "  - a compromised broker or signing key can sign a false but consistent record; only a reviewer's independent"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "    terminal-hash note (--expect-terminal-hash) catches a key thief who replaces every retained copy"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "  - the host kernel and container runtime are shared and trusted; hardware side channels are untested"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "  - the canary detector does not recognise every re-encoding (for example base64)"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "  - prompt-injection results show information-flow control, not model robustness"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "  - timing padding lowers one classifier's accuracy; it does not show the timing channel is gone"
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": ""
+  },
+  {
+   "t": 3.373,
+   "kind": "step",
+   "text": "== 8. Summary =="
+  },
+  {
+   "t": 3.373,
+   "kind": "text",
+   "text": "  17/17 checks behaved as expected   (3.4 s)   state dir /tmp/aegis-judge-ymgssp45 (disposable)"
+  }
+ ]
+}

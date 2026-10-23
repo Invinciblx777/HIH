@@ -1,0 +1,5 @@
+container mov,mp4,m4a,3gp,3g2,mj2  duration 120.000 s
+video: h264 High 1920x1080  fps 30/1  avg_rate 30/1  frames(metadata) 3600  pix_fmt yuv420p  profile High  bitrate 2956358
+audio: aac  48000 Hz  2 ch  bitrate 169426  duration 120.000 s
+decoded video frames 3600, last pts 119.9667 s, expected 3600 frames at 30 fps = 120.000 s
+audio samples 5760000  peak 0.922  rms 0.1172 (-18.6 dBFS)  active-speech rms 0.1540 (-16.2 dBFS)

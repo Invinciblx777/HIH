@@ -1,0 +1,12 @@
+{
+ "tests_passed": 345,
+ "quickstart_pass": 8,
+ "quickstart_total": 8,
+ "demo_pass": 34,
+ "demo_total": 34,
+ "judge_demo_pass": 17,
+ "judge_demo_total": 17,
+ "claims_pass": 134,
+ "claims_total": 134,
+ "note": "claims_total = check_claims.py 14 + 72 + 48 (default mode); with --full the timing section is 84 checks. Counts are those of the executed validation of the candidate (phase4/logs/validation)."
+}
