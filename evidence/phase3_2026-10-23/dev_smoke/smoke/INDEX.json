@@ -1,0 +1,18 @@
+[
+  {
+    "run_id": "P3-20261023T035427Z-E1_canary_matrix",
+    "experiment": "E1_canary_matrix",
+    "classification": "inconclusive",
+    "dir": "P3-20261023T035427Z-E1_canary_matrix",
+    "result_sha256": "f81a943647cafef16bd2a026dfffe3775b48f11b1b50e1ce5a26a93662bce322",
+    "timestamp_utc": "2026-10-23T03:54:27Z"
+  },
+  {
+    "run_id": "P3-20261023T035505Z-E3_kv_cache_oracle",
+    "experiment": "E3_kv_cache_oracle",
+    "classification": "inconclusive",
+    "dir": "P3-20261023T035505Z-E3_kv_cache_oracle",
+    "result_sha256": "798981c3e4fa1d128ac75fcda92273f779846b20a7f5eeb4b4e41b49a16c0465",
+    "timestamp_utc": "2026-10-23T03:55:05Z"
+  }
+]

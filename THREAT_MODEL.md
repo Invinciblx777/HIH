@@ -92,3 +92,20 @@ Attacks were executed against the local prototype in disposable state directorie
 | 10 | Signing-key theft plus control of every retained copy | Only if the reviewer wrote down the terminal hash | A full re-signed history verifies; `--expect-terminal-hash` rejects it | A reviewer who kept nothing out of band |
 
 The reviewer-side countermeasures added in Phase 2 are optional pins: `verify_cli --pubkey` (also with `--bundle`) and `--expect-terminal-hash`. They do not make the broker trustworthy; they remove the reviewer's dependence on files the attacker can rewrite.
+
+
+## 7. Phase 3 addendum: LLM-native isolation (23 Oct 2026)
+
+Full analysis, denominators and provenance: `PHASE3_LLM_SECURITY_REPORT.md`; raw data: `evidence/phase3_2026-10-23/`. Real-model results come from one 0.5B model on one CPU llama.cpp build and are application-visible behaviour only. GPU memory, accelerator KV cache and hardware side channels were **not tested**.
+
+| Boundary | Enforced by | Depends on | Outside our control |
+|---|---|---|---|
+| Conversation context between runs | The adapter: one user message per request, no history, no session or run identifier, `cache_prompt: false` (tests P3B04, P3B05; wire records in E2/E4) | nothing | A gateway placed in front of the adapter |
+| Inference-server state (prefix / KV cache) | The per-request `cache_prompt: false` field | The server honouring it; E3 shows 0 cached tokens in 120 trials with it, and a working cache oracle (AUC 1.00) when it is `true` | Server start-up flags (`--cache-ram`, idle-slot caching), other clients holding the API key |
+| Model output reaching a tenant | The broker: another run's canary (token, digits, separated digits, 8-digit fragments; runs still in progress included) and the model API key or an API token are withheld (uniform refusal) and recorded; the sealed copy has secrets redacted | The detector's coverage: a re-encoded canary (base64, cipher, spelled-out digits) is not recognised (test P3B02d) | The model's own behaviour |
+| Failure of the model service | The adapter (one time budget for the whole exchange, JSON content type, size cap, fixed errors) and the broker (no stub fallback, three consecutive errors fail the run, any error marks the run incomplete) | | |
+| GPU / accelerator memory | nothing | | Entirely untested |
+
+Also fixed in Phase 3: first creation of the signing key is atomic and private from the first byte (`aegis/crypto.py`, test P3K01).
+
+Residual items found in Phase 3 and not closed: the adapter accepts `AEGIS_MODEL_EXTRA_JSON='{"cache_prompt": true}'` without a guard; `llama-server --api-key` on a command line is visible to local users (use `--api-key-file`); `/slots` and `/props` answer to anyone holding the key (no prompt text was found in them in this build).

@@ -15,6 +15,9 @@ Security properties (each is covered by tests/test_model_client.py):
   * nothing is enabled automatically; a missing or invalid setting raises instead of falling back to the stub
   * every request is stateless: one user message, no history, no session or user identifier is sent
   * no proxy and no redirect is followed; non-loopback endpoints need an explicit flag because prompts leave the host
+  * AEGIS_MODEL_TIMEOUT_S bounds the WHOLE exchange (connect, headers, body), not each socket operation, so a server that
+    sends one byte at a time cannot hold the broker longer than the timeout
+  * only a 200 reply with a JSON content type and at most MAX_RESPONSE_BYTES is accepted
   * the API key is only ever placed in the Authorization header; errors, audit entries and evidence carry
     fixed, key-free messages
   * failures, timeouts and malformed replies raise ModelBackendError with a fixed message; the broker turns that into a
@@ -24,12 +27,13 @@ What this does NOT do: it cannot clear state inside the inference server (prefix
 Whether such state is reachable from another session is something the experiments in
 evaluation/model_experiments.py measure; the adapter only guarantees that AegisLab itself sends no shared context.
 """
+import http.client
 import ipaddress
 import json
 import os
-import urllib.error
+import socket
+import threading
 import urllib.parse
-import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -113,37 +117,67 @@ def load_config(env=None) -> ModelConfig:
                        tuple(sorted(extra.items())), allow_remote)
 
 
-class _NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *a, **kw):
-        return None
-
-
 class OpenAICompatibleClient:
     def __init__(self, cfg: ModelConfig):
         if cfg.backend != "openai_compatible":
             raise ModelBackendError("config")
         self.cfg = cfg
-        # ProxyHandler({}) ignores HTTP(S)_PROXY from the environment; the redirect handler refuses redirects
-        self._opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect)
 
     def _request(self, method, path, body=None):
-        headers = {"Content-Type": "application/json", "Accept": "application/json"}
+        """One HTTP exchange over http.client: no proxy handling and no redirect handling exist in it, so neither can
+        happen. A watchdog closes the socket when the total time budget is spent."""
+        headers = {"Content-Type": "application/json", "Accept": "application/json", "Connection": "close"}
         if self.cfg.api_key:
             headers["Authorization"] = "Bearer " + self.cfg.api_key
         data = json.dumps(body).encode() if body is not None else None
-        req = urllib.request.Request(self.cfg.base_url + path, data=data, headers=headers, method=method)
+        u = urllib.parse.urlsplit(self.cfg.base_url + path)
+        factory = http.client.HTTPSConnection if u.scheme == "https" else http.client.HTTPConnection
+        conn = factory(u.hostname, u.port, timeout=self.cfg.timeout_s)
+        expired = threading.Event()
+        live = []  # the connected socket; http.client drops conn.sock once a reply says "Connection: close", the body is still unread
+
+        def cut():
+            expired.set()
+            for sock in list(live):
+                try:
+                    sock.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
+
+        watchdog = threading.Timer(self.cfg.timeout_s, cut)
+        watchdog.daemon = True
+        watchdog.start()
         try:
-            with self._opener.open(req, timeout=self.cfg.timeout_s) as resp:
-                raw = resp.read(MAX_RESPONSE_BYTES + 1)
-        except urllib.error.HTTPError as exc:
-            raise ModelBackendError("auth" if exc.code in (401, 403) else "unavailable") from None
-        except TimeoutError:
-            raise ModelBackendError("timeout") from None
-        except urllib.error.URLError as exc:
-            raise ModelBackendError("timeout" if isinstance(exc.reason, TimeoutError) else "unavailable") from None
-        except OSError:
-            raise ModelBackendError("unavailable") from None
-        if len(raw) > MAX_RESPONSE_BYTES:
+            try:
+                conn.request(method, u.path, body=data, headers=headers)
+                live.append(conn.sock)
+                if expired.is_set():
+                    cut()
+                resp = conn.getresponse()
+                status, ctype = resp.status, resp.getheader("Content-Type", "")
+                length = resp.getheader("Content-Length", "")
+                oversize = length.isdigit() and int(length) > MAX_RESPONSE_BYTES
+                raw = resp.read(MAX_RESPONSE_BYTES + 1) if status == 200 and not oversize else b""
+            except TimeoutError:
+                raise ModelBackendError("timeout") from None
+            except ConnectionError:  # refused, reset, or the server went away before it answered
+                raise ModelBackendError("timeout" if expired.is_set() else "unavailable") from None
+            except http.client.HTTPException:  # malformed status line or headers, truncated body
+                raise ModelBackendError("timeout" if expired.is_set() else "bad_response") from None
+            except OSError:
+                raise ModelBackendError("timeout" if expired.is_set() else "unavailable") from None
+        finally:
+            watchdog.cancel()
+            conn.close()
+        if expired.is_set():
+            raise ModelBackendError("timeout")
+        if status in (401, 403):
+            raise ModelBackendError("auth")
+        if status != 200:
+            raise ModelBackendError("unavailable")
+        if oversize or len(raw) > MAX_RESPONSE_BYTES:
+            raise ModelBackendError("bad_response")
+        if ctype.split(";")[0].strip().lower() != "application/json":
             raise ModelBackendError("bad_response")
         try:
             return json.loads(raw)

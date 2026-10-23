@@ -28,7 +28,7 @@ class Fake(BaseHTTPRequestHandler):
     def _send(self, code, body, headers=None):
         raw = body if isinstance(body, bytes) else json.dumps(body).encode()
         self.send_response(code)
-        for k, v in (headers or {}).items():
+        for k, v in {"Content-Type": "application/json", **(headers or {})}.items():
             self.send_header(k, v)
         self.send_header("Content-Length", str(len(raw)))
         self.end_headers()

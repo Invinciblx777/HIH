@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import json
 import os
+import tempfile
 from pathlib import Path
 
 from cryptography.hazmat.primitives import serialization
@@ -37,15 +38,22 @@ class Signer:
 
     def __init__(self, key_path: Path):
         key_path = Path(key_path)
-        if key_path.exists():
-            self.key = serialization.load_pem_private_key(key_path.read_bytes(), password=None)
-        else:
+        if not key_path.exists():
+            # Created complete and private (mkstemp is mode 0600) and published with an atomic link: a concurrent first use can neither
+            # read a half-written key nor end up with a different key, and the key is never readable by group or others.
             key_path.parent.mkdir(parents=True, exist_ok=True)
-            self.key = Ed25519PrivateKey.generate()
-            key_path.write_bytes(self.key.private_bytes(
-                serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
-                serialization.NoEncryption()))
-            os.chmod(key_path, 0o600)
+            fd, tmp = tempfile.mkstemp(dir=key_path.parent, prefix=".key-")
+            try:
+                with os.fdopen(fd, "wb") as fh:
+                    fh.write(Ed25519PrivateKey.generate().private_bytes(
+                        serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()))
+                try:
+                    os.link(tmp, key_path)
+                except FileExistsError:
+                    pass  # another thread or process won; its key is the key
+            finally:
+                os.unlink(tmp)
+        self.key = serialization.load_pem_private_key(key_path.read_bytes(), password=None)
         self.public_raw = self.key.public_key().public_bytes(
             serialization.Encoding.Raw, serialization.PublicFormat.Raw)
         self.key_id = sha256(self.public_raw)[:23]
