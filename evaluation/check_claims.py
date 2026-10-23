@@ -43,15 +43,14 @@ def load(name):
 # ----------------------------------------------------------------------------------------------- timing (Part B)
 TIMING_DOCS = {  # claim keys each document is required to quote verbatim; chosen here, not read back from the documents
     "README_FIRST.md": ["acc0", "acc250", "cost250"],
-    "Judge_QA.md": ["acc0", "acc100", "acc250", "acc500", "cost250", "idle", "limited", "unres", "unres_inc", "unres_p99"],
+    "Judge_QA.md": ["acc0", "acc250", "cost250", "idle"],  # Phase 4 Q&A quotes the figures it needs; the full set stays in the addendum
     "VALIDATION_ADDENDUM_2026-10-22.md": ["acc0", "acc100", "acc250", "acc500", "pmin", "pool250", "cost250", "idle", "limited", "limited_inc",
                                           "unres", "unres_inc", "unres_p99", "unres_p99_inc"],
     "RELEASE_READINESS_REPORT.md": ["acc250", "cost250", "unres_inc"],
     "aegislab/README.md": ["acc0", "acc250"],
     "aegislab/THREAT_MODEL.md": ["acc250", "unres_inc"],
-    "deck:slide6": ["acc250"],
-    "deck:notes6": ["acc0", "acc250", "cost250"],
-    "deck:notes7": ["acc250"],
+    "deck:slide7": ["acc0", "acc250", "cost250"],  # Phase 4 deck: slide 7 is "Performance, limits & deployment"
+    "deck:notes7": ["acc0", "acc250", "cost250"],
 }
 CURRENT_DOCS = [d for d in TIMING_DOCS] + ["aegislab/evidence/closeout_2026-10-22/README.md"]
 # phrasings of the superseded or unsourced numbers (regexes; bare numbers such as 0.545 are legitimate values elsewhere)
