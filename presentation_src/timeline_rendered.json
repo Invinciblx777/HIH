@@ -1,0 +1,474 @@
+{
+ "segments": [
+  {
+   "id": "S1",
+   "start": 0.4,
+   "end": 12.1,
+   "section": "The problem",
+   "slide": 1,
+   "tag": "",
+   "visual": "Slide 1: team and concept. Slow push-in on the problem statement.",
+   "speech_end": 11.488888888888889,
+   "sentences": [
+    {
+     "text": "An AI safety finding is only as trustworthy as the test that produced it.",
+     "tts": "An A I safety finding is only as trustworthy as the test that produced it.",
+     "dur": 3.8080725623582765,
+     "sr": 22050,
+     "t0": 0.4,
+     "t1": 4.208072562358277
+    },
+    {
+     "text": "Red-team attacks, blue-team defenses and the model under test must coexist without leaking protected state.",
+     "tts": "Red team attacks, blue team defenses, and the model under test must coexist, without leaking protected state.",
+     "dur": 7.000816326530612,
+     "sr": 22050,
+     "t0": 4.488072562358277,
+     "t1": 11.488888888888889
+    }
+   ]
+  },
+  {
+   "id": "S2",
+   "start": 12.5,
+   "end": 25.8,
+   "section": "Threat model",
+   "slide": 2,
+   "tag": "",
+   "visual": "Slide 2: threat model. Pan from the diagram to the five forbidden flows.",
+   "speech_end": 25.180816326530614,
+   "sentences": [
+    {
+     "text": "AegisLab is controlled, measurable, adversarial testing infrastructure.",
+     "tts": "Aegis Lab is controlled, measurable, adversarial testing infrastructure.",
+     "dur": 4.632380952380952,
+     "sr": 22050,
+     "t0": 12.5,
+     "t1": 17.132380952380952
+    },
+    {
+     "text": "Five flows are forbidden: red reading the defense rules, one session reading another's data, and three more.",
+     "tts": "Five flows are forbidden: red reading the defense rules, one session reading another's data, and three more.",
+     "dur": 5.630839002267574,
+     "sr": 22050,
+     "t0": 17.412380952380953,
+     "t1": 23.043219954648528
+    },
+    {
+     "text": "Each one is attacked in a test.",
+     "tts": "Each one is attacked in a test.",
+     "dur": 1.8575963718820863,
+     "sr": 22050,
+     "t0": 23.32321995464853,
+     "t1": 25.180816326530614
+    }
+   ]
+  },
+  {
+   "id": "S3",
+   "start": 26.2,
+   "end": 39.6,
+   "section": "Architecture",
+   "slide": 3,
+   "tag": "",
+   "visual": "Slide 3: security architecture. Pan across layers; amber residual-trust bar last.",
+   "speech_end": 38.90539682539683,
+   "sentences": [
+    {
+     "text": "Sandboxes have no network.",
+     "tts": "Sandboxes have no network.",
+     "dur": 1.8343764172335602,
+     "sr": 22050,
+     "t0": 26.2,
+     "t1": 28.03437641723356
+    },
+    {
+     "text": "One trusted broker is the only path, and it binds identity to the mailbox.",
+     "tts": "One trusted broker is the only path, and it binds identity to the mailbox.",
+     "dur": 4.562721088435374,
+     "sr": 22050,
+     "t0": 28.31437641723356,
+     "t1": 32.877097505668935
+    },
+    {
+     "text": "The audit log is hash-chained and signed.",
+     "tts": "The audit log is hash chained and signed.",
+     "dur": 2.3219954648526078,
+     "sr": 22050,
+     "t0": 33.157097505668936,
+     "t1": 35.47909297052154
+    },
+    {
+     "text": "The broker and the host kernel stay trusted, not defended.",
+     "tts": "The broker and the host kernel stay trusted, not defended.",
+     "dur": 3.1463038548752835,
+     "sr": 22050,
+     "t0": 35.75909297052154,
+     "t1": 38.90539682539683
+    }
+   ]
+  },
+  {
+   "id": "S4",
+   "start": 40.0,
+   "end": 57.5,
+   "section": "Adversarial demonstration",
+   "slide": 4,
+   "tag": "STUB MODEL \u00b7 recorded run of scripts/judge_demo.sh",
+   "terminal_from": 43.5,
+   "visual": "Slide 4 for the first seconds, then the recorded terminal output of step 3, full screen, unedited text.",
+   "speech_end": 56.932789115646266,
+   "sentences": [
+    {
+     "text": "Here is a recorded attack.",
+     "tts": "Here is a recorded attack.",
+     "dur": 1.4628571428571429,
+     "sr": 22050,
+     "t0": 40.0,
+     "t1": 41.462857142857146
+    },
+    {
+     "text": "A hostile sandbox plants a symlink and a FIFO in the broker's mailbox.",
+     "tts": "A hostile sandbox plants a symlink and a F I F O in the broker's mailbox.",
+     "dur": 4.35374149659864,
+     "sr": 22050,
+     "t0": 41.74285714285715,
+     "t1": 46.096598639455785
+    },
+    {
+     "text": "On our first broker, that overwrote the audit log.",
+     "tts": "On our first broker, that overwrote the audit log.",
+     "dur": 3.1346938775510202,
+     "sr": 22050,
+     "t0": 46.376598639455786,
+     "t1": 49.51129251700681
+    },
+    {
+     "text": "Now the replies arrive intact, nothing is written outside, and nothing blocks.",
+     "tts": "Now the replies arrive intact, nothing is written outside, and nothing blocks.",
+     "dur": 4.818140589569161,
+     "sr": 22050,
+     "t0": 49.79129251700681,
+     "t1": 54.60943310657597
+    },
+    {
+     "text": "Regression tests keep it that way.",
+     "tts": "Regression tests keep it that way.",
+     "dur": 2.043356009070295,
+     "sr": 22050,
+     "t0": 54.88943310657597,
+     "t1": 56.932789115646266
+    }
+   ]
+  },
+  {
+   "id": "S5",
+   "start": 57.9,
+   "end": 83.0,
+   "section": "Real-model evidence",
+   "slide": 5,
+   "tag": "REAL MODEL \u00b7 Qwen2.5-0.5B on CPU \u00b7 precomputed from saved runs",
+   "visual": "Slide 5: bars first, then the limits panel. Tag marks this as the real model, not the stub.",
+   "speech_end": 82.27342403628117,
+   "sentences": [
+    {
+     "text": "Now a real model: Qwen2.5-0.5B, on a CPU.",
+     "tts": "Now a real model: Qwen two point five, zero point five B, on a C P U.",
+     "dur": 5.317369614512471,
+     "sr": 22050,
+     "t0": 57.9,
+     "t1": 63.21736961451247
+    },
+    {
+     "text": "Through the adapter, 0 of 104 sessions recovered another session's canary, across 1,040 trials.",
+     "tts": "Through the adapter, zero of one hundred four sessions recovered another session's canary, across one thousand forty trials.",
+     "dur": 7.116916099773243,
+     "sr": 22050,
+     "t0": 63.49736961451247,
+     "t1": 70.61428571428571
+    },
+    {
+     "text": "Controls that share context leaked in 16 of 16 and 13 of 16 sessions, so the test can see a leak.",
+     "tts": "Controls that share context leaked in sixteen of sixteen and thirteen of sixteen sessions, so the test can see a leak.",
+     "dur": 6.559637188208617,
+     "sr": 22050,
+     "t0": 70.89428571428572,
+     "t1": 77.45392290249433
+    },
+    {
+     "text": "The upper bound is 2.84% of sessions: not proof of zero.",
+     "tts": "The upper bound is two point eight four percent of sessions: not proof of zero.",
+     "dur": 4.539501133786848,
+     "sr": 22050,
+     "t0": 77.73392290249433,
+     "t1": 82.27342403628117
+    }
+   ]
+  },
+  {
+   "id": "S6",
+   "start": 83.4,
+   "end": 96.9,
+   "section": "Audit integrity",
+   "slide": 6,
+   "tag": "STUB MODEL \u00b7 recorded run of scripts/judge_demo.sh",
+   "visual": "Slide 6: green verified panel, then red tampered panel.",
+   "speech_end": 96.26793650793651,
+   "sentences": [
+    {
+     "text": "The evidence is verifiable.",
+     "tts": "The evidence is verifiable.",
+     "dur": 1.6137868480725623,
+     "sr": 22050,
+     "t0": 83.4,
+     "t1": 85.01378684807257
+    },
+    {
+     "text": "A released run passes strict verification.",
+     "tts": "A released run passes strict verification.",
+     "dur": 2.507755102040816,
+     "sr": 22050,
+     "t0": 85.29378684807257,
+     "t1": 87.80154195011339
+    },
+    {
+     "text": "Remove three entries from a copy, and verification fails.",
+     "tts": "Remove three entries from a copy, and verification fails.",
+     "dur": 3.7500226757369615,
+     "sr": 22050,
+     "t0": 88.08154195011339,
+     "t1": 91.83156462585035
+    },
+    {
+     "text": "A compromised broker could still sign a false record, and we say so.",
+     "tts": "A compromised broker could still sign a false record, and we say so.",
+     "dur": 4.156371882086168,
+     "sr": 22050,
+     "t0": 92.11156462585035,
+     "t1": 96.26793650793651
+    }
+   ]
+  },
+  {
+   "id": "S7",
+   "start": 97.3,
+   "end": 109.8,
+   "section": "Limits",
+   "slide": 7,
+   "tag": "",
+   "visual": "Slide 7: measured cost, residual risk, deployment.",
+   "speech_end": 109.23641723356009,
+   "sentences": [
+    {
+     "text": "The limits stay on the slide: one small model, a detector that misses base64, and GPU isolation untested.",
+     "tts": "The limits stay on the slide: one small model, a detector that misses base sixty four, and G P U isolation untested.",
+     "dur": 7.2562358276643995,
+     "sr": 22050,
+     "t0": 97.3,
+     "t1": 104.5562358276644
+    },
+    {
+     "text": "Timing padding costs 200 milliseconds and does not prove the channel is gone.",
+     "tts": "Timing padding costs two hundred milliseconds and does not prove the channel is gone.",
+     "dur": 4.400181405895691,
+     "sr": 22050,
+     "t0": 104.8362358276644,
+     "t1": 109.23641723356009
+    }
+   ]
+  },
+  {
+   "id": "S8",
+   "start": 110.2,
+   "end": 119.8,
+   "section": "Conclusion",
+   "slide": 8,
+   "tag": "",
+   "visual": "Slide 8: three contributions and the closing line.",
+   "speech_end": 116.57387755102042,
+   "sentences": [
+    {
+     "text": "Enforced boundaries, reproducible validation, and verifiable evidence, with the residual risk disclosed.",
+     "tts": "Enforced boundaries, reproducible validation, and verifiable evidence, with the residual risk disclosed.",
+     "dur": 6.373877551020408,
+     "sr": 22050,
+     "t0": 110.2,
+     "t1": 116.57387755102042
+    }
+   ]
+  }
+ ],
+ "cues": [
+  [
+   0.4,
+   4.208072562358277,
+   "An AI safety finding is only as trustworthy as the test that produced it."
+  ],
+  [
+   4.488072562358277,
+   8.516844221965517,
+   "Red-team attacks, blue-team defenses and the model under test"
+  ],
+  [
+   8.516844221965517,
+   11.48888888888889,
+   "must coexist without leaking protected state."
+  ],
+  [
+   12.5,
+   16.13972789115646,
+   "AegisLab is controlled, measurable, adversarial testing"
+  ],
+  [
+   16.13972789115646,
+   17.132380952380952,
+   "infrastructure."
+  ],
+  [
+   17.412380952380953,
+   20.569860766736603,
+   "Five flows are forbidden: red reading the defense rules, one"
+  ],
+  [
+   20.569860766736603,
+   23.043219954648528,
+   "session reading another's data, and three more."
+  ],
+  [
+   23.32321995464853,
+   25.180816326530614,
+   "Each one is attacked in a test."
+  ],
+  [
+   26.2,
+   28.03437641723356,
+   "Sandboxes have no network."
+  ],
+  [
+   28.31437641723356,
+   32.877097505668935,
+   "One trusted broker is the only path, and it binds identity to the mailbox."
+  ],
+  [
+   33.157097505668936,
+   35.47909297052154,
+   "The audit log is hash-chained and signed."
+  ],
+  [
+   35.75909297052154,
+   38.90539682539683,
+   "The broker and the host kernel stay trusted, not defended."
+  ],
+  [
+   40.0,
+   41.462857142857146,
+   "Here is a recorded attack."
+  ],
+  [
+   41.74285714285715,
+   46.096598639455785,
+   "A hostile sandbox plants a symlink and a FIFO in the broker's mailbox."
+  ],
+  [
+   46.376598639455786,
+   49.51129251700681,
+   "On our first broker, that overwrote the audit log."
+  ],
+  [
+   49.79129251700681,
+   53.670834290426136,
+   "Now the replies arrive intact, nothing is written outside, and"
+  ],
+  [
+   53.670834290426136,
+   54.60943310657597,
+   "nothing blocks."
+  ],
+  [
+   54.88943310657597,
+   56.932789115646266,
+   "Regression tests keep it that way."
+  ],
+  [
+   57.9,
+   63.21736961451247,
+   "Now a real model: Qwen2.5-0.5B, on a CPU."
+  ],
+  [
+   63.49736961451247,
+   67.73723452501568,
+   "Through the adapter, 0 of 104 sessions recovered another"
+  ],
+  [
+   67.73723452501568,
+   70.61428571428571,
+   "session's canary, across 1,040 trials."
+  ],
+  [
+   70.89428571428572,
+   74.92572940287226,
+   "Controls that share context leaked in 16 of 16 and 13 of 16"
+  ],
+  [
+   74.92572940287226,
+   77.45392290249434,
+   "sessions, so the test can see a leak."
+  ],
+  [
+   77.73392290249433,
+   82.27342403628117,
+   "The upper bound is 2.84% of sessions: not proof of zero."
+  ],
+  [
+   83.4,
+   85.01378684807257,
+   "The evidence is verifiable."
+  ],
+  [
+   85.29378684807257,
+   87.80154195011339,
+   "A released run passes strict verification."
+  ],
+  [
+   88.08154195011339,
+   91.83156462585035,
+   "Remove three entries from a copy, and verification fails."
+  ],
+  [
+   92.11156462585035,
+   96.26793650793651,
+   "A compromised broker could still sign a false record, and we say so."
+  ],
+  [
+   97.3,
+   101.62583289726146,
+   "The limits stay on the slide: one small model, a detector that"
+  ],
+  [
+   101.62583289726146,
+   104.5562358276644,
+   "misses base64, and GPU isolation untested."
+  ],
+  [
+   104.8362358276644,
+   108.31006325337152,
+   "Timing padding costs 200 milliseconds and does not prove the"
+  ],
+  [
+   108.31006325337152,
+   109.23641723356009,
+   "channel is gone."
+  ],
+  [
+   110.2,
+   113.91293837923519,
+   "Enforced boundaries, reproducible validation, and verifiable"
+  ],
+  [
+   113.91293837923519,
+   116.5738775510204,
+   "evidence, with the residual risk disclosed."
+  ]
+ ],
+ "audio_peak_before_limit": 0.8999710083007812
+}

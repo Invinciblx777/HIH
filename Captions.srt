@@ -1,0 +1,135 @@
+1
+00:00:00,400 --> 00:00:04,208
+An AI safety finding is only as trustworthy as the test that produced it.
+
+2
+00:00:04,488 --> 00:00:08,517
+Red-team attacks, blue-team defenses and the model under test
+
+3
+00:00:08,517 --> 00:00:11,489
+must coexist without leaking protected state.
+
+4
+00:00:12,500 --> 00:00:16,140
+AegisLab is controlled, measurable, adversarial testing
+
+5
+00:00:16,140 --> 00:00:17,132
+infrastructure.
+
+6
+00:00:17,412 --> 00:00:20,570
+Five flows are forbidden: red reading the defense rules, one
+
+7
+00:00:20,570 --> 00:00:23,043
+session reading another's data, and three more.
+
+8
+00:00:23,323 --> 00:00:25,181
+Each one is attacked in a test.
+
+9
+00:00:26,200 --> 00:00:28,034
+Sandboxes have no network.
+
+10
+00:00:28,314 --> 00:00:32,877
+One trusted broker is the only path, and it binds identity to the mailbox.
+
+11
+00:00:33,157 --> 00:00:35,479
+The audit log is hash-chained and signed.
+
+12
+00:00:35,759 --> 00:00:38,905
+The broker and the host kernel stay trusted, not defended.
+
+13
+00:00:40,000 --> 00:00:41,463
+Here is a recorded attack.
+
+14
+00:00:41,743 --> 00:00:46,097
+A hostile sandbox plants a symlink and a FIFO in the broker's mailbox.
+
+15
+00:00:46,377 --> 00:00:49,511
+On our first broker, that overwrote the audit log.
+
+16
+00:00:49,791 --> 00:00:53,671
+Now the replies arrive intact, nothing is written outside, and
+
+17
+00:00:53,671 --> 00:00:54,609
+nothing blocks.
+
+18
+00:00:54,889 --> 00:00:56,933
+Regression tests keep it that way.
+
+19
+00:00:57,900 --> 00:01:03,217
+Now a real model: Qwen2.5-0.5B, on a CPU.
+
+20
+00:01:03,497 --> 00:01:07,737
+Through the adapter, 0 of 104 sessions recovered another
+
+21
+00:01:07,737 --> 00:01:10,614
+session's canary, across 1,040 trials.
+
+22
+00:01:10,894 --> 00:01:14,926
+Controls that share context leaked in 16 of 16 and 13 of 16
+
+23
+00:01:14,926 --> 00:01:17,454
+sessions, so the test can see a leak.
+
+24
+00:01:17,734 --> 00:01:22,273
+The upper bound is 2.84% of sessions: not proof of zero.
+
+25
+00:01:23,400 --> 00:01:25,014
+The evidence is verifiable.
+
+26
+00:01:25,294 --> 00:01:27,802
+A released run passes strict verification.
+
+27
+00:01:28,082 --> 00:01:31,832
+Remove three entries from a copy, and verification fails.
+
+28
+00:01:32,112 --> 00:01:36,268
+A compromised broker could still sign a false record, and we say so.
+
+29
+00:01:37,300 --> 00:01:41,626
+The limits stay on the slide: one small model, a detector that
+
+30
+00:01:41,626 --> 00:01:44,556
+misses base64, and GPU isolation untested.
+
+31
+00:01:44,836 --> 00:01:48,310
+Timing padding costs 200 milliseconds and does not prove the
+
+32
+00:01:48,310 --> 00:01:49,236
+channel is gone.
+
+33
+00:01:50,200 --> 00:01:53,913
+Enforced boundaries, reproducible validation, and verifiable
+
+34
+00:01:53,913 --> 00:01:56,574
+evidence, with the residual risk disclosed.

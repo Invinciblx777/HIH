@@ -1,0 +1,20 @@
+# Accepted findings of tools/publication_scan.py. Format: <kind> <path glob>  # reason
+# Globs start with * so the same file matches at its old (repo root) and new (aegislab/) path in history.
+# Each entry was reviewed by hand during Phase R0 (2026-10-25). Add nothing here without a reason.
+
+# Synthetic credentials used as test fixtures; they open nothing and exist so tests can prove keys never reach logs or run files.
+openai_style_key *tests/test_model_client.py        # synthetic KEY constant (fixture)
+openai_style_key *tests/test_phase3_llm.py          # synthetic KEY constant (fixture)
+aegis_token_value *tests/test_isolation.py          # literal "wrong-token-value" used to test rejection
+
+# Path-shaped markers inside tests: they check that error responses do NOT leak host paths.
+home_path *evaluation/isolation_matrix.py           # home-directory leak markers used by the error-leak checks
+home_path *tests/test_phase2_config.py              # home-directory / ssh-key leak marker used by an error-leak test
+
+# Raw timing evidence from the 22 Oct closeout executions. The files record the workstation directory they ran in
+# (it reveals a local account name, nothing else). They are hashed raw evidence used by evaluation/check_claims.py
+# and are kept byte-identical rather than edited. Remove them from publication only by team decision.
+home_path *evidence/closeout_2026-10-22/timing/*
+
+# The 120 s pitch video of the release package (47 MB, below GitHub's 100 MB file limit).
+large_file Tech_Mavericks_AegisLab_Pitch_120s.mp4

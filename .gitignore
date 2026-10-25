@@ -1,3 +1,29 @@
+# Runtime state and local environments (never publish: var/ holds the broker signing key and demo tokens)
 var/
+**/var/
 .venv/
+**/.venv/
 __pycache__/
+*.pyc
+.pytest_cache/
+
+# Secrets and credentials
+.env
+.env.*
+*.env
+*.pem
+*.key
+**/keys/
+tokens.json
+
+# Model weights and inference binaries (not part of the repository; see README)
+*.gguf
+*.safetensors
+_models/
+llama.cpp*/
+
+# Editor and office lock files, local scratch
+.~lock*
+*.swp
+.DS_Store
+scratch/

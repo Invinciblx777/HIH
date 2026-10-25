@@ -1,178 +1,149 @@
-# AegisLab prototype
+# AegisLab
 
-Secure infrastructure for adversarial AI evaluation. Team Tech Mavericks, Hack in Hills ’26, Track 04 (Bayora).
+**Secure infrastructure for adversarial AI safety testing.** Red-team attacks, blue-team defences and the model under test run side by side, cannot read each other's protected state, and every run ends with signed evidence that a reviewer can verify on their own machine.
 
-**Status: implemented prototype.** It is a working single-host proof of concept with measured results. It is not a production security system. By default the model under test is a deterministic **stub**, not an LLM; an optional, opt-in OpenAI-compatible adapter exists (see "Optional real-model backend").
+Team **Tech Mavericks** (Abdul Munaf Z, Likhith Sai N, Sreeram Rajesh) · **Hack in Hills '26** · Track 04: *Securing Adversarial AI Safety Testing Infrastructure* (Bayora).
 
-**Two result sets exist and are kept apart.** The 15 Oct 2026 submission numbers are in `evidence/results.json`, `evidence/RESULTS.md` and `evidence/DEMO-001/` and are unchanged. The 22 Oct 2026 hardening validation (terminal audit anchor, access matrix, real-model experiments, held-out timing analysis) is in `evidence/validation_2026-10-22/`, summarised in `../VALIDATION_ADDENDUM_2026-10-22.md`; the timing figures there were superseded by the Phase 1 closeout executions in `evidence/closeout_2026-10-22/`. The full threat table with measured results and residual risk is `THREAT_MODEL.md`.
+> **Status: working single-host prototype.** It is not a production security system and has not been audited by a third party. Everything below says which results are measured live, which come from saved runs, and where the guarantees stop.
 
-## What it does
+## The problem
 
-A run puts three workloads side by side: a **red sandbox** (attack agent), a **blue defence runner** (an isolated workload that applies the frozen defence configuration) and a **model worker**. None of them has a network. The only channel each one has is a private mailbox directory that the **trusted broker** on the host reads and writes.
+An AI safety evaluation puts three parties that do not trust each other into one test:
 
-Lifecycle: `CREATED → FROZEN → RUNNING → SEALED → RELEASED` (or `FAILED`, fail-closed).
+1. a **red team** that sends attacks and adversarial prompts,
+2. a **blue team** that applies defensive policies, and
+3. the **client LLM** being evaluated.
 
-| Mechanism | Where |
-|---|---|
-| No-network, read-only, capability-free, non-root sandboxes with cgroup limits and private SELinux labels | `aegis/runtime.py` |
-| Mailbox IPC, no symlink following, 64 KiB message cap | `sandbox/spool.py`, `aegis/runs.py` (`_safe_read`) |
-| Identity bound to the mailbox, not to a claimed field | `aegis/runs.py` (`Broker.attack`) |
-| Frozen config: manifest digests and defence-runner attestation | `aegis/runs.py` (`freeze`), `sandbox/defence_runner.py` |
-| Attack commitments `SHA-256(nonce ‖ 0x00 ‖ payload)`, 128-bit nonce | `sandbox/red_agent.py`, `aegis/crypto.py` |
-| Fresh model worker container per run; canary plant and probe | `aegis/runs.py`, `samples/attack_pack.json` |
-| Timing buckets: red only gets answers on 250 ms boundaries | `aegis/runs.py` (`Broker.attack`) |
-| Hash-chained audit log; chained Ed25519 checkpoints; signed **terminal checkpoint** (run id, final state, final seq/hash, event count, previous checkpoint) in the reviewer vault and a separate anchor store; fail-closed verifier | `aegis/audit.py`, `aegis/runs.py`, `aegis/store.py` |
-| Optional real-model adapter (stateless requests, loopback only, key never logged); stub stays default | `aegis/model_client.py` |
-| Result gate: SEALED, audit verifies, commitments verify, reviewer identity | `aegis/runs.py` (`release`) |
-| Redacted monitoring stream (no payloads, outputs or rules) | `monitor.jsonl`, `GET /api/runs/{id}/events` |
-| Independent verifier (`--bundle`, `--anchor`, `--expect-state`, `--expect-events`) and 12 tamper modes | `aegis/verify_cli.py` |
-| Web console: overview, dashboard, run details, evidence report | `web/` |
+If red can see blue's rules, if blue can see red's attack pack before the run, if one session can read another session's data through the model, or if the results can be edited afterwards, the evaluation measures nothing. Track 04 asks for isolation that keeps working, controlled communication, confidential protected state, tamper-evident audit records, deployability on standard hardware, and an honest account of residual risk.
 
-## Run it locally
+## The approach
 
-Requirements: Linux with rootless Podman (tested: Fedora, kernel 7.2, Podman 5.8.9, crun 1.28, cgroups v2, SELinux enforcing; the 15 Oct numbers were measured on kernel 6.19 / Podman 5.8.1), Python 3.11+ (tested 3.14), network access to PyPI and, the first time, to Docker Hub for `python:3.12-slim`.
+AegisLab does not ask the model or a prompt to keep these rules. **The infrastructure enforces them, and tests attack them.**
 
-**One command** (venv, dependencies, sandbox image, tests, DEMO-001, independent verification, with a PASS/FAIL line per stage; nonzero exit if any security test fails):
+Code paths below are relative to `aegislab/`.
 
-```bash
-cd aegislab
-scripts/quickstart.sh            # add --serve to run the console in the foreground (Ctrl-C stops it)
-```
-
-State goes to `var/quickstart/` (never to `evidence/` or `var/DEMO-001`). Re-running reuses a completed DEMO-001; delete `var/quickstart` to start over. The script creates only a project-local `.venv`, never installs globally, and never stops containers it did not start. Prerequisite failures (no Podman, not rootless, old Python, no network) print the stage, the cause and what to do.
-
-Step by step:
-
-```bash
-python -m venv .venv && . .venv/bin/activate
-pip install -r requirements.txt
-podman pull docker.io/library/python:3.12-slim
-
-pytest -q tests                                   # 297 tests; includes the security regression suites, the Phase 2 attack tests and Podman-based tests (skipped without Podman)
-AEGIS_VAR=var/mine python scripts/demo_run.py DEMO-001 --bundle-dir var/mine/bundles/DEMO-001
-python -m aegis.verify_cli --bundle var/mine/bundles/DEMO-001
-scripts/security_demo.sh                          # judge-facing demonstration (a few seconds once the image is built), fresh temp state, exits 0 only if every check behaves
-scripts/judge_demo.sh                              # PRESENTATION MODE (Phase 4): short, offline, deterministic; LLM evidence is PRECOMPUTED, no model runs; --pause, --record F.json
-AEGIS_VAR=var/mine AEGIS_DEMO_MODE=1 uvicorn aegis.api:app --host 127.0.0.1 --port 8400   # console
-```
-
-Evaluations (each writes only to the `--out` folder; the runner refuses to write into `evidence/` itself):
-
-```bash
-AEGIS_VAR=var/scratch python evaluation/run_evaluation.py --runs 10 --out evidence/validation_<date>/e1_e9_rerun     # original E1-E9 harness, ~2 min
-AEGIS_VAR=var/scratch python evaluation/run_validation.py --out evidence/validation_<date> --runs 30                 # audit tamper/truncation x30 + access matrix, ~3 min
-AEGIS_VAR=var/scratch python evaluation/timing_eval.py --runs 20 --out evidence/validation_<date>/timing.json         # held-out timing analysis + RTT, ~9 min (summaries only)
-AEGIS_VAR=var/scratch python evaluation/timing_closeout.py --seed 1 --out-dir evidence/closeout_<date>/timing/exec1     # one execution with run id, source hashes and raw per-request / per-round-trip files, ~8 min
-python evaluation/timing_aggregate.py --out evidence/closeout_<date>/timing/aggregate.json evidence/closeout_<date>/timing/exec*   # combine executions, held-out transfer, verdicts
-```
-
-To try the gated actions, use the "Viewing as" selector: Operator (create/freeze/start), Reviewer (release, tamper test), Blue or Red participant (gets 403 before release). The API enforces these identities. They are local demo tokens in `var/keys/tokens.json`; production would use SSO/OIDC. `AEGIS_DEMO_MODE=1` makes `GET /api/demo/identities` hand out every token to any local caller: demo only.
-
-**Static mode (no backend):** `python -m http.server 8000 -d web` and open http://127.0.0.1:8000. The site then loads `web/snapshot/` (exported by `scripts/export_snapshot.py` from the 15 Oct run) and says so in the top banner. Actions are disabled; tamper-test results there were computed by the local prototype at that time.
-
-### Independent verification of a run (reviewer side)
-
-A reviewer keeps three things off the host at release time: the exported bundle (`audit.jsonl`, `reviewer_checkpoints.jsonl`, `terminal_anchor.json`), and the broker public key pinned out of band (compare `signing_key_id`). Then:
-
-```bash
-python -m aegis.verify_cli --bundle <dir>          # exit 0 = valid AND complete; exit 1 = anything else
-python -m aegis.verify_cli --audit audit.jsonl --checkpoints vault.jsonl --pubkey <base64> \
-    --anchor terminal_anchor.json --run-id DEMO-001 --expect-state RELEASED --expect-events 25
-```
-
-The verifier is **fail-closed**: a log with no signed terminal checkpoint (or retained anchor) is never reported valid, because a truncated log cannot show that it was truncated. `--allow-in-progress` is the explicit opt-out for unfinished runs and old bundles; it exits 0 only with a stderr warning that completeness is not established.
-
-A published example is in `evidence/validation_2026-10-22/bundles/`: `VAL-001` must verify and `VAL-001_TAMPERED_truncated_last3` must fail. A completed, released `DEMO-001` that passes strict verification is in `evidence/closeout_2026-10-22/DEMO-001_released/` (`python -m aegis.verify_cli --bundle evidence/closeout_2026-10-22/DEMO-001_released`, exit 0). The **submitted** `evidence/DEMO-001/` bundle is the completed 15 Oct run in the legacy format; it has no terminal checkpoint, so strict verification rejects it ("no signed terminal checkpoint ... legacy checkpoints only"). `--allow-in-progress` checks chain and checkpoint consistency only (`ok: true, terminal_verified: false`) and is **not** equivalent to verifying a completed run. The legacy bundle is intentionally left unchanged.
-
-### Optional real-model backend
-
-Off by default. The stub keeps running unless you opt in:
-
-```bash
-export AEGIS_MODEL_BACKEND=openai_compatible
-export AEGIS_MODEL_BASE_URL=http://127.0.0.1:8081/v1     # loopback only unless AEGIS_MODEL_ALLOW_REMOTE=1
-export AEGIS_MODEL_NAME=<model id>
-export AEGIS_MODEL_API_KEY_FILE=/path/to/keyfile          # mode 0600; or AEGIS_MODEL_API_KEY
-```
-
-The setting is recorded in the frozen manifest (never the key); changing it after freeze fails the run. Requests are stateless (one message, no history or session id), proxies and redirects are ignored, an unreachable server fails the run closed (no fallback to the stub), and three consecutive errors abort. AegisLab cannot clear state inside the inference server. `evaluation/model_experiments.py` measures what it can (needs a local llama.cpp `llama-server` binary and a GGUF file; nothing is downloaded by the repo). Details and limits: `THREAT_MODEL.md` rows 4 and 10.
-
-## API (127.0.0.1:8400)
-
-| Method | Path | Who |
+| Boundary | How it is enforced | Code |
 |---|---|---|
-| GET | `/api/runs`, `/api/runs/{id}`, `/api/runs/{id}/events` | anyone (redacted; blue-config and attack-pack digests only for operator/reviewer until release) |
-| POST | `/api/runs`, `/api/runs/{id}/freeze`, `/api/runs/{id}/start` | operator |
-| POST | `/api/runs/{id}/defence-config` | blue participant / operator, CREATED only |
-| POST | `/api/runs/{id}/release` | reviewer, SEALED only |
-| GET | `/api/runs/{id}/artifacts` | participants / reviewer, RELEASED only |
-| GET | `/api/runs/{id}/evidence`, `/evidence.md` | reviewer, or anyone after release (header token only; `?token=` was removed) |
-| GET | `/api/runs/{id}/verify` | anyone |
-| POST | `/api/runs/{id}/tamper-test` | reviewer / operator (works on a copy) |
+| Workload isolation | Rootless Podman per workload: `--network none`, read-only root, all capabilities dropped, no-new-privileges, non-root user, pids/memory/CPU limits, private SELinux labels | `aegis/runtime.py` |
+| One controlled channel | Each sandbox gets a private mailbox directory; a trusted broker on the host reads and writes it with no-follow I/O, size and type checks. Identity comes from *which mailbox* a message is in, not from what the message claims | `sandbox/spool.py`, `aegis/runs.py` |
+| Role-based control plane | FastAPI with a server-side role gate (operator, reviewer, blue, red, observer); results stay behind the gate until a reviewer releases them | `aegis/api.py` |
+| Run lifecycle | `CREATED → FROZEN → RUNNING → SEALED → RELEASED`, or fail-closed `FAILED`. The defence configuration is frozen and attested before the run starts | `aegis/runs.py` |
+| Commitments | Red commits to every attack as `SHA-256(nonce ‖ 0x00 ‖ payload)` before it runs | `sandbox/red_agent.py`, `aegis/crypto.py` |
+| Model-session isolation | Fresh model worker per run (stub); for a real model, one stateless message per request, prompt cache off, and the broker withholds output carrying another run's canary | `aegis/model_client.py`, `aegis/runs.py` |
+| Tamper-evident audit | Hash-chained audit log, chained Ed25519 checkpoints, and a signed **terminal checkpoint** so that truncation is detectable | `aegis/audit.py`, `aegis/store.py` |
+| Independent verification | A separate, fail-closed verifier that checks an exported bundle against a pinned public key | `aegis/verify_cli.py` |
 
-Identity header: `X-Aegis-Token`.
+Workflow of one run: the **operator** creates the run, the **blue** participant submits a defence configuration, the operator **freezes** it (digests and attestation recorded) and **starts** the run. The **red** sandbox sends committed attacks through its mailbox; the broker routes them to the **blue defence runner** and the **model worker**, records every hop in the audit chain, and returns only what red is allowed to see. The run is **sealed**; a **reviewer** verifies and **releases** it; only then can participants read results. The exported evidence bundle verifies offline.
 
-## Threat model
+Full threat table, trust assumptions and residual risk: [`aegislab/THREAT_MODEL.md`](aegislab/THREAT_MODEL.md). Detailed technical reference (API table, verifier options, evaluation harness, design choices): [`aegislab/README.md`](aegislab/README.md) (written 23 Oct; some test counts in it are from earlier phases).
 
-**Assets:** attack payloads (red IP, must stay hidden from blue until release), defence configuration (blue IP, hidden from red), model state (must not carry over between runs), evaluation evidence (must be independently checkable).
+## Requirements
 
-**Adversaries:** a malicious or curious red workload, blue workload, or participant; a later run trying to read an earlier run; someone editing the audit log after the fact.
+- Linux with **rootless Podman** and cgroups v2. Tested only on **one Fedora host** (kernel 7.2, Podman 5.8.9, crun, SELinux enforcing).
+- Python 3.11 or newer (tested with 3.14).
+- Network access the first time: PyPI for the Python packages in `requirements.txt`, Docker Hub for `python:3.12-slim`.
+- No GPU, no model download and no API key for the judge path.
 
-**Trusted computing base:** host kernel, Podman/crun, the broker/control-plane process, the Ed25519 signing key, and the authorised reviewer who retains checkpoints.
+The scripts install nothing globally: they create a project-local `.venv/` and write runtime state under `var/` (both git-ignored).
 
-**Assumptions:** the host is not compromised; the reviewer keeps the vault copy or the terminal anchor outside the run store and pins the broker public key out of band (see `THREAT_MODEL.md`, section 2); participants cannot run code on the host.
+## Quickstart
 
-### What it protects against (tested, see `evidence/RESULTS.md` and `evidence/validation_2026-10-22/`)
-
-- Red reading blue's config, verdicts or release endpoint through the broker; spoofing the blue identity; running uncommitted or replayed payloads.
-- Network access from any sandbox (no interfaces except loopback).
-- Changing the defence configuration after freeze (API rejects; a modified frozen file makes the defence runner's attestation fail and the run fails closed).
-- Cross-run carry-over through a reused model worker (fresh container per run; canary probe detects reuse in the control experiment).
-- Editing, deleting, reordering, duplicating or rehashing audit entries; removing, reordering or swapping checkpoints; truncating the tail (including when the reviewer kept only an early checkpoint, as long as the terminal anchor or the full vault copy survives); checkpoints or anchors from another run; a terminal state that disagrees with the recorded lifecycle state.
-- Blue or red participants reading artifacts before release; release before seal or by a non-reviewer.
-
-### What it does not protect against, and when guarantees fail
-
-- **Broker, host kernel, runtime or signing-key compromise.** The broker sees everything and signs checkpoints; a compromised broker can read sealed artifacts and write false entries before signing. A hash chain cannot detect lies told at write time.
-- **Kernel or container-runtime escape.** Containers share the host kernel. MicroVMs (Kata, Firecracker) or gVisor are the next step.
-- **Shared-hardware side channels.** Last-level cache, memory bandwidth, scheduling and power remain shared. CPU quotas apply; per-tenant cpusets were *not* applied on the test host because the cpuset controller is not delegated to rootless users.
-- **Defence inference through authorised outputs.** Red legitimately sees refusals. On the 15 Oct in-sample measure, 250 ms buckets reduced a simple classifier from 0.80 to 0.57. The 22 Oct held-out analysis (three complete executions, n=200 per setting each, raw data kept in `evidence/closeout_2026-10-22/timing/`) found: no padding 0.795–0.800 (p=0.001 each), 100 ms 0.510–0.545, 250 ms 0.495–0.555, 500 ms 0.495–0.510, none significantly above chance (smallest p 0.136); 250 ms adds +198 to +201 ms to answered requests. Not distinguishable from chance at this n is not proof of absence.
-- **Model cache and cleanup on real inference servers.** Only the stub was tested. GPU KV-cache, CUDA contexts and prefix caching need their own boundary.
-- **Monitoring metadata.** Content is redacted, but event timing and counts are visible.
-- **Audit: what still defeats it.** The 15 Oct gap (reviewer keeps only the freeze checkpoint: 0/30 detected) is closed by the terminal checkpoint and the fail-closed verifier (30/30). Still undetected: an attacker who holds the signing key and replaces every retained copy (vault, anchor store, exported bundle); a compromised verifier or pinned key; a broker that signs false entries.
-- **Finite testing.** No leakage in these tests is evidence for this configuration, not proof of confidentiality.
-
-### GPU inference boundary (proposed, not implemented)
-
-CPU tooling isolation (these containers) is separate from GPU inference isolation. A real model server should run behind its own boundary, with prefix/KV caching disabled across tenants, a process restart or verified cache flush per run, and the canary probe kept as the verification step.
-
-## Language-model backend (optional, Phase 3 evidence)
-
-The default model worker is a deterministic stub. `AEGIS_MODEL_BACKEND=openai_compatible` makes the broker call a loopback OpenAI-compatible endpoint instead (see `aegis/model_client.py`); nothing is enabled implicitly, there is no stub fallback, and the whole exchange is bounded by `AEGIS_MODEL_TIMEOUT_S`. The broker withholds model output that carries another run's canary or a control-plane secret, and marks a run incomplete when the model service returned an error. Experiments: `evaluation/llm_isolation.py` (E1 to E5, needs a local `llama-server` and a GGUF file), results and how to reproduce them in `evidence/phase3_2026-10-23/README.md`, claims recomputed by `evaluation/check_claims.py`.
-
-## Design choices
-
-- **Terminal anchor instead of "more checkpoints".** Truncation cannot be shown by the log itself. The broker signs one terminal checkpoint when a run reaches RELEASED or FAILED, the chain is closed atomically with the final event (later events go to an unsigned `post_terminal.jsonl`), and verification requires that checkpoint. Where the vault and anchor store live decides how strong this is: `AEGIS_VAULT` / `AEGIS_ANCHORS` can point at storage the run-directory writer cannot reach.
-
-- **Mailbox instead of sockets or networks.** Tenants keep `--network none`. On this SELinux host, container processes may not `connectto` a host Unix socket, and disabling labels would weaken isolation. Files in a per-container `:Z` volume work with SELinux enforcing. Cost: about 4 ms per broker hop (measured).
-- **JSON files instead of a database.** Enough for the MVP; SQLite or PostgreSQL is proposed.
-- **Stub model.** Makes leakage and jailbreak behaviour deterministic and testable; it stays the default. The optional adapter (`aegis/model_client.py`) calls a real endpoint from the broker, not from a sandbox, because the sandboxes have no network.
-
-## Layout
-
-```
-aegis/        control plane: api.py, runs.py (lifecycle, broker, gate), audit.py, crypto.py, runtime.py, evidence.py, verify_cli.py
-sandbox/      code that runs inside containers (standard library only)
-samples/      synthetic attack pack and sample defence configuration
-web/          web console (vanilla JS); web/snapshot = static export
-tests/        pytest suite (test_core, test_audit_integrity, test_isolation, test_model_client)
-evaluation/   run_evaluation.py (E1-E9), run_validation.py, isolation_matrix.py, timing_eval.py, model_experiments.py
-evidence/     15 Oct results (results.json, RESULTS.md, DEMO-001/) and validation_2026-10-22/ (new, separate)
-scripts/      quickstart.sh, security_demo.sh/.py, judge_demo.sh/.py (presentation mode), demo_run.py, export_snapshot.py
-THREAT_MODEL.md  threat table, trust model, residual risk
-var/          runtime state (created on first run; contains demo keys, not committed)
+```bash
+git clone https://github.com/Invinciblx777/HIH.git
+cd HIH/aegislab                  # the prototype lives in aegislab/; every command below runs from there
+bash scripts/quickstart.sh       # venv, dependencies, sandbox image, full test suite, demo run DEMO-001, strict verification
 ```
 
-## Licences
+`quickstart.sh` prints one PASS/FAIL line per stage and exits non-zero if any stage or any security test fails. Prerequisite failures (no Podman, not rootless, old Python, no network) name the stage and the fix.
 
-Code: written for this hackathon by Team Tech Mavericks. Fonts in `web/fonts`: Montserrat, IBM Plex Sans and IBM Plex Mono, SIL Open Font License 1.1. Mountain photograph: from the official Hack in Hills ’26 presentation template. Python dependencies: FastAPI (MIT), Uvicorn (BSD-3), cryptography (Apache-2.0/BSD).
+## Judge demo (offline, a few seconds)
+
+```bash
+bash scripts/judge_demo.sh            # add --pause to step with Enter, --record out.json for a timestamped transcript
+bash scripts/security_demo.sh         # the longer original demonstration
+```
+
+What you will see, and what kind of result each one is:
+
+| # | Demonstration | Command / step | Result type |
+|---|---|---|---|
+| 1 | **Rejected attack.** Red tries to read sealed results and to release the run, a reviewer reads before release, a forged token is used, the red sandbox sends forbidden broker requests, and a hostile container plants a symlink and a FIFO in the broker's mailbox. All are denied; the broker logs the denials | `judge_demo.sh` steps 2–3, `security_demo.sh` step 3 | **LIVE** (real rootless containers, stub model) |
+| 2 | **Allowed operation.** A legitimate run is created, frozen, started, sealed and released by the right roles | `judge_demo.sh` step 2, `security_demo.sh` steps 2 and 4 | **LIVE** (stub model) |
+| 3 | **Evidence verification.** The released bundle passes strict verification with the key and terminal hash pinned | `judge_demo.sh` step 4, `security_demo.sh` step 5 | **LIVE** |
+| 4 | **Tamper rejection.** A copy with entries removed or edited fails verification; the original stays byte-identical | `judge_demo.sh` step 5, `security_demo.sh` step 6 | **LIVE** (on copies) |
+| 5 | **Real-model evidence.** Cross-session leak tests on a real model, next to positive controls that are built to leak | `judge_demo.sh` step 6, `security_demo.sh` step 8 | **PRECOMPUTED REAL-MODEL** (saved runs, recomputed from raw files on screen; no model runs during the demo) |
+| — | The Phase 1 broker overwriting the audit log before the fix | `judge_demo.sh` step 3 | **HISTORICAL** (recorded 23 Oct, labelled as such) |
+
+The demos use a deterministic **stub** model by design: it makes leakage behaviour testable and keeps the demo offline. Step-by-step instructions and expected output: [`docs/JUDGE_GUIDE.md`](docs/JUDGE_GUIDE.md). A recorded transcript of a real successful run is in [`aegislab/evidence/phase4_2026-10-23/judge_demo_transcript.txt`](aegislab/evidence/phase4_2026-10-23/judge_demo_transcript.txt) (a recording, not a live run).
+
+## Verify the evidence yourself
+
+```bash
+. .venv/bin/activate
+python -m aegis.verify_cli --bundle evidence/closeout_2026-10-22/DEMO-001_released --run-id DEMO-001 --expect-state RELEASED   # exit 0
+python -m aegis.verify_cli --bundle evidence/validation_2026-10-22/bundles/VAL-001 --run-id VAL-001 --expect-state RELEASED      # exit 0
+python -m aegis.verify_cli --bundle evidence/validation_2026-10-22/bundles/VAL-001_TAMPERED_truncated_last3 --run-id VAL-001 --expect-state RELEASED   # exit 1: tampered
+python evaluation/check_claims.py      # recomputes the quoted figures from the raw evidence files
+```
+
+The verifier is **fail-closed**: a log without a signed terminal checkpoint is never reported as valid. `evidence/DEMO-001/` is the original 15 Oct bundle in the legacy format; strict verification rejects it by design.
+
+## Measured results
+
+From the evidence in `aegislab/evidence/` (one Fedora host, CPU only). Every figure is recomputed from raw files by `python evaluation/check_claims.py`. Validation commands, exit codes and anything skipped: [`docs/VALIDATION_2026-10-25.md`](docs/VALIDATION_2026-10-25.md); per-phase detail in [`PHASE2_SECURITY_REPORT.md`](PHASE2_SECURITY_REPORT.md), [`PHASE3_LLM_SECURITY_REPORT.md`](PHASE3_LLM_SECURITY_REPORT.md) and [`PHASE4_PRESENTATION_REPORT.md`](PHASE4_PRESENTATION_REPORT.md).
+
+- **Role boundaries:** a 560-attempt role × operation × lifecycle-state matrix: 419 / 419 expected denials denied, 141 / 141 expected successes succeeded, 0 unexpectedly permitted.
+- **Hostile mailbox attack** from a real rootless container (symlink and FIFO planted at guessed names): blocked; the audit log stays intact and the broker never blocks.
+- **Audit integrity:** a released run verifies strictly; tampered copies are rejected.
+- **Overhead:** 2.59–2.84 ms median per broker hop (idle host, stub model).
+- **Timing side channel:** a simple classifier reads the defence's decision from response time with 0.795–0.800 accuracy unpadded; 250 ms response padding lowers it to 0.495–0.555, at +198 to +201 ms per answered request. This weakens one classifier; it does **not** show the channel is gone.
+- **Real model — PRECOMPUTED from saved runs** (Qwen2.5-0.5B Q4_K_M, llama.cpp on CPU, loopback only): 0 / 104 sessions recovered another session's canary (1,040 trials); full pipeline 0 / 26 runs. The positive controls that are built to leak did leak (16 / 16 and 13 / 16 sessions), so the probes can detect a leak. Raw runs: `aegislab/evidence/phase3_2026-10-23/llm/`.
+
+## Known limitations
+
+Stated here because a security result is only as credible as its limits.
+
+- **Trusted broker and signing key.** The broker sees everything and signs the checkpoints. A compromised broker or a stolen key can produce false but consistent records.
+- **Global role tokens.** Tokens are per role, not per run, and are local demo tokens (`var/keys/tokens.json`). `AEGIS_DEMO_MODE=1` hands every token to any local caller: demo only.
+- **One host.** Validated on a single Fedora machine. Containers share the host kernel; a kernel or runtime escape is out of scope.
+- **Small model, few prompts.** One 0.5B model on CPU and ten probe wordings; three probes stayed silent even when sharing was on purpose. Zero observed leaks is not proof of zero risk (one-sided 95% upper bound: 2.84% of sessions for this setup).
+- **Detector gaps.** The canary detector misses some re-encodings, for example **base64**.
+- **Timing.** Padding weakens one measured classifier; other side channels (cache, memory bandwidth, scheduling, power) remain shared.
+- **GPU and accelerator KV-cache isolation were not tested.** Only CPU inference was exercised. The proposed GPU boundary is described in `aegislab/README.md` ("GPU inference boundary").
+- **Saved real-model results.** The judge and security demos show the real-model numbers from saved runs; they never run a model live. Re-running the experiments needs a local `llama-server` binary and a GGUF model file (not included, nothing is downloaded by the repo) and takes about 3.5 hours (`evaluation/llm_isolation.py`).
+- An earlier CPU-contention measurement (+37–52% round-trip time) did not reproduce in later runs (−5% to +1%).
+
+## Security and responsible use
+
+- Run the control plane on **loopback only** (`127.0.0.1`). Never expose the API to a network: it can launch adversarial workloads, and the demo tokens are not real authentication.
+- All attack packs, canaries and keys in this repository are synthetic. Test keys such as `sk-test-SECRET-KEY-…` in `tests/` are fixtures that open nothing.
+- Report vulnerabilities as described in [`SECURITY.md`](SECURITY.md).
+
+## Repository layout
+
+The repository is the release package. The prototype is in `aegislab/`; the reports, deck and video sit beside it, and the claim checkers read them from there.
+
+```
+aegislab/                    the prototype (start here)
+  aegis/                     control plane: api.py, runs.py (lifecycle, broker, gate), audit.py, crypto.py, runtime.py, evidence.py, verify_cli.py, model_client.py
+  sandbox/                   code that runs inside the containers (standard library only)
+  samples/                   synthetic attack pack and defence configuration
+  scripts/                   quickstart.sh, judge_demo.sh, security_demo.sh, demo_run.py, export_snapshot.py
+  tests/                     pytest suite (security regression, Phase 2 attack tests, Phase 3 LLM tests, Podman-based tests)
+  evaluation/                experiment harnesses; check_claims.py and check_presentation.py recompute every quoted figure
+  evidence/                  dated evidence sets, each with its own README; never edited after recording
+  web/                       static web console (web/snapshot is a 15 Oct export; its banner says so)
+  THREAT_MODEL.md, README.md threat table and technical reference
+README_FIRST.md              release-package guide (rc4, 23 Oct)
+PHASE2/3/4 reports, Judge_QA.md, PHASE4_CLAIM_MATRIX.md, VALIDATION_ADDENDUM_2026-10-22.md, ...   reports; older ones keep the figures of their date
+Tech_Mavericks_AegisLab_Submission.pptx / .pdf, Tech_Mavericks_AegisLab_Pitch_120s.mp4, Captions.srt, Voiceover_Script.txt, Storyboard_Timestamped.txt
+presentation_src/            deck and video build sources (includes the official event template)
+assets/                      15 Oct diagrams and screenshots (historical figures; not used by the current deck)
+MANIFEST.sha256              SHA-256 of the 442 files of release candidate rc4: sha256sum -c MANIFEST.sha256
+docs/                        judge guide and validation record of this repository
+tools/publication_scan.py    pre-publication secret and private-data scan (git index and history)
+```
+
+## Licence
+
+Code: MIT, see [`LICENSE`](LICENSE). Fonts in `aegislab/web/fonts/`: SIL Open Font License 1.1, see [`aegislab/web/fonts/OFL.txt`](aegislab/web/fonts/OFL.txt). The event logos, the mountain photograph (`aegislab/web/img/mountain.jpg`) and `presentation_src/official_template.pptx` come from the official Hack in Hills '26 template and are not covered by the MIT licence. Python dependencies: FastAPI (MIT), Uvicorn (BSD-3-Clause), cryptography (Apache-2.0 / BSD).
