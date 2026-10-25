@@ -1,0 +1,65 @@
+AegisLab · 120-second pitch · timestamped storyboard
+1920x1080, 30 fps, H.264 + AAC 48 kHz stereo, 120.000 s. Times are start-end seconds of the rendered file.
+
+00:00-00:12  The problem  (slide 1)
+  Visual: Slide 1: team and concept. Slow push-in on the problem statement.
+  Speech: 0.4-11.5 s
+    - An AI safety finding is only as trustworthy as the test that produced it.
+    - Red-team attacks, blue-team defenses and the model under test must coexist without leaking protected state.
+
+00:12-00:25  Threat model  (slide 2)
+  Visual: Slide 2: threat model. Pan from the diagram to the five forbidden flows.
+  Speech: 12.5-25.2 s
+    - AegisLab is controlled, measurable, adversarial testing infrastructure.
+    - Five flows are forbidden: red reading the defense rules, one session reading another's data, and three more.
+    - Each one is attacked in a test.
+
+00:26-00:39  Architecture  (slide 3)
+  Visual: Slide 3: security architecture. Pan across layers; amber residual-trust bar last.
+  Speech: 26.2-38.9 s
+    - Sandboxes have no network.
+    - One trusted broker is the only path, and it binds identity to the mailbox.
+    - The audit log is hash-chained and signed.
+    - The broker and the host kernel stay trusted, not defended.
+
+00:40-00:57  Adversarial demonstration  (slide 4)
+  Visual: Slide 4 for the first seconds, then the recorded terminal output of step 3, full screen, unedited text.
+  On-screen tag: STUB MODEL · recorded run of scripts/judge_demo.sh
+  From 43.5 s: the recorded terminal output of scripts/judge_demo.sh step 3, full screen. Text is the real transcript; nothing is typed or replayed faster.
+  Speech: 40.0-56.9 s
+    - Here is a recorded attack.
+    - A hostile sandbox plants a symlink and a FIFO in the broker's mailbox.
+    - On our first broker, that overwrote the audit log.
+    - Now the replies arrive intact, nothing is written outside, and nothing blocks.
+    - Regression tests keep it that way.
+
+00:57-01:23  Real-model evidence  (slide 5)
+  Visual: Slide 5: bars first, then the limits panel. Tag marks this as the real model, not the stub.
+  On-screen tag: REAL MODEL · Qwen2.5-0.5B on CPU · precomputed from saved runs
+  Speech: 57.9-82.3 s
+    - Now a real model: Qwen2.5-0.5B, on a CPU.
+    - Through the adapter, 0 of 104 sessions recovered another session's canary, across 1,040 trials.
+    - Controls that share context leaked in 16 of 16 and 13 of 16 sessions, so the test can see a leak.
+    - The upper bound is 2.84% of sessions: not proof of zero.
+
+01:23-01:36  Audit integrity  (slide 6)
+  Visual: Slide 6: green verified panel, then red tampered panel.
+  On-screen tag: STUB MODEL · recorded run of scripts/judge_demo.sh
+  Speech: 83.4-96.3 s
+    - The evidence is verifiable.
+    - A released run passes strict verification.
+    - Remove three entries from a copy, and verification fails.
+    - A compromised broker could still sign a false record, and we say so.
+
+01:37-01:49  Limits  (slide 7)
+  Visual: Slide 7: measured cost, residual risk, deployment.
+  Speech: 97.3-109.2 s
+    - The limits stay on the slide: one small model, a detector that misses base64, and GPU isolation untested.
+    - Timing padding costs 200 milliseconds and does not prove the channel is gone.
+
+01:50-01:59  Conclusion  (slide 8)
+  Visual: Slide 8: three contributions and the closing line.
+  Speech: 110.2-116.6 s
+    - Enforced boundaries, reproducible validation, and verifiable evidence, with the residual risk disclosed.
+
+Media notes: the slides are renders of the submitted PDF. Results shown for the real model are precomputed from saved runs (Qwen2.5-0.5B Q4_K_M, CPU llama.cpp, loopback); the demo footage uses the deterministic stub model. No playback speed change anywhere.

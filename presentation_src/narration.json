@@ -1,0 +1,361 @@
+{
+ "note": "Single source for Voiceover_Script.txt, Captions.srt and Storyboard_Timestamped.txt. 'text' is what is shown in captions and the script; 'tts' is the spelling fed to the speech engine. Same number of sentences in both.",
+ "voice": "piper en_US-lessac-medium",
+ "segments": [
+  {
+   "id": "S1",
+   "start": 0.4,
+   "end": 12.1,
+   "section": "The problem",
+   "slide": 1,
+   "tag": "",
+   "visual": "Slide 1: team and concept. Slow push-in on the problem statement.",
+   "sentences": [
+    {
+     "text": "An AI safety finding is only as trustworthy as the test that produced it.",
+     "tts": "An A I safety finding is only as trustworthy as the test that produced it."
+    },
+    {
+     "text": "Red-team attacks, blue-team defenses and the model under test must coexist without leaking protected state.",
+     "tts": "Red team attacks, blue team defenses, and the model under test must coexist, without leaking protected state."
+    }
+   ],
+   "view": [
+    [
+     0,
+     0,
+     0.9,
+     20
+    ],
+    [
+     1,
+     0.3,
+     1.2,
+     19.4
+    ]
+   ]
+  },
+  {
+   "id": "S2",
+   "start": 12.5,
+   "end": 25.8,
+   "section": "Threat model",
+   "slide": 2,
+   "tag": "",
+   "visual": "Slide 2: threat model. Pan from the diagram to the five forbidden flows.",
+   "sentences": [
+    {
+     "text": "AegisLab is controlled, measurable, adversarial testing infrastructure.",
+     "tts": "Aegis Lab is controlled, measurable, adversarial testing infrastructure."
+    },
+    {
+     "text": "Five flows are forbidden: red reading the defense rules, one session reading another's data, and three more.",
+     "tts": "Five flows are forbidden: red reading the defense rules, one session reading another's data, and three more."
+    },
+    {
+     "text": "Each one is attacked in a test.",
+     "tts": "Each one is attacked in a test."
+    }
+   ],
+   "view": [
+    [
+     0,
+     0,
+     0.9,
+     20
+    ],
+    [
+     0.45,
+     0,
+     2.5,
+     16.5
+    ],
+    [
+     1,
+     3.5,
+     2.5,
+     16.5
+    ]
+   ]
+  },
+  {
+   "id": "S3",
+   "start": 26.2,
+   "end": 39.6,
+   "section": "Architecture",
+   "slide": 3,
+   "tag": "",
+   "visual": "Slide 3: security architecture. Pan across layers; amber residual-trust bar last.",
+   "sentences": [
+    {
+     "text": "Sandboxes have no network.",
+     "tts": "Sandboxes have no network."
+    },
+    {
+     "text": "One trusted broker is the only path, and it binds identity to the mailbox.",
+     "tts": "One trusted broker is the only path, and it binds identity to the mailbox."
+    },
+    {
+     "text": "The audit log is hash-chained and signed.",
+     "tts": "The audit log is hash chained and signed."
+    },
+    {
+     "text": "The broker and the host kernel stay trusted, not defended.",
+     "tts": "The broker and the host kernel stay trusted, not defended."
+    }
+   ],
+   "view": [
+    [
+     0,
+     0,
+     0.9,
+     20
+    ],
+    [
+     0.4,
+     0,
+     2.5,
+     16.5
+    ],
+    [
+     1,
+     3.5,
+     2.5,
+     16.5
+    ]
+   ]
+  },
+  {
+   "id": "S4",
+   "start": 40.0,
+   "end": 57.5,
+   "section": "Adversarial demonstration",
+   "slide": 4,
+   "tag": "STUB MODEL · recorded run of scripts/judge_demo.sh",
+   "terminal_from": 43.5,
+   "visual": "Slide 4 for the first seconds, then the recorded terminal output of step 3, full screen, unedited text.",
+   "sentences": [
+    {
+     "text": "Here is a recorded attack.",
+     "tts": "Here is a recorded attack."
+    },
+    {
+     "text": "A hostile sandbox plants a symlink and a FIFO in the broker's mailbox.",
+     "tts": "A hostile sandbox plants a symlink and a F I F O in the broker's mailbox."
+    },
+    {
+     "text": "On our first broker, that overwrote the audit log.",
+     "tts": "On our first broker, that overwrote the audit log."
+    },
+    {
+     "text": "Now the replies arrive intact, nothing is written outside, and nothing blocks.",
+     "tts": "Now the replies arrive intact, nothing is written outside, and nothing blocks."
+    },
+    {
+     "text": "Regression tests keep it that way.",
+     "tts": "Regression tests keep it that way."
+    }
+   ],
+   "view": [
+    [
+     0,
+     0,
+     0.9,
+     20
+    ],
+    [
+     1,
+     0.4,
+     1.8,
+     19.2
+    ]
+   ]
+  },
+  {
+   "id": "S5",
+   "start": 57.9,
+   "end": 83.0,
+   "section": "Real-model evidence",
+   "slide": 5,
+   "tag": "REAL MODEL · Qwen2.5-0.5B on CPU · precomputed from saved runs",
+   "visual": "Slide 5: bars first, then the limits panel. Tag marks this as the real model, not the stub.",
+   "sentences": [
+    {
+     "text": "Now a real model: Qwen2.5-0.5B, on a CPU.",
+     "tts": "Now a real model: Qwen two point five, zero point five B, on a C P U."
+    },
+    {
+     "text": "Through the adapter, 0 of 104 sessions recovered another session's canary, across 1,040 trials.",
+     "tts": "Through the adapter, zero of one hundred four sessions recovered another session's canary, across one thousand forty trials."
+    },
+    {
+     "text": "Controls that share context leaked in 16 of 16 and 13 of 16 sessions, so the test can see a leak.",
+     "tts": "Controls that share context leaked in sixteen of sixteen and thirteen of sixteen sessions, so the test can see a leak."
+    },
+    {
+     "text": "The upper bound is 2.84% of sessions: not proof of zero.",
+     "tts": "The upper bound is two point eight four percent of sessions: not proof of zero."
+    }
+   ],
+   "view": [
+    [
+     0,
+     0,
+     0.9,
+     20
+    ],
+    [
+     0.2,
+     0,
+     2.5,
+     16.5
+    ],
+    [
+     0.62,
+     0,
+     2.5,
+     16.5
+    ],
+    [
+     0.8,
+     3.5,
+     2.5,
+     16.5
+    ],
+    [
+     1,
+     3.5,
+     2.5,
+     16.5
+    ]
+   ]
+  },
+  {
+   "id": "S6",
+   "start": 83.4,
+   "end": 96.9,
+   "section": "Audit integrity",
+   "slide": 6,
+   "tag": "STUB MODEL · recorded run of scripts/judge_demo.sh",
+   "visual": "Slide 6: green verified panel, then red tampered panel.",
+   "sentences": [
+    {
+     "text": "The evidence is verifiable.",
+     "tts": "The evidence is verifiable."
+    },
+    {
+     "text": "A released run passes strict verification.",
+     "tts": "A released run passes strict verification."
+    },
+    {
+     "text": "Remove three entries from a copy, and verification fails.",
+     "tts": "Remove three entries from a copy, and verification fails."
+    },
+    {
+     "text": "A compromised broker could still sign a false record, and we say so.",
+     "tts": "A compromised broker could still sign a false record, and we say so."
+    }
+   ],
+   "view": [
+    [
+     0,
+     0,
+     0.9,
+     20
+    ],
+    [
+     0.2,
+     0,
+     2.8,
+     16.5
+    ],
+    [
+     0.6,
+     0,
+     2.8,
+     16.5
+    ],
+    [
+     0.85,
+     3.5,
+     2.8,
+     16.5
+    ],
+    [
+     1,
+     3.5,
+     2.8,
+     16.5
+    ]
+   ]
+  },
+  {
+   "id": "S7",
+   "start": 97.3,
+   "end": 109.8,
+   "section": "Limits",
+   "slide": 7,
+   "tag": "",
+   "visual": "Slide 7: measured cost, residual risk, deployment.",
+   "sentences": [
+    {
+     "text": "The limits stay on the slide: one small model, a detector that misses base64, and GPU isolation untested.",
+     "tts": "The limits stay on the slide: one small model, a detector that misses base sixty four, and G P U isolation untested."
+    },
+    {
+     "text": "Timing padding costs 200 milliseconds and does not prove the channel is gone.",
+     "tts": "Timing padding costs two hundred milliseconds and does not prove the channel is gone."
+    }
+   ],
+   "view": [
+    [
+     0,
+     0,
+     0.9,
+     20
+    ],
+    [
+     0.5,
+     3.5,
+     2.5,
+     16.5
+    ],
+    [
+     1,
+     0,
+     2.5,
+     16.5
+    ]
+   ]
+  },
+  {
+   "id": "S8",
+   "start": 110.2,
+   "end": 119.8,
+   "section": "Conclusion",
+   "slide": 8,
+   "tag": "",
+   "visual": "Slide 8: three contributions and the closing line.",
+   "sentences": [
+    {
+     "text": "Enforced boundaries, reproducible validation, and verifiable evidence, with the residual risk disclosed.",
+     "tts": "Enforced boundaries, reproducible validation, and verifiable evidence, with the residual risk disclosed."
+    }
+   ],
+   "view": [
+    [
+     0,
+     0,
+     0.9,
+     20
+    ],
+    [
+     1,
+     0,
+     0.9,
+     20
+    ]
+   ]
+  }
+ ]
+}

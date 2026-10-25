@@ -1,0 +1,28 @@
+AegisLab · 120-second pitch · voice-over script
+Same words as Captions.srt. Voice: piper en_US-lessac-medium (local speech synthesis). Spoken pace is not altered to fit.
+
+[00:00-00:12] THE PROBLEM
+An AI safety finding is only as trustworthy as the test that produced it. Red-team attacks, blue-team defenses and the model under test must coexist without leaking protected state.
+
+[00:12-00:25] THREAT MODEL
+AegisLab is controlled, measurable, adversarial testing infrastructure. Five flows are forbidden: red reading the defense rules, one session reading another's data, and three more. Each one is attacked in a test.
+
+[00:26-00:39] ARCHITECTURE
+Sandboxes have no network. One trusted broker is the only path, and it binds identity to the mailbox. The audit log is hash-chained and signed. The broker and the host kernel stay trusted, not defended.
+
+[00:40-00:57] ADVERSARIAL DEMONSTRATION
+Here is a recorded attack. A hostile sandbox plants a symlink and a FIFO in the broker's mailbox. On our first broker, that overwrote the audit log. Now the replies arrive intact, nothing is written outside, and nothing blocks. Regression tests keep it that way.
+
+[00:57-01:23] REAL-MODEL EVIDENCE
+Now a real model: Qwen2.5-0.5B, on a CPU. Through the adapter, 0 of 104 sessions recovered another session's canary, across 1,040 trials. Controls that share context leaked in 16 of 16 and 13 of 16 sessions, so the test can see a leak. The upper bound is 2.84% of sessions: not proof of zero.
+
+[01:23-01:36] AUDIT INTEGRITY
+The evidence is verifiable. A released run passes strict verification. Remove three entries from a copy, and verification fails. A compromised broker could still sign a false record, and we say so.
+
+[01:37-01:49] LIMITS
+The limits stay on the slide: one small model, a detector that misses base64, and GPU isolation untested. Timing padding costs 200 milliseconds and does not prove the channel is gone.
+
+[01:50-01:59] CONCLUSION
+Enforced boundaries, reproducible validation, and verifiable evidence, with the residual risk disclosed.
+
+Spoken words: 269
