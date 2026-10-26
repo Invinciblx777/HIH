@@ -61,7 +61,8 @@ Python packages installed with exact constraints, Playwright pinned to 1.64.1. P
 3. **Unsigned post-terminal audit records** (RR-6): labelled unsigned in the UI and API, outside the verified evidence.
 4. **Global login lockout** (RR-2): 20 wrong codes block logins for 60 s; availability only.
 5. **Slow request bodies** (RR-3): no body-read timeout; bounded at 256 KiB per request; local only.
-6. **Hosted CI**: see `R35_GITHUB_CI_RESULTS.md` for whether the workflow has run on GitHub.
+6. **Hosted CI covers only the container-free gates.** The workflow passed on GitHub for `52db77d`
+   (`R35_GITHUB_CI_RESULTS.md`). The Podman-dependent checks are proven only on the Fedora host.
 
 **The console must not be exposed on a network or a public URL.** It launches real sandboxes and the process holds the
 broker's signing key. A public source repository does not mean a hosted working instance exists.

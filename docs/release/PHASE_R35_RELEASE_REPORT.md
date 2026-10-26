@@ -7,8 +7,9 @@ does not change the UI. Fields that depend on an action not yet taken are marked
 
 ## 1. Release status
 
-**Status: READY FOR PUSH — APPROVAL REQUIRED.** Local review and gates pass; nothing has been pushed, merged or tagged
-on GitHub by this phase yet.
+**Status at the time of this commit: READY TO MERGE — APPROVAL REQUIRED.** The local review and gates pass. The branch
+was pushed with approval, PR #5 is open, and hosted CI passed on the reviewed commit `52db77d`. Nothing is merged or
+tagged yet. Merge facts are recorded after the merge, outside this file (see section 8).
 
 ## 2. Git state
 
@@ -18,12 +19,13 @@ on GitHub by this phase yet.
 | Public `main` at the start of R3.5 | `209d386` (merge of PR #4, Phase R2); unchanged since the R3 base |
 | Original R3 head | `9516944` (local annotated tag `aegislab-r3-rc1`, not published) |
 | R3 commits | `74969d7`, `3a66d76`, `8c783ab`, `ddbfd85`, `9516944` (merge base with `main`: `209d386`) |
-| R3.5 commit | the commit that adds this file, on top of `9516944` (CI workflow pins, README console notes, `docs/release/`) |
+| R3.5 commit (reviewed) | `52db77d` on top of `9516944` (CI workflow pins, README console notes, `docs/release/`) |
+| R3.5 record commit | the commit that fills in these CI results (documentation only) |
 | R3 pushed before R3.5 | no (`origin` had no `r3/*` branch, no R3 pull request, no workflow run) |
-| Remote branch SHA | PENDING_APPROVAL |
-| Pull request | PENDING_APPROVAL |
-| CI run | PENDING_APPROVAL (see `R35_GITHUB_CI_RESULTS.md`) |
-| Merge commit on `main` | PENDING_APPROVAL |
+| Remote branch SHA | `52db77d2ccf390e5af73e86bc56e8654d1e8eec7` at push; it matched the local SHA |
+| Pull request | https://github.com/Invinciblx777/HIH/pull/5 (against `main`, mergeable, `main` not protected) |
+| CI run | success: https://github.com/Invinciblx777/HIH/actions/runs/40329363729 (PR) and 40329309774 (push) |
+| Merge commit on `main` | `7434152` (PR #5 merged 26 Oct 2026 17:38:12 UTC by Invinciblx777; recorded in Phase R4, see section 9) |
 | Release tag published | no (tag publication was not requested) |
 
 ## 3. What R3.5 changed
@@ -73,11 +75,15 @@ single local operator, unsigned post-terminal audit records, global login lockou
 
 ## 7. Hosted CI
 
-PENDING_APPROVAL. The workflow has never run on GitHub. Result and URL will be recorded in `R35_GITHUB_CI_RESULTS.md`.
+**Passed** on `52db77d`, in the first workflow runs the repository has ever had. Both runs succeeded: release gates 8/8
+PASS with 0 skipped, 449 container-free tests and 6 browser tests. Details are in `R35_GITHUB_CI_RESULTS.md`. Hosted CI
+does not cover the Podman-dependent checks; section 4 records those.
 
-## 8. Post-merge clean-clone validation
+## 8. Merge and post-merge clean-clone validation
 
-NOT_RUN (depends on the merge).
+NOT_RUN when this file was committed. The merge needs separate approval. After the merge, the merge SHA and the
+clean-clone results go into the PR #5 conversation and the team's handoff. This file is not edited again on `main`, so
+it never claims a result that did not exist when it was written.
 
 ## 9. Rollback
 
@@ -86,7 +92,22 @@ a new pull request. `main` at `209d386` is the last pre-R3 state. Never force-pu
 
 ## 10. Human actions
 
-1. Approve pushing `r3/security-hardening` and opening the pull request.
-2. After green CI, review and approve the merge.
+1. Approve pushing `r3/security-hardening` and opening the pull request. Done: approved and pushed on 26 Oct.
+2. Review and approve the merge of PR #5. Pending.
 3. Optionally approve publishing a release tag (not done without separate approval).
 4. Submission on Unstop (deadline 28 October 2026, IST) is a team action.
+
+## 9. Post-merge record (added in Phase R4, 26 Oct 2026)
+
+This section was written after the fact from the public repository; the sections above keep their original wording.
+
+| Item | Value |
+|---|---|
+| PR #5 | merged 2026-10-26 17:38:12 UTC by Invinciblx777, merge commit `743415223e916d31c43c48f648d31524c8ba1d88` |
+| `main` after the merge | `7434152` (no later commits at the time of the R4 check) |
+| CI on the merge commit | run 40370478665, `push` to `main`, 17:38:15 to 17:41:04 UTC, job `gates` success, artifact `release-gate-logs` (id 12673006726): `summary: 0 failed, 0 skipped`, pytest-container-free 449 passed / 2 skipped (the two browser modules, Playwright not in `.venv` by design) / 14 deselected |
+| Record commit `1cdca1b` | made locally on `r3/security-hardening` after the push and never pushed, so it is not in `main`. Its CI-results text is carried into R4 unchanged in `R35_GITHUB_CI_RESULTS.md` |
+| Post-merge clean-clone validation | done in Phase R4 on `7434152`: `docs/release/PHASE_R4_FINAL_REPORT.md` |
+| Tag `aegislab-r3-rc1` | still local only (on `9516944`), not published |
+| Submission channel | the team states submission is **not** through Unstop; the deadline is 28 Oct 2026 (IST) under the organizer's separate instructions. Item 4 in section 8 is superseded by `docs/release/R4_SUBMISSION_CHECKLIST.md` |
+
