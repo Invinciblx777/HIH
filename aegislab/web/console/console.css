@@ -576,6 +576,7 @@ dialog.confirm .row { justify-content: flex-end; margin-top: 18px; }
   .facet + .facet { border-top: 1px solid var(--line); padding-top: 12px; }
   .gtools { top: 10px; right: 10px; gap: 8px; }
   .gfoot { padding: 6px 14px 10px; }
+  .btn.lg { white-space: normal; height: auto; min-height: var(--ctl-h-lg); padding-block: 8px; text-align: center; }   /* R4: long labels (Verify with the independent verifier) wrap instead of running off a phone screen */
   .kinds .total { margin-left: 0; width: 100%; }
   .persp a { font-size: 20px; }
   .steps > li { grid-template-columns: minmax(0, 1fr); gap: 8px; }

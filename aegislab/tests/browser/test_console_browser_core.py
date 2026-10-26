@@ -228,3 +228,22 @@ def test_graph_caption_does_not_cover_the_drawing(server, browser, vp):
     no_overflow(page)
     assert not errors, errors
     ctx.close()
+
+
+@pytest.mark.parametrize("width", [320, 390])
+def test_evidence_actions_fit_a_phone_screen(server, browser, width):
+    """R4 regression: on a phone the evidence sheet's main action, "Verify with the independent verifier", was a fixed-width
+    pill that ran 18 to 88 px past the right edge of the screen, cutting off its label."""
+    ctx = browser.new_context(viewport={"width": width, "height": 844}, device_scale_factor=2, is_mobile=True, has_touch=True)
+    page = ctx.new_page()
+    errors = watch(page)
+    go(page, server["base"], "#/evidence?open=DEMO-001-RELEASED")
+    expect(page.locator("#do-verify")).to_be_visible()
+    for sel in ("#do-verify", "#sheet-body .btn"):
+        for b in page.locator(sel).all():
+            if b.is_visible():
+                r = b.bounding_box()
+                assert r["x"] >= 0 and r["x"] + r["width"] <= width + 1, "%s runs off the screen: %s" % (sel, r)
+    no_overflow(page)
+    assert not errors, errors
+    ctx.close()
