@@ -76,6 +76,14 @@ What you will see, and what kind of result each one is:
 
 The demos use a deterministic **stub** model by design: it makes leakage behaviour testable and keeps the demo offline. Step-by-step instructions and expected output: [`docs/JUDGE_GUIDE.md`](docs/JUDGE_GUIDE.md). A recorded transcript of a real successful run is in [`aegislab/evidence/phase4_2026-10-23/judge_demo_transcript.txt`](aegislab/evidence/phase4_2026-10-23/judge_demo_transcript.txt) (a recording, not a live run).
 
+## Interactive prototype console
+
+```bash
+bash scripts/start_prototype.sh       # then open http://127.0.0.1:8400 (loopback only; Ctrl-C stops it)
+```
+
+The console is a browser interface on the same control plane. It starts live runs in rootless containers, runs four allowlisted attack scenarios against them, shows the security events, and verifies (and tampers with copies of) the signed evidence through `aegis.verify_cli`. Without Podman it starts in a labelled degraded mode with a recorded replay. Guide: [`docs/prototype/PROTOTYPE_GUIDE.md`](docs/prototype/PROTOTYPE_GUIDE.md). Five-minute judge path: [`docs/prototype/JUDGE_WALKTHROUGH.md`](docs/prototype/JUDGE_WALKTHROUGH.md).
+
 ## Verify the evidence yourself
 
 ```bash
@@ -128,11 +136,11 @@ aegislab/                    the prototype (start here)
   aegis/                     control plane: api.py, runs.py (lifecycle, broker, gate), audit.py, crypto.py, runtime.py, evidence.py, verify_cli.py, model_client.py
   sandbox/                   code that runs inside the containers (standard library only)
   samples/                   synthetic attack pack and defence configuration
-  scripts/                   quickstart.sh, judge_demo.sh, security_demo.sh, demo_run.py, export_snapshot.py
+  scripts/                   quickstart.sh, judge_demo.sh, security_demo.sh, start_prototype.sh (console), demo_run.py, export_snapshot.py
   tests/                     pytest suite (security regression, Phase 2 attack tests, Phase 3 LLM tests, Podman-based tests)
   evaluation/                experiment harnesses; check_claims.py and check_presentation.py recompute every quoted figure
   evidence/                  dated evidence sets, each with its own README; never edited after recording
-  web/                       static web console (web/snapshot is a 15 Oct export; its banner says so)
+  web/                       web/console: the interactive prototype console (aegis/console.py); web/snapshot is a 15 Oct export (its banner says so)
   THREAT_MODEL.md, README.md threat table and technical reference
 README_FIRST.md              release-package guide (rc4, 23 Oct)
 PHASE2/3/4 reports, Judge_QA.md, PHASE4_CLAIM_MATRIX.md, VALIDATION_ADDENDUM_2026-10-22.md, ...   reports; older ones keep the figures of their date
@@ -140,7 +148,7 @@ Tech_Mavericks_AegisLab_Submission.pptx / .pdf, Tech_Mavericks_AegisLab_Pitch_12
 presentation_src/            deck and video build sources (includes the official event template)
 assets/                      15 Oct diagrams and screenshots (historical figures; not used by the current deck)
 MANIFEST.sha256              SHA-256 of the 442 files of release candidate rc4: sha256sum -c MANIFEST.sha256
-docs/                        judge guide and validation record of this repository
+docs/                        judge guide, validation record, and docs/prototype (console guide, walkthrough, Phase R1 report)
 tools/publication_scan.py    pre-publication secret and private-data scan (git index and history)
 ```
 
