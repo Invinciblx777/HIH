@@ -1,0 +1,52 @@
+# Container-free release gates for AegisLab (Phase R3). Runs aegislab/scripts/release_gates.sh --with-browser --strict, the
+# same script used locally, so a green run means exactly those gates ran and passed:
+#   Python syntax and imports, console JavaScript syntax, the test suite without tests marked podman, check_claims.py,
+#   check_presentation.py, sha256sum -c MANIFEST.sha256, tools/publication_scan.py, and the container-free browser tests
+#   (real console process in degraded mode, real Chromium, real verifier).
+# What it does NOT prove: anything that needs rootless Podman and the sandbox image (pytest -m podman, judge_demo.sh,
+# security_demo.sh, run_browser_tests.sh --live). Those run on the supported Fedora host before a release; see
+# docs/prototype/R3_JUDGE_RELEASE_CHECKLIST.md.
+name: release-gates
+on:
+  push:
+    branches: [main, "r3/**"]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release-gates-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  gates:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: aegislab
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      # Actions pinned by commit SHA (Phase R3.5); the comment names the release tag each SHA was resolved from.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          persist-credentials: false   # the tests run repository code; it gets no GITHUB_TOKEN in .git/config
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
+        with:
+          python-version: "3.14"
+      - name: Console virtualenv (requirements.txt with the verified constraints)
+        run: python -m venv .venv && .venv/bin/pip install -r requirements.txt -c constraints.txt
+      - name: Browser virtualenv (pinned Playwright) and Chromium
+        run: |
+          python -m venv .venv-browser
+          .venv-browser/bin/pip install -r requirements-browser.txt
+          .venv-browser/bin/playwright install --with-deps chromium
+      - name: Release gates
+        run: bash scripts/release_gates.sh --with-browser --strict --out "$RUNNER_TEMP/gates"
+      - name: Keep the gate logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: release-gate-logs
+          path: ${{ runner.temp }}/gates
+          retention-days: 14

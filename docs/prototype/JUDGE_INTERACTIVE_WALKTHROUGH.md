@@ -1,4 +1,4 @@
-# Judge interactive walkthrough (Phase R2, 3 to 5 minutes)
+# Judge interactive walkthrough (Phase R2, updated for R3; 3 to 5 minutes)
 
 This is a click path through the AegisLab console. Every step says whether what you see is **live** (it happens now, on
 your machine, in real rootless containers) or **saved** (it was recorded earlier and is only displayed).
@@ -24,7 +24,11 @@ The launcher prints a launch link, `http://127.0.0.1:8400/session/start?code=…
 without the code: the header says **Read-only**, and every button that would change state is disabled with the reason.
 Now open the launch link. The header changes to **Operator session · roles act server-side**, and you land on **Lab**.
 
-What this shows: the browser never holds a role token. The link exchanged a one-time code for an HttpOnly session
+The link works **once** (and expires after 2 hours unused). Opening it again, in another browser or from history, gives
+*invalid or already used launch code*. For another browser, or after **End session** in the header, print a new link
+in a second terminal: `bash scripts/start_prototype.sh --link`.
+
+What this shows: the browser never holds a role token. The link exchanged a single-use code for an HttpOnly session
 cookie. Each role's request is sent by the server, with that role's token, through the unchanged role checks. It is
 one local operator driving demonstration roles, not multi-user authentication.
 
@@ -55,7 +59,9 @@ digests the reviewer sees. A forged token gets 401. The five forbidden mailbox r
 during the run are listed as broker denials.
 
 Optional (live): under **Try a request yourself**, choose *Observer*, *Release the run* and press **Send request**.
-You see the status and decision; the response itself stays on the server.
+You see the status and decision; the response itself stays on the server. On a SEALED run the refusal is a new
+signed audit entry; after release (step 4) the same request is answered 403 and the console says it was kept *after the
+signed chain closed*: unsigned, with no audit sequence number, because a released run's chain is never reopened.
 
 ## 4. Release as the reviewer (20 s) · live
 
@@ -68,7 +74,8 @@ Release is final: the run never returns to SEALED.
 Follow **open** next to *Audit log* in the run box (or **Audit**, then **Signed audit log**). This is the run's
 hash-chained audit log, entry by entry. Set **Decision** to *denied*: the refusals from step 3 are there with their
 operation and reason. The meta line shows how far checkpoints sign the log and that the terminal anchor is written.
-Payloads, model outputs, defence rules and the digests of team inputs never leave the server.
+Payloads, model outputs, defence rules and the digests of team inputs never leave the server. Below the table, events
+that arrived after the chain closed (refusals against the released run) are listed separately and marked unsigned.
 
 ## 6. Verify the evidence and break a copy (60 s) · live
 
@@ -100,7 +107,9 @@ what is out of scope, including a compromised broker, a stolen signing key and G
 
 ## Stop
 
-Press Ctrl-C in the terminal. The launcher removes any lab containers. A run that was RUNNING when the console stopped
-is marked FAILED with a signed terminal checkpoint the next time it starts.
+Press **End session** in the header to return the browser to read-only, then Ctrl-C in the terminal. The launcher
+removes any lab containers. A run that was RUNNING when the console stopped is marked FAILED with a signed terminal
+checkpoint the next time it starts (verified on 26 Oct 2026 by killing the console mid-run, R3 report section 11).
 
-Screenshots of each state, captured by the browser tests from a real run: `docs/prototype/screenshots/r2/`.
+Screenshots of each state, captured by the browser tests from a real run: `docs/prototype/screenshots/r3/` (R3) and
+`docs/prototype/screenshots/r2/` (R2, kept as recorded).

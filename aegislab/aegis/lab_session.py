@@ -5,6 +5,12 @@ that only the launcher prints (and that is stored mode 0600 in the state directo
 session cookie (HttpOnly, SameSite=Strict, path /) and gives the page a per-session CSRF token. Every state-changing lab
 request needs the cookie, the CSRF token in the X-Aegis-CSRF header, and a same-origin Origin / Sec-Fetch-Site.
 
+Phase R3: the launch code is single-use and short-lived. A successful exchange replaces it at once with a fresh code (written
+to the same file, mode 0600) that nobody has seen, so the link left in browser history, terminal scroll-back or a screen
+recording cannot start a second session. An unused code expires after LAUNCH_TTL_S. `scripts/start_prototype.sh --link`
+prints a link with a fresh code for a console that is already running. Starting a session ends the session the browser
+already held (no fixation: the server always picks the session id).
+
 What a session is: the single local operator of this console. Inside that session the console drives the demonstration
 roles (operator, reviewer, blue and red participant) server-side, with the control plane's own tokens, through the
 unchanged role checks. It is not multi-user authentication: everybody who holds the launch link is that one operator.
@@ -21,6 +27,7 @@ COOKIE = "aegis_console"
 CSRF_HEADER = "x-aegis-csrf"
 SESSION_TTL_S = 8 * 3600       # absolute lifetime
 IDLE_TTL_S = 2 * 3600          # idle lifetime
+LAUNCH_TTL_S = 2 * 3600        # an unused launch code expires
 MAX_SESSIONS = 16
 MAX_FAILURES = 20              # wrong launch codes before a lockout
 LOCKOUT_S = 60
@@ -28,47 +35,81 @@ LOCKOUT_S = 60
 _lock = threading.Lock()
 _sessions = {}                 # sid -> {"csrf", "created", "seen"}
 _failures = {"n": 0, "until": 0.0}
-_code = {"value": None, "var": None}
+_env_adopted = set()           # state directories whose AEGIS_CONSOLE_LAUNCH_CODE was already taken over (it is single-use too)
+
+
+def _code_file():
+    return store.p("console", "launch_code")
+
+
+def _write_code(value):
+    """Replace the code file atomically (mode 0600). Its modification time is the code's issue time."""
+    path = _code_file()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(".launch_code.%s.tmp" % secrets.token_hex(4))
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w") as fh:
+        fh.write(value + "\n")
+    os.replace(tmp, path)
+
+
+def _current(now):
+    """(code, issued_at) from the file, or (None, None) when there is no usable code. Caller holds _lock."""
+    var = str(store.VAR)
+    env = os.environ.get("AEGIS_CONSOLE_LAUNCH_CODE", "")
+    if var not in _env_adopted:
+        _env_adopted.add(var)
+        if len(env) >= 20:  # the launcher's code becomes the current code once; after use it is replaced like any other
+            _write_code(env)
+    try:
+        path = _code_file()
+        value, issued = path.read_text().strip(), path.stat().st_mtime
+    except FileNotFoundError:
+        return None, None
+    return (value, issued) if len(value) >= 20 else (None, None)
+
+
+def issue() -> str:
+    """Write a fresh launch code (replacing any previous one) and return it."""
+    with _lock:
+        _current(time.time())  # an unadopted launcher code must not resurface after this one
+        value = secrets.token_urlsafe(24)
+        _write_code(value)
+        return value
 
 
 def launch_code() -> str:
-    """The launch code for this state directory: AEGIS_CONSOLE_LAUNCH_CODE when the launcher set one, otherwise a random
-    code written once to $AEGIS_VAR/console/launch_code (mode 0600)."""
+    """The current unused launch code for this state directory, issuing a new one if there is none or it expired.
+    The file $AEGIS_VAR/console/launch_code (mode 0600) always holds the code that works now; the launcher writes it with
+    issue(). AEGIS_CONSOLE_LAUNCH_CODE, if set (manual starts, tests), is taken over once per process and state directory,
+    so a process started again with the same environment value would accept that value once more."""
+    now = time.time()
     with _lock:
-        if _code["value"] and _code["var"] == str(store.VAR):
-            return _code["value"]
-        env = os.environ.get("AEGIS_CONSOLE_LAUNCH_CODE", "")
-        if len(env) >= 20:
-            value = env
-        else:
-            path = store.p("console", "launch_code")
-            path.parent.mkdir(parents=True, exist_ok=True)
-            try:
-                value = path.read_text().strip()
-            except FileNotFoundError:
-                value = ""
-            if len(value) < 20:
-                value = secrets.token_urlsafe(24)
-                fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-                with os.fdopen(fd, "w") as fh:
-                    fh.write(value + "\n")
-        _code.update(value=value, var=str(store.VAR))
+        value, issued = _current(now)
+        if value and now - issued <= LAUNCH_TTL_S:
+            return value
+        value = secrets.token_urlsafe(24)
+        _write_code(value)
         return value
 
 
 def start(code: str):
-    """Exchange the launch code for a new session id, or return (None, reason)."""
+    """Exchange the launch code for a new session id, or return (None, reason). The code is consumed: it is replaced by a
+    fresh one in the same critical section, so two requests with the same code cannot both succeed."""
     now = time.time()
     with _lock:
         if now < _failures["until"]:
             return None, "too many wrong launch codes; wait a minute"
-    if not code or not hmac.compare_digest(code.encode(), launch_code().encode()):
-        with _lock:
+        value, issued = _current(now)
+        good = bool(code and value and hmac.compare_digest(code.encode(), value.encode()))
+        if good and now - issued > LAUNCH_TTL_S:
+            return None, "this launch code expired; print a new link with scripts/start_prototype.sh --link"
+        if not good:
             _failures["n"] += 1
             if _failures["n"] >= MAX_FAILURES:
                 _failures.update(n=0, until=now + LOCKOUT_S)
-        return None, "invalid launch code"
-    with _lock:
+            return None, "invalid or already used launch code"
+        _write_code(secrets.token_urlsafe(24))  # single use
         _failures["n"] = 0
         _expire(now)
         while len(_sessions) >= MAX_SESSIONS:
@@ -102,13 +143,16 @@ def csrf_ok(sess, header) -> bool:
 
 
 def end(sid):
+    if not sid:
+        return
     with _lock:
-        _sessions.pop(sid, None)
+        for key in [k for k in _sessions if hmac.compare_digest(k.encode(), sid.encode())]:
+            del _sessions[key]
 
 
 def reset():
-    """Forget every session and the cached code (tests, state-directory change)."""
+    """Forget every session and the failure counter (tests, state-directory change)."""
     with _lock:
         _sessions.clear()
         _failures.update(n=0, until=0.0)
-        _code.update(value=None, var=None)
+        _env_adopted.clear()

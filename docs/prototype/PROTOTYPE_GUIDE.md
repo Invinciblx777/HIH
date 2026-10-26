@@ -23,7 +23,7 @@ cd aegislab
 bash scripts/start_prototype.sh
 ```
 
-The launcher prints a **launch link** of the form `http://127.0.0.1:8400/session/start?code=…`. Open it in a browser on the same machine. It starts the operator session and takes you to the lab. The code changes on every start.
+The launcher prints a **launch link** of the form `http://127.0.0.1:8400/session/start?code=…`. Open it in a browser on the same machine. It starts the operator session and takes you to the lab. The link works **once** and expires after 2 hours unused; a new code is issued on every start. For another browser, or after **End session**, print a fresh link for the running console with `bash scripts/start_prototype.sh --link` (add `--port N` if you changed the port).
 
 Without the launch link the console opens **read-only** at http://127.0.0.1:8400. You can still browse everything and verify the shipped bundles, but every control that changes state is disabled and says why. Use `127.0.0.1` rather than `localhost`: the session cookie belongs to the host name you opened the link with.
 
@@ -34,6 +34,7 @@ Press Ctrl-C to stop the console; the launcher removes any lab containers it sta
 | `--port N` | listen on 127.0.0.1:N instead of 8400 (1024 to 65535) |
 | `--check` | check the prerequisites, print LIVE or DEGRADED, and exit without starting |
 | `--reset` | delete the console's state directory (`var/console`) before starting, for a clean run list |
+| `--link` | print a new single-use launch link for the console already running on `var/console` (the previous unused link stops working) |
 | `--help` | usage |
 
 The launcher:
@@ -43,7 +44,7 @@ The launcher:
 - writes all runtime state to `aegislab/var/console/`, which is git-ignored and separate from `var/` used by `quickstart.sh`;
 - unsets any `AEGIS_MODEL_*` variables, so the console always uses the deterministic **stub** model;
 - unsets `AEGIS_DEMO_MODE` (the console refuses to start with it, because it would hand every role token to any local page);
-- generates a fresh launch code (`AEGIS_CONSOLE_LAUNCH_CODE`) and prints the launch link;
+- issues a fresh single-use launch code into `var/console/console/launch_code` (mode 0600) and prints the launch link (it unsets `AEGIS_CONSOLE_LAUNCH_CODE`);
 - binds uvicorn to `127.0.0.1` only.
 
 The equivalent manual command is:
@@ -52,7 +53,9 @@ The equivalent manual command is:
 AEGIS_VAR=var/console .venv/bin/uvicorn aegis.console:app --host 127.0.0.1 --port 8400
 ```
 
-Without `AEGIS_CONSOLE_LAUNCH_CODE` the console creates a random code once and keeps it in `var/console/console/launch_code` (mode 0600); the launch link is then `http://127.0.0.1:8400/session/start?code=<that code>`.
+The file `var/console/console/launch_code` (mode 0600) always holds the code that works now; the launch link is `http://127.0.0.1:8400/session/start?code=<that code>`. A successful login replaces it with a fresh code nobody has seen, so a link left in browser history cannot start a second session. `AEGIS_CONSOLE_LAUNCH_CODE` (manual starts and tests) is taken over once per process.
+
+Browser tests (Phase R3): `bash scripts/run_browser_tests.sh` (container-free) or `--live` (real containers); they install the pinned Playwright into `.venv-browser`. Container-free release gates: `bash scripts/release_gates.sh --with-browser`.
 
 ## The pages
 
@@ -112,7 +115,7 @@ Each result shows every request, its expected and observed HTTP status, the poli
   - Scenario ids, bundle ids and tamper modes are dictionary keys.
   - Run ids must match `LAB-nnn` and exist.
   - Request bodies with unknown fields are rejected (422).
-  - Bodies over 256 KiB are rejected (413).
+  - Bodies over 256 KiB are rejected (413), counted by the bytes actually received: a chunked body or a missing or wrong Content-Length cannot get past the limit (Phase R3).
   - Nothing from the browser becomes a shell command, a path, a container option or a network target.
 - **State-changing lab actions need the operator session (or, for scripts, the right role token).**
   - Lifecycle steps, scenarios, the request probe and the in-memory tamper suite need the session or the operator token.
