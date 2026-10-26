@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AegisLab Console</title>
+<meta name="description" content="AegisLab interactive prototype: try the isolation boundaries of an adversarial AI evaluation and verify the signed evidence yourself.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 4 7v8c0 7.4 5.1 13.4 12 15 6.9-1.6 12-7.6 12-15V7z' fill='%2358B4E4'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/console/console.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="shell">
+  <aside class="rail" aria-label="Sections">
+    <a class="brand" href="#/overview">
+      <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><path d="M16 2 4 7v8c0 7.4 5.1 13.4 12 15 6.9-1.6 12-7.6 12-15V7z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 17h12M16 11v12" stroke="currentColor" stroke-width="2"/></svg>
+      <span><strong>AegisLab</strong><small>Prototype console</small></span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="#/overview" data-nav="overview">Overview</a>
+      <a href="#/topology" data-nav="topology">Isolation topology</a>
+      <a href="#/lab" data-nav="lab">Attack lab</a>
+      <a href="#/events" data-nav="events">Security events</a>
+      <a href="#/evidence" data-nav="evidence">Evidence verification</a>
+      <a href="#/experiments" data-nav="experiments">Experiment results</a>
+      <a href="#/limits" data-nav="limits">Threat model and limits</a>
+    </nav>
+    <div class="rail-foot">
+      <div id="mode-pill" class="pill">Connecting…</div>
+      <p class="tiny">Tech Mavericks · Hack in Hills ’26 · Track 04</p>
+    </div>
+  </aside>
+  <div class="main-col">
+    <header class="strip" id="strip" role="status" aria-live="polite">Checking the control plane…</header>
+    <main id="main" tabindex="-1"></main>
+  </div>
+</div>
+<div id="drawer" class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" hidden>
+  <div class="drawer-panel">
+    <div class="drawer-head"><h2 id="drawer-title">Details</h2><button class="btn ghost" id="drawer-close" type="button">Close</button></div>
+    <div id="drawer-body"></div>
+  </div>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="/console/console.js"></script>
+</body>
+</html>
