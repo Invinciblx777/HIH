@@ -190,8 +190,16 @@ rc1–rc4 and all experiment evidence, the submission files.
 
 ## 15. Git status and commit SHA
 
-See the final section of the chat handoff for the commit SHAs. All work is committed locally on `r2/live-security-lab`;
-nothing was pushed, merged or deployed.
+Branch `r2/live-security-lab`, based on `2bd5b83`. Commits:
+
+| SHA | Content |
+|---|---|
+| `57a65cd` | operator session and stepwise live lab (`lab_session.py`, `console.py`, launcher) |
+| `0129465` | console UI on the operator session and the live lab (`web/console/`) |
+| `39b64fc` | integration, security regression and browser tests |
+| `0224814` | this report, the judge walkthrough, guide updates and screenshots |
+
+A final commit records these SHAs here. Working tree clean after it. Nothing was pushed, merged or deployed.
 
 ## 16. Remaining work and verdict
 
