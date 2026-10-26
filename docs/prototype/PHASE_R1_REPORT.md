@@ -248,7 +248,7 @@ The following were not modified:
 
 ## 12. Commit
 
-The implementation commit on `r1/functional-prototype` is recorded in the follow-up commit that adds its SHA here. Nothing is pushed.
+Implementation commit on `r1/functional-prototype`: `ea2f8ea204aa41269706d7cc20849090af0904ee`, with parent `f1e28552c2b65c44ebb73351e889053fc1d15c09`. This line was added in a follow-up commit. Nothing is pushed.
 
 ## 13. Next tasks (not started; Phase R2 is out of scope here)
 
