@@ -82,7 +82,14 @@ The demos use a deterministic **stub** model by design: it makes leakage behavio
 bash scripts/start_prototype.sh       # then open the launch link it prints (loopback only; Ctrl-C stops it)
 ```
 
-The console is a browser interface on the same control plane. The launch link starts a local operator session; the browser never holds a role token. It drives the run lifecycle step by step (create, defence, freeze, start, seal, release) in rootless containers, runs four allowlisted attack scenarios against them, shows the security events, and verifies (and tampers with copies of) the signed evidence through `aegis.verify_cli`. Without Podman it starts in a labelled degraded mode with a recorded replay. Guide: [`docs/prototype/PROTOTYPE_GUIDE.md`](docs/prototype/PROTOTYPE_GUIDE.md). Five-minute judge path: [`docs/prototype/JUDGE_WALKTHROUGH.md`](docs/prototype/JUDGE_WALKTHROUGH.md).
+The console is a browser interface on the same control plane. The launch link starts a local operator session; the browser never holds a role token. It drives the run lifecycle step by step (create, defence, freeze, start, seal, release) in rootless containers, runs four allowlisted attack scenarios against them, shows the security events, and verifies (and tampers with copies of) the signed evidence through `aegis.verify_cli`. Without Podman it starts in a labelled degraded mode with a recorded replay. Guide: [`docs/prototype/PROTOTYPE_GUIDE.md`](docs/prototype/PROTOTYPE_GUIDE.md). Five-minute judge path: [`docs/prototype/JUDGE_WALKTHROUGH.md`](docs/prototype/JUDGE_WALKTHROUGH.md). Interactive walkthrough of the live lab: [`docs/prototype/JUDGE_INTERACTIVE_WALKTHROUGH.md`](docs/prototype/JUDGE_INTERACTIVE_WALKTHROUGH.md).
+
+Console session rules (Phase R3 hardening, 26 Oct 2026):
+
+- The launch link works **once** and expires after 2 hours unused. For another one while the console runs: `bash scripts/start_prototype.sh --link`. **End session** in the header returns the browser to read-only.
+- The console is for **one trusted local operator on loopback**. It is not multi-user authentication and must never be exposed on a network or a public URL: it starts real sandboxes and holds the signing key. This repository is source code only; there is no hosted instance.
+- Cookies are not isolated by port on `127.0.0.1`: use a dedicated browser profile and do not browse other local web services while the console runs. Other accepted limits: [`docs/prototype/R3_SECURITY_REVIEW.md`](docs/prototype/R3_SECURITY_REVIEW.md) section 6.
+- Container-free release gates (the same script the GitHub workflow runs): `bash scripts/release_gates.sh --with-browser --strict`. Release record: [`docs/release/PHASE_R35_RELEASE_REPORT.md`](docs/release/PHASE_R35_RELEASE_REPORT.md).
 
 ## Verify the evidence yourself
 
