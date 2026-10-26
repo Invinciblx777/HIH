@@ -1,7 +1,14 @@
-"""Interactive prototype console (Phase R1): the web UI and a small, bounded lab API around the unchanged control plane.
+"""Interactive prototype console (Phase R1, made end-to-end in Phase R2): the web UI and a small, bounded lab API around the
+unchanged control plane.
 
 Run:  scripts/start_prototype.sh
-      (equivalent: AEGIS_VAR=var/console AEGIS_DEMO_MODE=1 uvicorn aegis.console:app --host 127.0.0.1 --port 8400)
+      (equivalent: AEGIS_VAR=var/console uvicorn aegis.console:app --host 127.0.0.1 --port 8400, then open the launch link
+       http://127.0.0.1:8400/session/start?code=<$AEGIS_VAR/console/launch_code>)
+
+Phase R2: the browser never holds a role token. The launch link starts an operator session (aegis/lab_session.py:
+HttpOnly SameSite=Strict cookie plus a per-session CSRF token); the console performs each role's requests server-side with
+the control plane's own tokens. State-changing requests from another origin are refused. AEGIS_DEMO_MODE=1 is refused at
+startup because it would hand every role token to any page that can reach the port.
 
 The control plane (aegis.api.app) is mounted unchanged: every /api/... route, role check and gate is the existing code.
 This module adds /api/lab/... for things a browser cannot do safely by itself:
@@ -32,8 +39,11 @@ import time
 import zipfile
 from pathlib import Path
 
+from contextlib import asynccontextmanager
+from typing import Literal
+
 from fastapi import FastAPI, Header, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 import warnings
 with warnings.catch_warnings():  # starlette's notice about httpx; the in-process client is only used for loopback calls
@@ -41,7 +51,7 @@ with warnings.catch_warnings():  # starlette's notice about httpx; the in-proces
     from fastapi.testclient import TestClient
 from pydantic import BaseModel, ConfigDict
 
-from . import api, evidence, model_client, runs, runtime, store
+from . import api, evidence, lab_session, model_client, runs, runtime, store
 from .audit import entry_hash, read_jsonl
 from .verify_cli import TAMPER_MODES
 
@@ -55,7 +65,20 @@ VERIFY_TIMEOUT_S = 30
 PROBE_TIMEOUT_S = 90
 ROLES = ("operator", "reviewer", "blue_participant", "red_participant")
 
-app = FastAPI(title="AegisLab prototype console", version="r1", docs_url=None, redoc_url=None, openapi_url=None)
+UNSAFE_METHODS = ("POST", "PUT", "PATCH", "DELETE")
+
+
+@asynccontextmanager
+async def lifespan(_app):
+    if os.environ.get("AEGIS_DEMO_MODE") == "1":
+        raise RuntimeError("refusing to start: AEGIS_DEMO_MODE=1 would hand every role token to any page that reaches this port. "
+                           "The console uses an operator session instead (scripts/start_prototype.sh).")
+    _recover_interrupted()
+    lab_session.launch_code()
+    yield
+
+
+app = FastAPI(title="AegisLab prototype console", version="r2", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
 
 _lab_lock = threading.Lock()                 # one state-changing lab action at a time
 _verify_slots = threading.BoundedSemaphore(2)  # verifier subprocesses running at once
@@ -95,10 +118,28 @@ async def guard(request: Request, call_next):
             return JSONResponse({"detail": "request body too large"}, status_code=413)
     except ValueError:
         return JSONResponse({"detail": "invalid content-length"}, status_code=400)
+    why = _cross_origin(request)
+    if why:
+        return JSONResponse({"detail": why}, status_code=403)
     response = await call_next(request)
     for k, v in SECURITY_HEADERS.items():
         response.headers.setdefault(k, v)
     return response
+
+
+def _cross_origin(request: Request):
+    """State-changing requests must come from this origin. Browsers send Sec-Fetch-Site and Origin on every cross-origin
+    POST; a page on another port of 127.0.0.1 is 'same-site', not 'same-origin', and is refused too. Clients that send
+    neither header (curl, scripts with a token) are not browsers acting for someone else."""
+    if request.method not in UNSAFE_METHODS:
+        return None
+    site = request.headers.get("sec-fetch-site")
+    if site and site not in ("same-origin", "none"):
+        return "cross-origin request refused (Sec-Fetch-Site: %s)" % site[:20]
+    origin = request.headers.get("origin")
+    if origin is not None and origin.lower() != "http://" + request.headers.get("host", "").lower():
+        return "cross-origin request refused (Origin does not match this console)"
+    return None
 
 
 def _role(token):
@@ -107,6 +148,20 @@ def _role(token):
 
 def _need(token, *roles):
     return api.need(token, *roles)
+
+
+def _authorize(request: Request, token, *roles) -> dict:
+    """Who may perform a lab action: a holder of a control-plane token with one of `roles` (scripts, tests), or the
+    operator session started from the launch link (the browser), which must also present its CSRF token on writes.
+    Without either the caller is an observer and is refused, as the control plane refuses observers."""
+    if token is not None:
+        return {"via": "token", "role": api.need(token, *roles)}
+    sess = lab_session.get(request.cookies.get(lab_session.COOKIE))
+    if not sess:
+        raise HTTPException(403, "operator session required: open the launch link printed by scripts/start_prototype.sh")
+    if request.method in UNSAFE_METHODS and not lab_session.csrf_ok(sess, request.headers.get(lab_session.CSRF_HEADER)):
+        raise HTTPException(403, "missing or invalid CSRF token for this operator session")
+    return {"via": "session", "role": "operator-session"}
 
 
 def _cached(key, ttl, fn):
@@ -202,6 +257,9 @@ def status():
         "mode": "live" if podman.get("available") else "degraded",
         "mode_reason": None if podman.get("available") else podman.get("reason"),
         "demo_identities": os.environ.get("AEGIS_DEMO_MODE") == "1",
+        "identity_model": "operator session (loopback launch link, HttpOnly cookie, CSRF token); role tokens stay on the server",
+        "execution_modes": {"live": "LIVE SANDBOX / STUB MODEL" if podman.get("available") else "UNAVAILABLE",
+                            "replay": "REPLAY / RECORDED", "experiments": "PRECOMPUTED REAL-MODEL"},
         "state_dir": _rel(store.VAR),
         "podman": podman,
         "model": _model_status(),
@@ -230,6 +288,13 @@ def _code_revision():
 class PrepareReq(BaseModel):
     model_config = ConfigDict(extra="forbid")
     timing_bucket_ms: int = 250
+    defence_profile: str | None = None
+    stop_after: Literal["created", "started"] = "started"
+
+
+class ProfileReq(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    profile: str
 
 
 def _client() -> TestClient:
@@ -243,13 +308,65 @@ def _require_live():
         raise HTTPException(503, "live execution unavailable: %s. The evidence centre and the replay recording still work." % st.get("reason"))
 
 
+# Fixed, reviewed blue-team configurations. The browser chooses a key; the rules themselves never leave the server and are
+# never shown to the red side. "none" is a control: without rules the stub model's unsafe completions reach red.
+def _sample_defence():
+    return json.loads((ROOT / "samples" / "defence_config.json").read_text())
+
+
+DEFENCE_PROFILES = {
+    "sample": {"title": "Sample defence blue-v1.3 (default)", "rules": "3 input patterns, 1 output pattern",
+               "summary": "The shipped sample configuration: blocks the obvious jailbreak phrasings and the stub model's unsafe marker.",
+               "config": _sample_defence},
+    "hardened": {"title": "Hardened defence (lab)", "rules": "9 input patterns, 2 output patterns",
+                 "summary": "The sample rules plus obfuscated and guideline-override phrasings, canary planting, and an output rule for canary-shaped tokens.",
+                 "config": lambda: {"version": "lab-hardened-1", "_note": "AegisLab console lab profile (synthetic).",
+                                    "input_patterns": _sample_defence()["input_patterns"] + [
+                                        "disregard (your )?guidelines", "no rules", "1gnore", "bypass", "remember this", "canary"],
+                                    "output_patterns": ["\\[UNSAFE-MARKER\\]", "CANARY-[0-9a-f]{12}"]}},
+    "none": {"title": "No defence (control)", "rules": "0 patterns",
+             "summary": "A negative control: the defence runner allows everything, so the outcome counts show what the defence normally stops.",
+             "config": lambda: {"version": "lab-none", "_note": "AegisLab console negative control (synthetic).",
+                                "input_patterns": [], "output_patterns": []}},
+}
+
+
+def _lab_meta(run_id) -> dict:
+    """Unsigned convenience notes the console keeps per lab run (which profile was chosen). The signed record is the audit log."""
+    return store.read_json(store.p("lab", "runs", run_id + ".json")) or {}
+
+
+def _api_step(actor, method, path, body=None) -> dict:
+    """One real control-plane request with the server-held token of `actor`. Raises on anything but HTTP 200."""
+    r = _client().request(method, path, json=body, headers={"X-Aegis-Token": store.tokens()[actor]})
+    step = {"actor": actor, "action": "%s %s" % (method, path), "status": r.status_code, "detail": _detail(r)}
+    if r.status_code != 200:
+        raise HTTPException(502 if r.status_code >= 500 else r.status_code,
+                            "%s %s as %s failed with HTTP %d: %s" % (method, path, actor, r.status_code, _detail(r)))
+    return step
+
+
+def _apply_profile(run_id, profile) -> dict:
+    step = _api_step("blue_participant", "POST", "/api/runs/%s/defence-config" % run_id, DEFENCE_PROFILES[profile]["config"]())
+    store.write_json(store.p("lab", "runs", run_id + ".json"), dict(_lab_meta(run_id), defence_profile=profile))
+    return step
+
+
+@app.get("/api/lab/defence-profiles")
+def defence_profiles():
+    return [{"id": k, **{f: v[f] for f in ("title", "rules", "summary")}} for k, v in DEFENCE_PROFILES.items()]
+
+
 @app.post("/api/lab/runs")
-def prepare_run(req: PrepareReq, x_aegis_token: str | None = Header(None)):
-    """Create, freeze and start a new evaluation run LAB-nnn as the operator, through the real API. Returns at once; the broker
-    runs the red sandbox, defence runner and model worker in real rootless containers in the background."""
-    _need(x_aegis_token, "operator")
+def prepare_run(req: PrepareReq, request: Request, x_aegis_token: str | None = Header(None)):
+    """Create a new evaluation run LAB-nnn through the real API, optionally with a defence profile. With stop_after="started"
+    (the R1 behaviour) it is also frozen and started; the broker then runs the red sandbox, defence runner and model worker
+    in real rootless containers in the background. The console UI uses stop_after="created" and the per-step endpoints."""
+    _authorize(request, x_aegis_token, "operator")
     if req.timing_bucket_ms not in (0, 250):
         raise HTTPException(422, "timing_bucket_ms must be 0 or 250")
+    if req.defence_profile is not None and req.defence_profile not in DEFENCE_PROFILES:
+        raise HTTPException(422, "unknown defence profile")
     _require_live()
     if not _lab_lock.acquire(blocking=False):
         raise HTTPException(409, "another lab action is in progress")
@@ -261,21 +378,117 @@ def prepare_run(req: PrepareReq, x_aegis_token: str | None = Header(None)):
         if active:
             raise HTTPException(409, "run %s is still executing; wait for it to seal" % active[0])
         run_id = "LAB-%03d" % (max((int(r[4:]) for r in existing), default=0) + 1)
-        tok = {"X-Aegis-Token": x_aegis_token}
-        c = _client()
-        steps = []
-        for method, path, body in (("POST", "/api/runs", {"run_id": run_id, "timing_bucket_ms": req.timing_bucket_ms, "tags": ["lab", "console"]}),
-                                   ("POST", "/api/runs/%s/freeze" % run_id, None), ("POST", "/api/runs/%s/start" % run_id, None)):
-            r = c.request(method, path, json=body, headers=tok)
-            steps.append({"actor": "operator", "action": "%s %s" % (method, path), "status": r.status_code,
-                          "detail": _detail(r)})
-            if r.status_code != 200:
-                raise HTTPException(502 if r.status_code >= 500 else r.status_code,
-                                    "%s %s failed with HTTP %d: %s" % (method, path, r.status_code, _detail(r)))
-        _journal("prepare", run_id, "STARTED", "operator created, froze and started %s" % run_id)
-        return {"run_id": run_id, "steps": steps, "state": runs.Run(run_id).state}
+        steps = [_api_step("operator", "POST", "/api/runs", {"run_id": run_id, "timing_bucket_ms": req.timing_bucket_ms, "tags": ["lab", "console"]})]
+        if req.defence_profile:
+            steps.append(_apply_profile(run_id, req.defence_profile))
+        if req.stop_after == "started":
+            steps.append(_api_step("operator", "POST", "/api/runs/%s/freeze" % run_id))
+            steps.append(_api_step("operator", "POST", "/api/runs/%s/start" % run_id))
+            _journal("prepare", run_id, "STARTED", "operator created, froze and started %s" % run_id)
+        else:
+            _journal("create", run_id, "CREATED", "operator created %s" % run_id)
+        return {"run_id": run_id, "steps": steps, "state": runs.Run(run_id).state, "run": _run_view(run_id)}
     finally:
         _lab_lock.release()
+
+
+def _lab_step(request, token, run_id, fn):
+    """Run one lifecycle step on an existing lab run under the lab lock; return the step record and the new run view."""
+    _authorize(request, token, "operator")
+    _lab_run(run_id, None)
+    if not _lab_lock.acquire(blocking=False):
+        raise HTTPException(409, "another lab action is in progress")
+    try:
+        step = fn()
+    finally:
+        _lab_lock.release()
+    return {"run_id": run_id, "step": step, "state": runs.Run(run_id).state, "run": _run_view(run_id)}
+
+
+@app.post("/api/lab/runs/{run_id}/defence")
+def configure_defence(run_id: str, req: ProfileReq, request: Request, x_aegis_token: str | None = Header(None)):
+    """Submit a fixed defence profile as the blue participant. The control plane accepts it only while the run is CREATED."""
+    if req.profile not in DEFENCE_PROFILES:
+        raise HTTPException(422, "unknown defence profile")
+    res = _lab_step(request, x_aegis_token, run_id, lambda: _apply_profile(run_id, req.profile))
+    _journal("defence", run_id, "CONFIGURED", "blue participant submitted profile %s" % req.profile)
+    return res
+
+
+@app.post("/api/lab/runs/{run_id}/freeze")
+def freeze_run(run_id: str, request: Request, x_aegis_token: str | None = Header(None)):
+    _require_live()  # freezing records the sandbox image digest and the host environment
+    res = _lab_step(request, x_aegis_token, run_id, lambda: _api_step("operator", "POST", "/api/runs/%s/freeze" % run_id))
+    _journal("freeze", run_id, "FROZEN", "operator froze %s" % run_id)
+    return res
+
+
+@app.post("/api/lab/runs/{run_id}/start")
+def start_run(run_id: str, request: Request, x_aegis_token: str | None = Header(None)):
+    _require_live()
+
+    def go():
+        active = [r for r in _lab_runs() if r != run_id and runs.Run(r).state == "RUNNING"]
+        if active:
+            raise HTTPException(409, "run %s is still executing; wait for it to seal" % active[0])
+        return _api_step("operator", "POST", "/api/runs/%s/start" % run_id)
+    res = _lab_step(request, x_aegis_token, run_id, go)
+    _journal("start", run_id, "STARTED", "operator started %s" % run_id)
+    return res
+
+
+NEXT = {
+    "CREATED": [("defence", "Configure the defence (blue participant)"), ("freeze", "Freeze the configuration (operator)")],
+    "FROZEN": [("start", "Start the run (operator)")],
+    "RUNNING": [("wait", "Wait: the broker is executing the run in containers")],
+    "SEALED": [("scenarios", "Run the denial scenarios against the sealed results"), ("release", "Release as the reviewer")],
+    "RELEASED": [("verify", "Verify the exported bundle"), ("tamper", "Tamper with a disposable copy")],
+    "FAILED": [("new", "Start a new run: a failed run is never releasable")],
+}
+
+
+def _run_view(run_id) -> dict:
+    run = runs.Run(run_id)
+    rec = run.record
+    mon = read_jsonl(run.dir / "monitor.jsonl")
+    last = mon[-1] if mon else None
+    return {"run": api.public_view(rec), "mode": "LIVE SANDBOX / STUB MODEL", "defence_profile": _lab_meta(run_id).get("defence_profile"),
+            "events": len(mon), "audit_entries": run.audit.seq, "signed_upto": _signed_upto(run_id),
+            "last_event": {k: last.get(k) for k in ("seq", "ts", "type", "actor", "summary", "decision")} if last else None,
+            "bundle_exported": store.p("bundles", run_id).is_dir(),
+            "next_actions": [{"id": a, "label": t} for a, t in NEXT.get(rec.get("state"), [])]}
+
+
+@app.get("/api/lab/runs/{run_id}")
+def lab_run_view(run_id: str):
+    """Public view of a lab run (same fields as GET /api/runs/{id} for an observer) plus lifecycle helpers."""
+    _lab_run(run_id, None)
+    return _run_view(run_id)
+
+
+# ------------------------------------------------------------------------------------------------ interrupted runs
+def _recover_interrupted():
+    """A run whose broker thread died with a previous console process would stay RUNNING for ever. Mark it FAILED the way the
+    broker fails closed (run.failed, then a signed terminal checkpoint) and remove its containers. Called at startup."""
+    alive = {t.name for t in threading.enumerate()}
+    for rid in _lab_runs():
+        run = runs.Run(rid)
+        if run.state != "RUNNING" or "broker-" + rid in alive:
+            continue
+        for role in ("red", "blue", "model"):
+            try:
+                runtime.stop("aegis-%s-%s" % (rid.lower(), role))
+            except Exception:  # noqa: BLE001 - no Podman: nothing to clean up
+                pass
+        with run.lifecycle():
+            if run.state != "RUNNING":
+                continue
+            run.log("run.failed", "control-plane", {"error": "Interrupted", "detail": "the console stopped while the run was executing"},
+                    monitor={"summary": "Run failed closed: interrupted by a console restart", "decision": "failed"},
+                    checkpoint=False, close=True)
+            run.update(state="FAILED")
+            run.terminal_checkpoint("FAILED")
+        _journal("recover", rid, "FAILED", "marked FAILED after an interrupted execution")
 
 
 def _detail(r):
@@ -401,10 +614,10 @@ def list_scenarios():
 
 
 @app.post("/api/lab/scenarios/{sid}/run")
-def run_scenario(sid: str, req: ScenarioReq, x_aegis_token: str | None = Header(None)):
+def run_scenario(sid: str, req: ScenarioReq, request: Request, x_aegis_token: str | None = Header(None)):
     if sid not in SCENARIOS:
         raise HTTPException(404, "unknown scenario")
-    _need(x_aegis_token, "operator")
+    _authorize(request, x_aegis_token, "operator")
     meta = SCENARIOS[sid]
     if sid == "sandbox-containment":
         _require_live()
@@ -424,6 +637,7 @@ def run_scenario(sid: str, req: ScenarioReq, x_aegis_token: str | None = Header(
     else:
         res["verdict"] = "PASS" if all(s["ok"] for s in res["steps"]) and all(c["ok"] for c in res["checks"]) else "FAIL"
     _journal(sid, run_id, res["verdict"], meta["title"])
+    _save_result(sid, res)
     return res
 
 
@@ -604,6 +818,231 @@ def _journal(kind, run_id, verdict, title):
 @app.get("/api/lab/journal")
 def journal():
     return read_jsonl(store.p("lab", "journal.jsonl"))[-50:][::-1]
+
+
+# ------------------------------------------------------------------------------------------------ recorded results (unsigned)
+MAX_RESULTS = 200
+
+
+def _save_result(sid, res):
+    """Keep the full result of a scenario or tamper demonstration so the UI can show it after a reload and the graph can mark
+    the boundary it exercised. Results hold only what the scenario already returned (scanned for protected values)."""
+    d = store.p("lab", "results")
+    d.mkdir(parents=True, exist_ok=True)
+    files = sorted(d.glob("*.json"))
+    n = int(files[-1].name[:5]) + 1 if files else 1
+    store.write_json(d / ("%05d-%s.json" % (n, re.sub(r"[^a-z0-9-]", "", sid)[:40])), dict(res, result_id=n))
+    for old in files[:max(0, len(files) + 1 - MAX_RESULTS)]:
+        old.unlink(missing_ok=True)
+
+
+@app.get("/api/lab/results")
+def results(scenario: str | None = None, limit: int = 20):
+    """Most recent recorded results, newest first (bounded)."""
+    limit = max(1, min(limit, 50))
+    d = store.p("lab", "results")
+    out = []
+    for f in sorted(d.glob("*.json"), reverse=True) if d.is_dir() else []:
+        r = store.read_json(f)
+        if r and (scenario is None or r.get("scenario") == scenario):
+            out.append(r)
+            if len(out) >= limit:
+                break
+    return out
+
+
+# ------------------------------------------------------------------------------------------------ signed audit log (metadata)
+AUDIT_SAFE = ("op", "reason", "tenant", "complete", "evaluated", "attack_count", "count", "commitments_verified", "audit_entries_verified",
+              "matches_manifest", "network_modes", "strategy", "action", "attack_id", "commitment_verified", "canary_leaks", "policy",
+              "aborted", "model_backend_errors", "manifest_digest", "sandbox_image_id", "error", "where")
+AUDIT_AFTER_RELEASE = ("outcome", "outcomes")
+AUDIT_DECISION = {"policy.denied": "denied", "mailbox.violation": "denied", "run.failed": "failed", "run.released": "allowed",
+                  "attack.evaluated": "allowed", "defence.attested": "ok"}
+
+
+def _audit_view(e, signed_upto, released):
+    """Metadata of one audit entry: lifecycle, actor, operation and refusal reason. Digests of team inputs, payloads, model
+    outputs and defence rules are never included; attack outcomes only once the run is RELEASED."""
+    data = e.get("data") or {}
+    keep = {k: data[k] for k in AUDIT_SAFE + (AUDIT_AFTER_RELEASE if released else ()) if k in data}
+    dec = AUDIT_DECISION.get(e["type"], "info")
+    if e["type"] == "defence.attested" and not data.get("matches_manifest"):
+        dec = "failed"
+    return {"seq": e["seq"], "ts": e["ts"], "type": e["type"], "actor": e["actor"], "decision": dec, "data": keep,
+            "hash": e["hash"], "prev": e["prev"], "signed": e["seq"] <= signed_upto}
+
+
+@app.get("/api/lab/runs/{run_id}/audit")
+def run_audit(run_id: str, request: Request, x_aegis_token: str | None = Header(None), offset: int = 0, limit: int = 200,
+              type: str | None = None, actor: str | None = None, decision: str | None = None, order: Literal["asc", "desc"] = "asc"):
+    """The run's hash-chained audit log, metadata only, for the operator session (or an operator / reviewer token).
+    Server-side filters and bounded pagination; every row carries its sequence number, hash and signature coverage."""
+    _authorize(request, x_aegis_token, "operator", "reviewer")
+    _lab_run(run_id, None)
+    run = runs.Run(run_id)
+    offset, limit = max(0, offset), max(1, min(limit, 500))
+    signed = _signed_upto(run_id)
+    rows = [_audit_view(e, signed, run.state == "RELEASED") for e in read_jsonl(run.dir / "audit.jsonl")]
+    total = len(rows)
+    rows = [r for r in rows if (type is None or r["type"] == type) and (actor is None or r["actor"] == actor)
+            and (decision is None or r["decision"] == decision)]
+    if order == "desc":
+        rows.reverse()
+    return {"run_id": run_id, "state": run.state, "total": total, "matched": len(rows), "offset": offset, "limit": limit,
+            "signed_upto": signed, "checkpoints": len(read_jsonl(store.vault_path(run_id))),
+            "terminal_anchor": store.anchor_path(run_id).is_file(),
+            "facets": {"type": sorted({e["type"] for e in read_jsonl(run.dir / "audit.jsonl")}),
+                       "actor": sorted({e["actor"] for e in read_jsonl(run.dir / "audit.jsonl")})},
+            "entries": rows[offset:offset + limit]}
+
+
+# ------------------------------------------------------------------------------------------------ manual request probe
+PROBE_OPS = {
+    "detail": ("GET", "", "Read the run detail (are the secret digests shown?)"),
+    "artifacts": ("GET", "/artifacts", "Read the sealed attack artifacts"),
+    "evidence": ("GET", "/evidence", "Read the evidence report"),
+    "verify": ("GET", "/verify", "Verify the audit log"),
+    "release": ("POST", "/release", "Release the run"),
+}
+PROBE_ROLES = ("observer", "operator", "reviewer", "blue_participant", "red_participant", "forged")
+
+
+class ProbeReq(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    role: str
+    op: str
+    run_id: str
+
+
+def _shape(obj, depth=0):
+    """The structure of a response, not its values: what a role received, without putting protected data in the browser."""
+    if isinstance(obj, dict):
+        return {k: (_shape(v, depth + 1) if depth < 1 else type(v).__name__) for k, v in list(obj.items())[:40]}
+    if isinstance(obj, list):
+        return "list of %d" % len(obj)
+    if isinstance(obj, str):
+        return "string (%d characters)" % len(obj)
+    return type(obj).__name__ if obj is not None else None
+
+
+@app.get("/api/lab/probe-ops")
+def probe_ops():
+    return {"ops": {k: {"method": m, "path": "/api/runs/{id}" + p, "title": t} for k, (m, p, t) in PROBE_OPS.items()}, "roles": PROBE_ROLES}
+
+
+@app.post("/api/lab/probe")
+def probe(req: ProbeReq, request: Request, x_aegis_token: str | None = Header(None)):
+    """Send one allowlisted control-plane request as the chosen demonstration identity, server-side. The browser picks a role,
+    an operation key and a lab run; it never sees a token. The response body is reduced to its shape and a leak count."""
+    _authorize(request, x_aegis_token, "operator")
+    if req.role not in PROBE_ROLES or req.op not in PROBE_OPS:
+        raise HTTPException(422, "unknown role or operation")
+    run_id = _lab_run(req.run_id, None)
+    method, suffix, title = PROBE_OPS[req.op]
+    token = None if req.role == "observer" else "forged-" + secrets.token_hex(8) if req.role == "forged" else store.tokens()[req.role]
+    if not _lab_lock.acquire(blocking=False):
+        raise HTTPException(409, "another lab action is in progress")
+    try:
+        s = _Steps()
+        pre = read_jsonl(store.run_dir(run_id) / "audit.jsonl")[-1]["seq"]
+        r = s.call(_client(), req.role, method, "/api/runs/%s%s" % (run_id, suffix), token, None, title)
+        new = _audit_since(run_id, pre)
+        exported = _export_if_released(run_id) if req.op == "release" and r.status_code == 200 else None
+    finally:
+        _lab_lock.release()
+    try:
+        body = r.json()
+    except ValueError:
+        body = None
+    leaks = _scan(s.bodies, _protected_markers(run_id))
+    signed = _signed_upto(run_id)
+    summary = None
+    if r.status_code == 200 and req.op == "verify":
+        summary = {k: body.get(k) for k in ("ok", "entries", "checkpoints_checked", "terminal_verified")}
+    elif r.status_code == 200 and req.op == "detail":
+        summary = {"state": body.get("state"), "manifest_fields": sorted((body.get("manifest") or {}).keys()),
+                   "secret_digests_shown": [k for k in api.SECRET_DIGESTS if k in (body.get("manifest") or {})]}
+    elif r.status_code == 200 and req.op == "artifacts":
+        summary = {"artifacts": len(body) if isinstance(body, list) else None}
+    res = {"role": req.role, "op": req.op, "run_id": run_id, "request": "%s /api/runs/%s%s" % (method, run_id, suffix),
+           "status": r.status_code, "decision": s.steps[0]["decision"], "detail": _detail(r),
+           "audit": [_public_entry(e, signed) for e in new], "summary": summary,
+           "response_shape": _shape(body) if r.status_code == 200 else None,
+           "protected_values_in_raw_response": leaks, "bundle_exported": exported,
+           "note": "The raw response stays on the server; the browser receives its status, structure and a count of protected values."}
+    _journal("probe:%s:%s" % (req.role, req.op), run_id, "HTTP %d" % r.status_code, title)
+    return res
+
+
+def _export_if_released(run_id):
+    bundle = store.p("bundles", run_id)
+    if runs.Run(run_id).state == "RELEASED" and not bundle.exists():
+        try:
+            evidence.export_bundle(run_id, bundle)
+        except (ValueError, OSError):
+            return False
+    return bundle.is_dir()
+
+
+# ------------------------------------------------------------------------------------------------ in-memory tamper suite
+@app.post("/api/lab/runs/{run_id}/tamper-suite")
+def tamper_suite(run_id: str, request: Request, x_aegis_token: str | None = Header(None)):
+    """The control plane's own tamper test (POST /api/runs/{id}/tamper-test) for every mode, as the reviewer, server-side.
+    Each modification is applied to an in-memory copy of the stored log; the stored log is unchanged."""
+    _authorize(request, x_aegis_token, "operator", "reviewer")
+    _lab_run(run_id, None)
+    before = hashlib.sha256((store.run_dir(run_id) / "audit.jsonl").read_bytes()).hexdigest()
+    c, tok, rows = _client(), store.tokens()["reviewer"], []
+    for mode in TAMPER_MODES:
+        r = c.post("/api/runs/%s/tamper-test" % run_id, json={"mode": mode}, headers={"X-Aegis-Token": tok})
+        if r.status_code != 200:
+            rows.append({"mode": mode, "error": "HTTP %d: %s" % (r.status_code, _detail(r))})
+            continue
+        b = r.json()
+        v = b.get("verification") or {}
+        rows.append({"mode": mode, "description": b.get("description") or TAMPER_MODES[mode], "detected": b.get("detected"),
+                     "verification": {"ok": v.get("ok"), "findings": [{"issue": f.get("issue")} for f in (v.get("findings") or [])][:3]}})
+    after = hashlib.sha256((store.run_dir(run_id) / "audit.jsonl").read_bytes()).hexdigest()
+    res = {"run_id": run_id, "rows": rows, "detected": sum(1 for x in rows if x.get("detected")), "modes": len(rows),
+           "stored_log_unchanged": before == after,
+           "verdict": "PASS" if all(x.get("detected") for x in rows) and before == after else "FAIL"}
+    _journal("tamper-suite", run_id, res["verdict"], "in-memory tamper suite")
+    return res
+
+
+# ------------------------------------------------------------------------------------------------ operator session
+@app.get("/session/start")
+def session_start(code: str = ""):
+    """Exchange the launch code (printed by scripts/start_prototype.sh) for an operator session cookie, then open the console."""
+    sid, why = lab_session.start(code[:200])
+    if not sid:
+        return PlainTextResponse("AegisLab console: %s.\nOpen the launch link printed by scripts/start_prototype.sh "
+                                 "(the code is also in $AEGIS_VAR/console/launch_code).\n" % why, status_code=403)
+    resp = RedirectResponse("/#/lab", status_code=303)
+    resp.set_cookie(lab_session.COOKIE, sid, max_age=lab_session.SESSION_TTL_S, path="/", httponly=True, samesite="strict")
+    return resp
+
+
+@app.get("/api/lab/session")
+def session_info(request: Request):
+    """Whether this browser holds an operator session, and its CSRF token. Readable only by pages of this origin."""
+    sess = lab_session.get(request.cookies.get(lab_session.COOKIE))
+    if not sess:
+        return {"authenticated": False, "how": "Open the launch link printed by scripts/start_prototype.sh."}
+    return {"authenticated": True, "csrf": sess["csrf"], "principal": "local operator (this console's launch link)",
+            "expires_at": sess["expires_at"],
+            "roles_driven": ["operator", "reviewer", "blue_participant", "red_participant"],
+            "limitation": "One local operator drives every demonstration role server-side. Roles are separated inside the "
+                          "control plane, but this session is not multi-user authentication."}
+
+
+@app.post("/api/lab/session/end")
+def session_end(request: Request):
+    _authorize(request, None, "operator")
+    lab_session.end(request.cookies.get(lab_session.COOKIE))
+    resp = JSONResponse({"ok": True})
+    resp.delete_cookie(lab_session.COOKIE, path="/")
+    return resp
 
 
 # ------------------------------------------------------------------------------------------------ timeline
@@ -795,10 +1234,10 @@ def tamper_modes():
 
 
 @app.post("/api/lab/bundles/{bid}/tamper")
-def tamper_bundle(bid: str, req: TamperReq, x_aegis_token: str | None = Header(None)):
+def tamper_bundle(bid: str, req: TamperReq, request: Request, x_aegis_token: str | None = Header(None)):
     """Copy a genuine bundle to a disposable directory, change the copy, run the verifier on the copy and on the original, prove the
     original is byte-identical, delete the copy. The corrupted copy never leaves this function."""
-    _need(x_aegis_token, "reviewer", "operator")
+    _authorize(request, x_aegis_token, "reviewer", "operator")
     if req.mode not in TAMPER:
         raise HTTPException(400, "unknown tamper mode")
     b = _bundle(bid)
@@ -824,6 +1263,7 @@ def tamper_bundle(bid: str, req: TamperReq, x_aegis_token: str | None = Header(N
            "original_sha256": {k: v[:16] for k, v in after.items()}, "copy_deleted": not work.exists(),
            "verdict": "PASS" if rejected and accepted and before == after else "FAIL"}
     _journal("tamper:" + req.mode, bid, res["verdict"], TAMPER[req.mode])
+    _save_result("tamper", dict(res, run_id=b["run_id"], scenario="tamper", finished_at=time.time()))
     return res
 
 
