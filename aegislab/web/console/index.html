@@ -4,43 +4,62 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AegisLab Console</title>
-<meta name="description" content="AegisLab interactive prototype: try the isolation boundaries of an adversarial AI evaluation and verify the signed evidence yourself.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 4 7v8c0 7.4 5.1 13.4 12 15 6.9-1.6 12-7.6 12-15V7z' fill='%2358B4E4'/%3E%3C/svg%3E">
+<meta name="description" content="AegisLab interactive prototype: an archive of isolation tests for adversarial AI evaluation, with signed evidence you can verify yourself.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23f5f5f5'/%3E%3Cpath d='M16 4 6 8v7c0 6.3 4.3 11.4 10 13 5.7-1.6 10-6.7 10-13V8z' fill='none' stroke='%23111' stroke-width='2.4' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preload" href="/console/fonts/dm-mono-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/console/console.css">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
-<div class="shell">
-  <aside class="rail" aria-label="Sections">
-    <a class="brand" href="#/overview">
-      <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><path d="M16 2 4 7v8c0 7.4 5.1 13.4 12 15 6.9-1.6 12-7.6 12-15V7z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 17h12M16 11v12" stroke="currentColor" stroke-width="2"/></svg>
-      <span><strong>AegisLab</strong><small>Prototype console</small></span>
-    </a>
-    <nav class="nav" aria-label="Main">
-      <a href="#/overview" data-nav="overview">Overview</a>
-      <a href="#/topology" data-nav="topology">Isolation topology</a>
-      <a href="#/lab" data-nav="lab">Attack lab</a>
-      <a href="#/events" data-nav="events">Security events</a>
-      <a href="#/evidence" data-nav="evidence">Evidence verification</a>
-      <a href="#/experiments" data-nav="experiments">Experiment results</a>
-      <a href="#/limits" data-nav="limits">Threat model and limits</a>
-    </nav>
-    <div class="rail-foot">
-      <div id="mode-pill" class="pill">Connecting…</div>
-      <p class="tiny">Tech Mavericks · Hack in Hills ’26 · Track 04</p>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <filter id="pencil" x="-5%" y="-20%" width="110%" height="140%"><feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="1.6"/></filter>
+</svg>
+<div id="app">
+  <header class="site-head">
+    <div class="hrow1">
+      <a class="brand" href="#/overview">AegisLab <small>isolation evidence archive</small></a>
+      <div class="tools">
+        <span id="sys" class="sys" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span class="txt">Connecting…</span></span>
+        <a class="iconbtn" href="#/threat-model" id="tm-link" aria-label="Threat model and limits" title="Threat model and limits"></a>
+      </div>
     </div>
-  </aside>
-  <div class="main-col">
-    <header class="strip" id="strip" role="status" aria-live="polite">Checking the control plane…</header>
-    <main id="main" tabindex="-1"></main>
-  </div>
+    <nav class="hrow2" aria-label="Sections">
+      <div class="subnav" id="subnav">
+        <a href="#/overview" data-nav="overview"><span>Overview</span></a>
+        <a href="#/lab" data-nav="lab"><span>Lab</span></a>
+        <a href="#/connections" data-nav="connections"><span>Connections</span></a>
+        <a href="#/audit" data-nav="audit"><span>Audit</span></a>
+        <a href="#/evidence" data-nav="evidence"><span>Evidence</span></a>
+        <a href="#/experiments" data-nav="experiments"><span>Experiments</span></a>
+        <a href="#/threat-model" data-nav="threat-model"><span>Threat Model</span></a>
+      </div>
+    </nav>
+    <div class="band" id="band" hidden>
+      <label class="search"><span class="vh" id="q-label">Search this page</span><input id="q" type="search" autocomplete="off" spellcheck="false" aria-labelledby="q-label"></label>
+      <button class="bandbtn" id="f-toggle" type="button" aria-expanded="false" aria-controls="fpanel"><span class="lbltxt">Filters</span><span class="count" id="f-count" hidden></span></button>
+      <button class="bandbtn" id="s-toggle" type="button"></button>
+    </div>
+    <div class="fpanel" id="fpanel" hidden></div>
+  </header>
+  <main id="main" tabindex="-1"></main>
+  <footer class="site-foot">
+    <span>AegisLab · Tech Mavericks · Hack in Hills ’26, Track 04 · local prototype on 127.0.0.1</span>
+    <span>Type: DM Mono by Colophon Foundry (SIL OFL 1.1, <a href="/console/fonts/OFL.txt">licence</a>) · Icons: Lucide (ISC)</span>
+  </footer>
 </div>
-<div id="drawer" class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" hidden>
-  <div class="drawer-panel">
-    <div class="drawer-head"><h2 id="drawer-title">Details</h2><button class="btn ghost" id="drawer-close" type="button">Close</button></div>
-    <div id="drawer-body"></div>
-  </div>
-</div>
+<div class="scrim" id="scrim" hidden></div>
+<aside class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" aria-hidden="true">
+  <div class="sheet-head"><h2 id="sheet-title">Details</h2><button class="xbtn" id="sheet-close" type="button" aria-label="Close details"></button></div>
+  <div class="sheet-meta" id="sheet-meta"></div>
+  <div class="sheet-body" id="sheet-body"></div>
+</aside>
+<dialog class="confirm" id="confirm" aria-labelledby="confirm-title">
+  <form method="dialog">
+    <h2 id="confirm-title">Confirm</h2>
+    <div id="confirm-body"></div>
+    <div class="row"><button class="btn" value="cancel" type="submit">Cancel</button><button class="btn solid warn" value="ok" type="submit" id="confirm-ok">Confirm</button></div>
+  </form>
+</dialog>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="/console/console.js"></script>
 </body>
