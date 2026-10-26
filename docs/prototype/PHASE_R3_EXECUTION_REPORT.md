@@ -223,7 +223,8 @@ Branch `r3/security-hardening`, based on `209d386`:
 | `74969d7` | backend: body limit, launch code, idempotency, audit honesty, evidence hardening, `test_r3_hardening.py` |
 | `3a66d76` | console UI |
 | `8c783ab` | pinned browser tests, release gates, CI workflow, R3 screenshots |
-| (docs) | this report, security review, checklist, walkthrough and guide updates |
+| `ddbfd85` | this report, security review, checklist, walkthrough and guide updates |
+| (next) | records these SHAs; carries the local tag `aegislab-r3-rc1` |
 
 ## 15. Remote status
 
