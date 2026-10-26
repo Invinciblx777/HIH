@@ -136,22 +136,22 @@ aegislab/                    the prototype (start here)
   aegis/                     control plane: api.py, runs.py (lifecycle, broker, gate), audit.py, crypto.py, runtime.py, evidence.py, verify_cli.py, model_client.py
   sandbox/                   code that runs inside the containers (standard library only)
   samples/                   synthetic attack pack and defence configuration
-  scripts/                   quickstart.sh, judge_demo.sh, security_demo.sh, start_prototype.sh (console), demo_run.py, export_snapshot.py
+  scripts/                   quickstart.sh, judge_demo.sh, security_demo.sh, start_prototype.sh (console), demo_run.py
   tests/                     pytest suite (security regression, Phase 2 attack tests, Phase 3 LLM tests, Podman-based tests)
   evaluation/                experiment harnesses; check_claims.py and check_presentation.py recompute every quoted figure
   evidence/                  dated evidence sets, each with its own README; never edited after recording
-  web/                       web/console: the interactive prototype console (aegis/console.py); web/snapshot is a 15 Oct export (its banner says so)
+  web/                       web/console: the interactive prototype console (aegis/console.py); web/fonts: deck and video fonts
   THREAT_MODEL.md, README.md threat table and technical reference
 README_FIRST.md              release-package guide (rc4, 23 Oct)
 PHASE2/3/4 reports, Judge_QA.md, PHASE4_CLAIM_MATRIX.md, VALIDATION_ADDENDUM_2026-10-22.md, ...   reports; older ones keep the figures of their date
 Tech_Mavericks_AegisLab_Submission.pptx / .pdf, Tech_Mavericks_AegisLab_Pitch_120s.mp4, Captions.srt, Voiceover_Script.txt, Storyboard_Timestamped.txt
 presentation_src/            deck and video build sources (includes the official event template)
 assets/                      15 Oct diagrams and screenshots (historical figures; not used by the current deck)
-MANIFEST.sha256              SHA-256 of the 442 files of release candidate rc4: sha256sum -c MANIFEST.sha256
+MANIFEST.sha256              SHA-256 of the 259 release files (rc4 minus the legacy site): sha256sum -c MANIFEST.sha256
 docs/                        judge guide, validation record, and docs/prototype (console guide, walkthrough, Phase R1 report)
 tools/publication_scan.py    pre-publication secret and private-data scan (git index and history)
 ```
 
 ## Licence
 
-Code: MIT, see [`LICENSE`](LICENSE). Fonts in `aegislab/web/fonts/`: SIL Open Font License 1.1, see [`aegislab/web/fonts/OFL.txt`](aegislab/web/fonts/OFL.txt). The event logos, the mountain photograph (`aegislab/web/img/mountain.jpg`) and `presentation_src/official_template.pptx` come from the official Hack in Hills '26 template and are not covered by the MIT licence. Python dependencies: FastAPI (MIT), Uvicorn (BSD-3-Clause), cryptography (Apache-2.0 / BSD).
+Code: MIT, see [`LICENSE`](LICENSE). Fonts in `aegislab/web/fonts/`: SIL Open Font License 1.1, see [`aegislab/web/fonts/OFL.txt`](aegislab/web/fonts/OFL.txt). The event logos and `presentation_src/official_template.pptx` come from the official Hack in Hills '26 template and are not covered by the MIT licence. Python dependencies: FastAPI (MIT), Uvicorn (BSD-3-Clause), cryptography (Apache-2.0 / BSD).

@@ -53,7 +53,7 @@ AEGIS_VAR=var/mine python scripts/demo_run.py DEMO-001 --bundle-dir var/mine/bun
 python -m aegis.verify_cli --bundle var/mine/bundles/DEMO-001
 scripts/security_demo.sh                          # judge-facing demonstration (a few seconds once the image is built), fresh temp state, exits 0 only if every check behaves
 scripts/judge_demo.sh                              # PRESENTATION MODE (Phase 4): short, offline, deterministic; LLM evidence is PRECOMPUTED, no model runs; --pause, --record F.json
-AEGIS_VAR=var/mine AEGIS_DEMO_MODE=1 uvicorn aegis.api:app --host 127.0.0.1 --port 8400   # console
+scripts/start_prototype.sh                         # interactive console on http://127.0.0.1:8400 (aegis.console, state in var/console)
 ```
 
 Evaluations (each writes only to the `--out` folder; the runner refuses to write into `evidence/` itself):
@@ -66,9 +66,7 @@ AEGIS_VAR=var/scratch python evaluation/timing_closeout.py --seed 1 --out-dir ev
 python evaluation/timing_aggregate.py --out evidence/closeout_<date>/timing/aggregate.json evidence/closeout_<date>/timing/exec*   # combine executions, held-out transfer, verdicts
 ```
 
-To try the gated actions, use the "Viewing as" selector: Operator (create/freeze/start), Reviewer (release, tamper test), Blue or Red participant (gets 403 before release). The API enforces these identities. They are local demo tokens in `var/keys/tokens.json`; production would use SSO/OIDC. `AEGIS_DEMO_MODE=1` makes `GET /api/demo/identities` hand out every token to any local caller: demo only.
-
-**Static mode (no backend):** `python -m http.server 8000 -d web` and open http://127.0.0.1:8000. The site then loads `web/snapshot/` (exported by `scripts/export_snapshot.py` from the 15 Oct run) and says so in the top banner. Actions are disabled; tamper-test results there were computed by the local prototype at that time.
+The console guide is `../docs/prototype/PROTOTYPE_GUIDE.md`. The API enforces the role identities (operator, reviewer, blue, red, observer). They are local demo tokens in `var/keys/tokens.json`; production would use SSO/OIDC. `AEGIS_DEMO_MODE=1` makes `GET /api/demo/identities` hand out every token to any local caller: demo only.
 
 ### Independent verification of a run (reviewer side)
 
@@ -164,15 +162,15 @@ The default model worker is a deterministic stub. `AEGIS_MODEL_BACKEND=openai_co
 aegis/        control plane: api.py, runs.py (lifecycle, broker, gate), audit.py, crypto.py, runtime.py, evidence.py, verify_cli.py
 sandbox/      code that runs inside containers (standard library only)
 samples/      synthetic attack pack and sample defence configuration
-web/          web console (vanilla JS); web/snapshot = static export
+web/          web/console: the interactive prototype console (vanilla JS, served by aegis/console.py); web/fonts: deck and video fonts
 tests/        pytest suite (test_core, test_audit_integrity, test_isolation, test_model_client)
 evaluation/   run_evaluation.py (E1-E9), run_validation.py, isolation_matrix.py, timing_eval.py, model_experiments.py
 evidence/     15 Oct results (results.json, RESULTS.md, DEMO-001/) and validation_2026-10-22/ (new, separate)
-scripts/      quickstart.sh, security_demo.sh/.py, judge_demo.sh/.py (presentation mode), demo_run.py, export_snapshot.py
+scripts/      quickstart.sh, security_demo.sh/.py, judge_demo.sh/.py (presentation mode), demo_run.py, start_prototype.sh (console)
 THREAT_MODEL.md  threat table, trust model, residual risk
 var/          runtime state (created on first run; contains demo keys, not committed)
 ```
 
 ## Licences
 
-Code: written for this hackathon by Team Tech Mavericks. Fonts in `web/fonts`: Montserrat, IBM Plex Sans and IBM Plex Mono, SIL Open Font License 1.1. Mountain photograph: from the official Hack in Hills ’26 presentation template. Python dependencies: FastAPI (MIT), Uvicorn (BSD-3), cryptography (Apache-2.0/BSD).
+Code: written for this hackathon by Team Tech Mavericks. Fonts in `web/fonts`: Montserrat, IBM Plex Sans and IBM Plex Mono; in `web/console/fonts`: DM Mono; all SIL Open Font License 1.1. Python dependencies: FastAPI (MIT), Uvicorn (BSD-3), cryptography (Apache-2.0/BSD).
