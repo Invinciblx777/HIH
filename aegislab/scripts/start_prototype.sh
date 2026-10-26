@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# AegisLab interactive prototype console (Phase R1): checks prerequisites, prepares the environment, serves the console on loopback.
+# AegisLab interactive prototype console (Phase R1, end-to-end since R2): checks prerequisites, prepares the environment,
+# serves the console on loopback and prints a one-time launch link that starts the operator session.
 #
 #   scripts/start_prototype.sh              start on http://127.0.0.1:8400 (Ctrl-C stops it)
 #   scripts/start_prototype.sh --port 8500  use another port
@@ -9,7 +10,8 @@
 # Live mode needs rootless Podman and the sandbox image (built here on first use). Without them the console still starts in
 # degraded mode: evidence verification works, live scenarios are disabled and a recorded execution is shown instead.
 # State goes to var/console (AEGIS_VAR). Nothing under evidence/, var/quickstart or the submission files is written.
-# The console binds to 127.0.0.1 only and enables local demo identities; never expose it beyond loopback.
+# The console binds to 127.0.0.1 only. Role tokens never reach the browser: the launch link sets an HttpOnly session cookie
+# and the console performs each role's requests server-side. Never expose the console beyond loopback.
 set -Eeuo pipefail
 cd "$(dirname "$0")/.."
 ROOT=$PWD
@@ -19,7 +21,7 @@ while [ $# -gt 0 ]; do
     --port) PORT="${2:?--port needs a number}"; shift ;;
     --check) CHECK=1 ;;
     --reset) RESET=1 ;;
-    -h|--help) sed -n '2,13p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,14p' "$0"; exit 0 ;;
     *) echo "unknown option: $1 (see --help)" >&2; exit 2 ;;
   esac
   shift
@@ -33,6 +35,7 @@ die()  { echo "  ${R}fail${N}  $1" >&2; echo "        -> $2" >&2; exit 1; }
 
 export AEGIS_VAR="$ROOT/var/console"
 export PYTHONDONTWRITEBYTECODE=1
+unset AEGIS_DEMO_MODE   # the console refuses to start with it: it would hand every role token to any local page
 for k in $(env | sed -n 's/^\(AEGIS_MODEL[A-Z_]*\)=.*/\1/p'); do unset "$k"; done   # the console always uses the deterministic stub model
 
 echo "AegisLab prototype console: prerequisites"
@@ -101,9 +104,16 @@ cleanup() {
 }
 trap cleanup EXIT
 echo
-echo "Open  http://127.0.0.1:$PORT  in a browser.   Ctrl-C stops the console."
+export AEGIS_CONSOLE_LAUNCH_CODE
+AEGIS_CONSOLE_LAUNCH_CODE=$(.venv/bin/python -c 'import secrets; print(secrets.token_urlsafe(24))')
+echo "Open this launch link in a browser on this machine (it starts the operator session):"
+echo
+echo "    http://127.0.0.1:$PORT/session/start?code=$AEGIS_CONSOLE_LAUNCH_CODE"
+echo
+echo "Without it the console opens read-only at http://127.0.0.1:$PORT  (the code changes on every start)."
+echo "Ctrl-C stops the console and removes any lab containers it left behind."
 echo "State dir: var/console (delete it, or use --reset, to start fresh)."
-AEGIS_DEMO_MODE=1 .venv/bin/uvicorn aegis.console:app --host 127.0.0.1 --port "$PORT" --no-server-header --log-level warning &
+.venv/bin/uvicorn aegis.console:app --host 127.0.0.1 --port "$PORT" --no-server-header --log-level warning &
 PID=$!
 trap 'kill "$PID" 2>/dev/null || true' INT TERM
 wait "$PID" || true
