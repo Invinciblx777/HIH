@@ -286,7 +286,7 @@ main:focus { outline: none; }
 .hash { font-size: var(--fs-ctl-sm); color: var(--ink2); overflow-wrap: anywhere; }
 
 /* run lifecycle: the current state is ringed like the active tab */
-.life { list-style: none; padding: 0; margin: 4px 0 0; display: flex; flex-wrap: wrap; row-gap: 10px; }
+.life { list-style: none; padding: 0; margin: 4px 0 14px; display: flex; flex-wrap: wrap; row-gap: 10px; }
 .life li { display: flex; flex-direction: column; padding-right: 22px; min-width: 0; }
 .life li b { font-weight: 400; font-size: var(--fs-body); }
 .life li:not(:last-child) b::after { content: ","; color: var(--ink2); }
@@ -437,9 +437,9 @@ dialog.confirm .row { justify-content: flex-end; margin-top: 18px; }
 .kinds { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
 .kinds .total { margin-left: auto; font-size: var(--fs-tag); }
 .gwrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 380px); gap: 0; border: var(--rule) solid var(--ink); border-radius: var(--radius); overflow: hidden; background: var(--bg); }
-.gframe { position: relative; min-height: 560px; height: calc(100vh - 360px); max-height: 760px; touch-action: none; overflow: hidden; }
+.gframe { position: relative; min-height: 560px; height: calc(100vh - 360px); max-height: 760px; touch-action: none; overflow: hidden; display: flex; flex-direction: column; }
 .gframe:focus-visible { outline: 2px solid var(--ink); outline-offset: -4px; }
-.gframe svg.g { width: 100%; height: 100%; display: block; cursor: grab; user-select: none; -webkit-user-select: none; }
+.gframe svg.g { width: 100%; flex: 1 1 auto; min-height: 0; display: block; cursor: grab; user-select: none; -webkit-user-select: none; }
 .gframe svg.g.dragging { cursor: grabbing; }
 .gtools { position: absolute; top: 16px; right: 16px; display: flex; align-items: center; gap: 12px; z-index: 2; }
 .zoom { display: inline-flex; border-radius: var(--pill); box-shadow: inset 0 0 0 2px var(--ink); background: var(--bg); }
@@ -450,7 +450,8 @@ dialog.confirm .row { justify-content: flex-end; margin-top: 18px; }
 .zoom button:last-child { border-radius: 0 var(--pill) var(--pill) 0; }
 .roundbtn { width: 30px; height: 30px; border-radius: 50%; border: 0; box-shadow: inset 0 0 0 2px var(--ink); background: var(--bg); display: grid; place-items: center; padding: 0; }
 .roundbtn:hover { background: var(--soft); }
-.gfoot { position: absolute; left: 24px; bottom: 14px; right: 24px; font-size: var(--fs-tag); font-style: italic; color: var(--ink2); pointer-events: none; }
+/* the caption sits below the drawing (R4): as an overlay it covered the bottom row of components */
+.gfoot { flex: none; padding: 8px 24px 14px; font-size: var(--fs-tag); font-style: italic; color: var(--ink2); pointer-events: none; }
 .gfoot span { background: var(--bg); box-shadow: 0 0 0 4px var(--bg); }
 .gside { border-left: var(--rule) solid var(--ink); padding: 18px 20px 24px; overflow-y: auto; max-height: calc(100vh - 360px); min-height: 560px; font-size: var(--fs-read); line-height: 1.6; }
 .gside h3 { font-size: 20px; line-height: 1.25; margin-bottom: 6px; }
@@ -515,7 +516,7 @@ dialog.confirm .row { justify-content: flex-end; margin-top: 18px; }
 .g .dot.checkpoint circle { fill: var(--bg); stroke: var(--ochre); stroke-width: 2.2; }
 .g .dot.sel circle { stroke: var(--ink); stroke-width: 3; }
 .g.focus .dot:not(.sel) { opacity: .35; }
-.gtext { padding: 18px 20px; overflow: auto; max-height: calc(100vh - 360px); min-height: 560px; }
+.gtext { padding: 18px 20px; overflow: auto; flex: 1 1 auto; min-height: 0; }
 .gtext table { font-size: var(--fs-tag); }
 .gtext h3 { font-size: var(--fs-body); font-weight: 500; margin: 0 0 8px; }
 
@@ -574,7 +575,7 @@ dialog.confirm .row { justify-content: flex-end; margin-top: 18px; }
   .facet { border-left: 0; padding: 0 0 12px; }
   .facet + .facet { border-top: 1px solid var(--line); padding-top: 12px; }
   .gtools { top: 10px; right: 10px; gap: 8px; }
-  .gfoot { left: 14px; right: 14px; bottom: 10px; }
+  .gfoot { padding: 6px 14px 10px; }
   .kinds .total { margin-left: 0; width: 100%; }
   .persp a { font-size: 20px; }
   .steps > li { grid-template-columns: minmax(0, 1fr); gap: 8px; }

@@ -205,3 +205,26 @@ def test_main_pages_have_no_horizontal_overflow(server, browser, vp, prefix):
             shot(page, "%s%02d_%s.png" % (prefix, n + 1, p[2:].replace("-", "_")), expect)
     assert not errors, errors
     ctx.close()
+
+
+@pytest.mark.parametrize("vp", [{"width": 1280, "height": 720}, {"width": 1366, "height": 768}, DESKTOP, PHONE])
+def test_graph_caption_does_not_cover_the_drawing(server, browser, vp):
+    """R4 regression: the caption under the isolation graph was an absolutely positioned overlay and covered the bottom row of
+    components (Evidence verifier) on laptop screens. It must sit below the drawing and below the text view."""
+    ctx = browser.new_context(viewport=vp)
+    page = ctx.new_page()
+    errors = watch(page)
+    go(page, server["base"], "#/connections?view=topology")
+    expect(page.locator("#gsvg")).to_be_visible()
+    box = lambda sel: page.locator(sel).bounding_box()
+    svg, foot, frame = box("#gsvg"), box(".gfoot"), box("#gframe")
+    assert foot["y"] >= svg["y"] + svg["height"] - 1, "caption overlaps the graph: svg %s, caption %s" % (svg, foot)
+    assert foot["y"] + foot["height"] <= frame["y"] + frame["height"] + 1, "caption outside its frame"
+    assert svg["height"] >= 300, "graph squeezed to %s px" % svg["height"]
+    page.click("#g-text")
+    expect(page.locator("#gtext")).to_be_visible()
+    text, foot = box("#gtext"), box(".gfoot")
+    assert foot["y"] >= text["y"] + text["height"] - 1, "caption overlaps the text view"
+    no_overflow(page)
+    assert not errors, errors
+    ctx.close()
