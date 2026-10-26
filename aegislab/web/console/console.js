@@ -6,12 +6,13 @@
 "use strict";
 
 const S = {
-  status: null, tokens: {}, runs: [], journal: [], page: null, q: {}, lastHash: null, booted: false,
+  status: null, session: null, runs: [], journal: [], page: null, q: {}, lastHash: null, booted: false,
   timers: [], cleanups: [], exp: null, expP: null,
-  lab: { run: null, results: {}, scenarios: null, search: "", f: { sel: {}, match: "all" }, sig: "" },
-  audit: { data: [], search: "", f: { sel: {}, match: "all" }, sort: "desc", live: true, limit: 300, sig: "" },
+  lab: { run: null, view: null, results: {}, scenarios: null, profiles: null, last: null, search: "", f: { sel: {}, match: "all" }, sig: "" },
+  audit: { data: [], search: "", f: { sel: {}, match: "all" }, sort: "desc", live: true, limit: 300, sig: "",
+    src: "monitor", run: null, log: null, off: 0, lf: { type: "", actor: "", decision: "" } },
   ev: { bundles: [], modes: null, verify: {}, tamper: {}, mem: {}, search: "", f: { sel: {}, match: "all" } },
-  conn: { view: "topology", sel: {}, search: "", text: false, off: {}, run: null, events: [], pz: null },
+  conn: { view: "topology", sel: {}, search: "", text: false, off: {}, run: null, events: [], pz: null, obs: [], showObs: true },
 };
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
@@ -21,7 +22,7 @@ const when = (t) => (t ? new Date(t * 1000).toLocaleString([], { day: "2-digit",
 const clock = (t) => (t ? new Date(t * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "—");
 const cap = (s) => String(s).charAt(0) + String(s).slice(1).toLowerCase();
 const fmt = (n) => Number(n).toLocaleString("en");
-const ROLE_NAMES = { observer: "Observer (no token)", operator: "Operator", reviewer: "Reviewer", blue_participant: "Blue participant", red_participant: "Red participant" };
+const ROLE_NAMES = { observer: "Observer (no token)", operator: "Operator", reviewer: "Reviewer", blue_participant: "Blue participant", red_participant: "Red participant", forged: "Forged token" };
 const STATES = ["CREATED", "FROZEN", "RUNNING", "SEALED", "RELEASED"];
 const STATE_HELP = { CREATED: "inputs staged", FROZEN: "config digests fixed", RUNNING: "brokered execution", SEALED: "results held", RELEASED: "reviewer released" };
 
@@ -54,20 +55,30 @@ const icon = (n, cls = "") => `<svg class="ico ${cls}" viewBox="0 0 24 24" fill=
 
 /* ---------------------------------------------------------------- API */
 class NetError extends Error {}
-async function call(path, { method = "GET", body, role } = {}) {
+/* The browser holds no role token. Writes carry the operator session's CSRF token; the session cookie itself is HttpOnly
+   and is sent by the browser to this origin only (SameSite=Strict). The server performs each role's request. */
+async function call(path, { method = "GET", body } = {}) {
   const headers = {};
   if (body !== undefined) headers["Content-Type"] = "application/json";
-  if (role && role !== "observer") {
-    if (!S.tokens[role]) return { status: 0, ok: false, body: { detail: "no demo identity for " + role + " (start the console with scripts/start_prototype.sh)" } };
-    headers["X-Aegis-Token"] = S.tokens[role];
-  }
+  if (method !== "GET" && S.session && S.session.csrf) headers["X-Aegis-CSRF"] = S.session.csrf;
   let r;
-  try { r = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), cache: "no-store" }); }
+  try { r = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), cache: "no-store", credentials: "same-origin" }); }
   catch (e) { throw new NetError("The console server is not reachable. Is scripts/start_prototype.sh still running?"); }
   let b = null;
   const ct = r.headers.get("content-type") || "";
   if (ct.includes("json")) b = await r.json().catch(() => null); else b = { text: await r.text().catch(() => "") };
+  if (r.status === 403 && b && /operator session|CSRF/.test(b.detail || "")) { S.session = { authenticated: false }; paintSession(); }
   return { status: r.status, ok: r.ok, body: b };
+}
+const canAct = () => !!(S.session && S.session.authenticated);
+const NO_SESSION = "Read-only: open the launch link printed by scripts/start_prototype.sh to act in the lab.";
+async function loadSession() { try { S.session = await get("/api/lab/session"); } catch (e) { S.session = { authenticated: false }; } paintSession(); return S.session; }
+function paintSession() {
+  const el = $("#sess"); if (!el) return;
+  const on = canAct();
+  el.className = "sys " + (on ? "live" : "ro");
+  el.title = on ? (S.session.limitation || "") : NO_SESSION;
+  $(".txt", el).innerHTML = on ? `Operator session<span class="long"> · roles act server-side</span>` : `Read-only<span class="long"> · open the launch link</span>`;
 }
 async function get(path, opts) {
   const r = await call(path, opts);
@@ -113,8 +124,24 @@ function confirmAction(title, html, ok) {
   const d = $("#confirm");
   $("#confirm-title").textContent = title; $("#confirm-body").innerHTML = html; $("#confirm-ok").textContent = ok;
   d.returnValue = "";
-  d.showModal();
-  return new Promise((res) => d.addEventListener("close", () => res(d.returnValue === "ok"), { once: true }));
+  /* resolve on the form's submit (which carries the button pressed), on Esc, or on close: some Chromium builds never
+     dispatch "close" for a method=dialog form, which would leave a confirmed release waiting for ever */
+  return new Promise((res) => {
+    const f = $("form", d);
+    let done = false;
+    const finish = (v) => {
+      if (done) return;
+      done = true;
+      f.removeEventListener("submit", onSubmit); d.removeEventListener("cancel", onCancel); d.removeEventListener("close", onClose);
+      if (d.open) d.close(v ? "ok" : "cancel");
+      res(v);
+    };
+    const onSubmit = (e) => { e.preventDefault(); finish(!!e.submitter && e.submitter.value === "ok"); };
+    const onCancel = () => finish(false);
+    const onClose = () => finish(d.returnValue === "ok");
+    f.addEventListener("submit", onSubmit); d.addEventListener("cancel", onCancel); d.addEventListener("close", onClose);
+    d.showModal();
+  });
 }
 /* cards rise in with a short stagger, as in the reference; reduced motion skips it (CSS) */
 function enter(root) {
@@ -126,7 +153,7 @@ function wrapTables(root) {
   $$(".table-wrap", root).forEach((w) => w.classList.toggle("scrolls", w.scrollWidth > w.clientWidth + 2));
 }
 function labelTag(kind) {
-  const m = { live: "LIVE SYSTEM TEST", rec: "RECORDED EXECUTION", pre: "PRECOMPUTED REAL-MODEL", stub: "STUB MODEL" };
+  const m = { live: "LIVE SYSTEM TEST", sandbox: "LIVE SANDBOX · STUB MODEL", rec: "REPLAY · RECORDED", pre: "PRECOMPUTED REAL-MODEL", stub: "STUB MODEL", na: "UNAVAILABLE" };
   return `<span class="label ${kind}">${m[kind]}</span>`;
 }
 
@@ -395,7 +422,7 @@ function linkRows(rows) {
 
 /* ================================================================ 1. overview */
 const WALK = [
-  { k: "prepare", t: "Start a live evaluation run", h: "#/lab?open=run", step: 1, live: true, tags: ["Broker", "Mailbox"], b: "Red sandbox, defence runner and model worker start in fresh hardened containers; the broker drives the attacks." },
+  { k: "start", t: "Start a live evaluation run", h: "#/lab", step: 1, live: true, tags: ["Broker", "Mailbox"], b: "Red sandbox, defence runner and model worker start in fresh hardened containers; the broker drives the attacks." },
   { k: "prohibited-access", t: "Attempt prohibited access", h: "#/lab?open=prohibited-access", step: 2, live: true, tags: ["Result gate"], b: "The red participant tries to read sealed results and release the run." },
   { k: "cross-role-isolation", t: "Cross a role boundary", h: "#/lab?open=cross-role-isolation", step: 3, live: true, tags: ["Role boundary", "Mailbox"], b: "Blue reaches for red's payloads; the red sandbox's own forbidden requests are read back." },
   { k: "authorized-release", t: "Release as the reviewer", h: "#/lab?open=authorized-release", step: 4, live: true, tags: ["Release gate"], b: "The one permitted path to the results, closed with a signed terminal checkpoint." },
@@ -410,7 +437,7 @@ async function overview() {
   const latest = runs[0], integ = st.integrity_latest_terminal_run, shipped = st.integrity_shipped_bundle || {};
   const recent = tl.filter((e) => ["denied", "failed", "alert"].includes(decisionOf(e))).slice(0, 8);
   const walk = WALK.map((w) => {
-    const j = w.k === "tamper" ? lastJ((x) => x.kind.startsWith("tamper:")) : lastJ(w.k);
+    const j = w.k === "tamper" ? lastJ((x) => x.kind.startsWith("tamper:")) : w.k === "start" ? lastJ((x) => x.kind === "start" || x.kind === "prepare") : lastJ(w.k);
     let cls = "c-live", badge = "Live", mark = `${icon("circle")}<span class="st none">Not run in this session</span>`;
     if (j) {
       const ok = j.verdict === "PASS" || j.verdict === "STARTED";
@@ -435,7 +462,7 @@ async function overview() {
           <li><span class="k">Sandbox image</span><span class="v">${pm.image_present ? esc(pm.image) : `<span class="st warn">Not built</span>`}</span></li>
           <li><span class="k">Kernel isolation</span><span class="v">${pm.available ? `SELinux ${pm.selinux ? "on" : "off"}, cgroups ${esc(pm.cgroups)}, cpuset ${pm.cpuset_delegated ? "pinned" : `<span class="st warn">not delegated</span>`}` : "—"}</span></li>
           <li><span class="k">Model execution</span><span class="v">${esc(st.model ? st.model.label : "—")}<br><span class="tiny">${esc(st.model ? st.model.detail : "")}</span></span></li>
-          <li><span class="k">Identities</span><span class="v">${st.demo_identities ? "Local demo tokens, loopback only" : `<span class="st warn">Not issued</span>`}</span></li>
+          <li><span class="k">Identities</span><span class="v">${canAct() ? "Operator session (HttpOnly cookie, loopback); role tokens stay on the server" : `<span class="st warn">Read-only</span> <span class="muted">open the launch link printed by scripts/start_prototype.sh</span>`}</span></li>
           <li><span class="k">Code tree</span><span class="v hash">${st.code_revision ? short(st.code_revision.tree_sha256, 20) + " · " + st.code_revision.files + " files" : "—"}</span></li>
         </ul>
       </div>
@@ -466,14 +493,15 @@ async function overview() {
     ${secHead("How to read this archive")}
     <div class="cols" style="--n:2">
       <div><p class="lbl">Labels</p><ul class="ledger">
-        <li><span class="k">${labelTag("live")}</span><span class="v">Executed now on this machine: runs, refusals, sandbox probes, verifier runs, recomputations.</span></li>
-        <li><span class="k">${labelTag("stub")}</span><span class="v">The model in live runs is a deterministic stub, not an LLM.</span></li>
+        <li><span class="k">${labelTag("sandbox")}</span><span class="v">Executed now in real rootless containers on this machine; the model is the deterministic stub worker, not an LLM.</span></li>
+        <li><span class="k">${labelTag("live")}</span><span class="v">Executed now on this machine without the model: refusals, verifier runs, recomputations.</span></li>
         <li><span class="k">${labelTag("pre")}</span><span class="v">Saved Qwen2.5-0.5B runs, recomputed from their raw files on request. No model runs here.</span></li>
-        <li><span class="k">${labelTag("rec")}</span><span class="v">A saved judge-demo transcript, shown only when containers are unavailable.</span></li></ul></div>
+        <li><span class="k">${labelTag("rec")}</span><span class="v">A saved judge-demo transcript, shown only when containers are unavailable.</span></li>
+        <li><span class="k">${labelTag("na")}</span><span class="v">The required environment (rootless Podman, sandbox image) is missing; nothing is simulated instead.</span></li></ul></div>
       <div><p class="lbl">Known limitations</p><ul class="ledger">
         <li><span class="k">Trusted base</span><span class="v">The broker, its signing key, the host kernel and Podman are trusted, not defended.</span></li>
         <li><span class="k">One host</span><span class="v">Containers share one kernel and one CPU; hardware side channels are untested.</span></li>
-        <li><span class="k">Identities</span><span class="v">Role tokens are global per role and handed to this local browser in demo mode.</span></li>
+        <li><span class="k">Identities</span><span class="v">One local operator session drives every demonstration role server-side; it is not multi-user authentication.</span></li>
         <li><span class="k">Finite tests</span><span class="v">Zero observed leaks is evidence for this configuration, not proof. <a href="#/threat-model">Threat model</a></span></li></ul></div>
     </div>
   </section>`);
@@ -495,7 +523,7 @@ const CATALOG = [
   { id: "prohibited-access", kind: "live", actor: ["Red participant", "Anonymous caller"], boundary: ["Result gate"],
     objective: "Read the sealed attack artifacts before release, or release the run without being the reviewer.",
     evidence: ["GET /api/runs/{id}/artifacts and POST /api/runs/{id}/release in aegis/api.py", "policy.denied entries in the run's audit log (Audit page)", "evidence/validation_2026-10-22/isolation_matrix.json"],
-    limits: ["Role tokens are global per role, not per run, and this local console hands them to the browser in demo mode."] },
+    limits: ["Role tokens are global per role, not per run. The console holds them server-side; one local operator session drives every role."] },
   { id: "cross-role-isolation", kind: "live", actor: ["Blue participant", "Red sandbox", "Forged token"], boundary: ["Role boundary", "Mailbox"],
     objective: "Read the other team's sealed payloads or the secret configuration digests, or act with a forged identity.",
     evidence: ["GET /api/runs/{id} digest redaction and GET /artifacts role check in aegis/api.py", "Broker denials of the red sandbox in the monitoring stream"],
@@ -569,8 +597,10 @@ function labRows() { return CATALOG.filter((c) => textMatch(S.lab.search, c.titl
 PAGES.lab = { render: lab, open: labOpen };
 async function lab() {
   render(loading("Loading the scenario catalogue…"));
-  const [, scns] = await Promise.all([loadRuns(), get("/api/lab/scenarios"), loadJournal()]);
-  S.lab.scenarios = scns;
+  const [, scns, profiles, recorded] = await Promise.all([loadRuns(), get("/api/lab/scenarios"), get("/api/lab/defence-profiles").catch(() => []),
+    get("/api/lab/results?limit=50").catch(() => []), loadJournal()]);
+  S.lab.scenarios = scns; S.lab.profiles = profiles;
+  recorded.slice().reverse().forEach((r) => { if (r.scenario && r.scenario !== "tamper" && r.steps) S.lab.results[r.scenario] = r; });
   if (!S.status) await refreshStatus();
   const lr = labRuns();
   if (!S.lab.run || !lr.some((r) => r.id === S.lab.run)) S.lab.run = lr[0] ? lr[0].id : null;
@@ -578,8 +608,9 @@ async function lab() {
   band({ placeholder: "Scenarios, boundaries, actors", value: S.lab.search, onSearch: (v) => { S.lab.search = v; drawLabCards(); },
     filter: filterCfg(LAB_FACETS, S.lab.f, labRows, drawLabCards) });
   render(`
-  <div class="intro"><p>A catalogue of controlled security scenarios. Live scenarios send real requests to the control plane under real role tokens and judge the security outcome (status, run state, audit entry, leaked values), not whether HTTP succeeded. Precomputed entries summarise saved experiments.</p>
-    <div class="labels">${labelTag(live ? "live" : "rec")}${labelTag("pre")}</div></div>
+  <div class="intro"><p>Run the evaluation lifecycle yourself, then attack it. Live scenarios send real requests to the control plane as each role, with the role's token held on the server, and judge the security outcome (status, run state, audit entry, leaked values), not whether HTTP succeeded. Precomputed entries summarise saved experiments.</p>
+    <div class="labels">${labelTag(live ? "sandbox" : "na")}${live ? "" : labelTag("rec")}${labelTag("pre")}</div></div>
+  ${canAct() ? "" : `<div class="note">${esc(NO_SESSION)} Everything stays visible; nothing can be started.</div>`}
   ${live ? "" : `<div class="note">Live containers are unavailable on this machine: ${esc(S.status ? S.status.mode_reason : "status unknown")}. Live scenarios are disabled and a recorded real execution is shown below; evidence verification still works.</div>`}
   <section class="sec" id="run-box"></section>
   <section class="sec">${secHead("Scenarios", `<span id="lab-count"></span>`)}<div class="cards" id="lab-cards"></div></section>
@@ -587,6 +618,7 @@ async function lab() {
   <section class="sec" id="probe-box"></section>`);
   drawRunBox(); drawLabCards(); drawProbe();
   if (!live) drawReplay();
+  pollRun();
   $("#lab-cards").addEventListener("click", (e) => { const c = e.target.closest("[data-key]"); if (c) openKey(c.dataset.key); });
   loadExp().then(() => { if (S.page === "lab") { drawLabCards(); refreshSheet(); } }).catch(() => {});
   every(1500, pollRun);
@@ -606,52 +638,124 @@ function drawLabCards() {
 const labSig = () => JSON.stringify([labRec(), Object.keys(S.lab.results), S.journal.length, !!S.exp]);
 async function pollRun() {
   if (!S.lab.run) return;
-  const r = await call("/api/runs/" + S.lab.run).catch(() => null);
-  if (!r || !r.ok) return;
-  const prev = (labRec() || {}).state;
-  S.runs = S.runs.map((x) => (x.id === S.lab.run ? r.body : x));
-  if (prev !== r.body.state || r.body.state === "RUNNING") {
+  const r = await call("/api/lab/runs/" + encodeURIComponent(S.lab.run)).catch(() => null);
+  if (!r || !r.ok) { S.lab.stale = true; return; }
+  S.lab.stale = false;
+  const prev = (labRec() || {}).state, prevEv = S.lab.view ? S.lab.view.events : -1;
+  S.lab.view = r.body;
+  S.runs = S.runs.map((x) => (x.id === S.lab.run ? r.body.run : x));
+  if (prev !== r.body.run.state || r.body.events !== prevEv) {
     drawRunBox();
     if (labSig() !== S.lab.sig) drawLabCards();
     if (S.q.open === "run") refreshSheet();
   }
-  if (prev === "RUNNING" && r.body.state !== "RUNNING") { toast(S.lab.run + " is " + r.body.state); loadJournal(); }
+  if (prev === "RUNNING" && r.body.run.state !== "RUNNING") { toast(S.lab.run + " is " + r.body.run.state); loadJournal(); }
+}
+const STEP_HELP = {
+  CREATED: "The operator created the run. Its inputs are staged: red's attack pack (with a fresh canary) and blue's working defence configuration, which blue may still change.",
+  FROZEN: "The configuration is frozen: the manifest records the defence-config and attack-pack digests, the sandbox image digest and the hardening flags, and a signed checkpoint covers it.",
+  RUNNING: "The broker is executing the run: red sandbox, defence runner and model worker each in a fresh rootless container with no network. Red can reach the others only through its mailbox.",
+  SEALED: "Execution finished. Payloads, model outputs and verdicts sit in the sealed store; only a reviewer can release them. Try to get at them first with the scenarios below.",
+  RELEASED: "The reviewer released the run after the audit chain and every attack commitment verified. The signed terminal checkpoint closes the log; the bundle is on the Evidence page.",
+  FAILED: "The run failed closed and can never be released. The reason is in its audit log.",
+};
+function profileSel(id, cur) {
+  return `<label class="field">Defence profile<select id="${id}" title="${esc((S.lab.profiles || []).map((p) => p.title + ": " + p.rules).join("; "))}">${(S.lab.profiles || []).map((p) => `<option value="${esc(p.id)}" ${p.id === (cur || "sample") ? "selected" : ""}>${esc(p.title.replace(/ \(.*\)$/, ""))} (${esc(p.rules.replace(/ patterns?/g, "").replace(", ", "/"))})</option>`).join("")}</select></label>`;
 }
 function drawRunBox() {
   const el = $("#run-box"); if (!el) return;
-  const lr = labRuns(), rec = labRec(), live = isLive(), running = lr.some((r) => r.state === "RUNNING");
+  const lr = labRuns(), rec = labRec(), live = isLive(), running = lr.some((r) => r.state === "RUNNING"), act = canAct();
+  const v = S.lab.view && rec && S.lab.view.run.id === rec.id ? S.lab.view : null;
+  const off = !live ? `disabled title="${esc("Unavailable: " + ((S.status || {}).mode_reason || "live containers missing"))}"` : !act ? `disabled title="${esc(NO_SESSION)}"` : "";
+  const why = !live ? "UNAVAILABLE on this machine: " + ((S.status || {}).mode_reason || "live containers missing") + "." : !act ? NO_SESSION : "";
+  const prof = (S.lab.profiles || []).find((p) => p.id === (v && v.defence_profile));
+  let ctl = "";
+  if (rec && rec.state === "CREATED") {
+    ctl = `<p class="lbl">Step 2 · Configure the defence</p><p class="small muted">Submitted as the blue participant: the rules go to the control plane, never to red or to this page.</p>
+      <div class="row">${profileSel("prof2", v && v.defence_profile)}<button class="btn lg" type="button" data-step="defence" ${off}>Submit as blue</button></div>
+      <p class="lbl">Step 3 · Freeze</p><div class="row"><button class="btn solid lg" type="button" data-step="freeze" ${off}>${icon("shield")} Freeze configuration</button></div>`;
+  } else if (rec && rec.state === "FROZEN") {
+    ctl = `<p class="lbl">Step 4 · Start</p><p class="small muted">Launches three hardened rootless containers and the broker. About 5 s with no padding, about 10 s with 250 ms buckets.</p>
+      <div class="row"><button class="btn solid lg" type="button" data-step="start" ${off || (running ? "disabled" : "")}>${icon("play")} Start the run</button></div>`;
+  } else if (rec && rec.state === "RUNNING") {
+    ctl = `<p class="lbl">Step 5 · Observe</p><div class="loading" role="status"><i aria-hidden="true"><b></b><b></b><b></b></i>${esc(rec.evaluated ?? 0)} of ${esc(rec.attack_count ?? "?")} attacks evaluated</div>
+      ${v && v.last_event ? `<p class="small">Last event #${esc(v.last_event.seq ?? "–")} · ${esc(v.last_event.actor)} · ${esc(v.last_event.summary)}</p>` : ""}
+      <p class="small"><a href="${href("connections", { view: "timeline", run: rec.id })}">Watch its timeline</a> · <a href="${href("audit", { run: rec.id })}">its audit events</a></p>`;
+  } else if (rec && rec.state === "SEALED") {
+    ctl = `<p class="lbl">Step 6 · Sealed: attack the result gate</p><p class="small muted">Open <b>Prohibited access</b> and <b>Cross-role isolation</b> below; each refusal is logged. Then release.</p>
+      <p class="lbl">Step 7 · Release</p><div class="row"><button class="btn solid lg" type="button" data-step="release" ${off}>${icon("shield")} Release as the reviewer</button></div>`;
+  } else if (rec && rec.state === "RELEASED") {
+    ctl = `<p class="lbl">Step 8 · Verify</p><p class="small muted">The reviewer bundle was exported at release. Verify it with the independent verifier, then tamper with a disposable copy.</p>
+      <div class="row"><a class="btn solid lg" href="${href("evidence", { open: rec.id })}">${icon("shield")} Verify ${esc(rec.id)}</a></div>`;
+  } else if (rec && rec.state === "FAILED") {
+    ctl = `<div class="note bad">${esc(STEP_HELP.FAILED)} <a href="${href("audit", { src: "log", run: rec.id })}">Open its audit log</a>.</div>`;
+  }
+  const facts = rec ? `<ul class="ledger mt">
+      <li><span class="k">Run ID</span><span class="v mono">${esc(rec.id)}</span></li>
+      <li><span class="k">Created</span><span class="v">${when(rec.created_at)}</span></li>
+      <li><span class="k">State</span><span class="v"><b>${esc(rec.state)}</b> <span class="tiny">${esc(STEP_HELP[rec.state] || "")}</span></span></li>
+      <li><span class="k">Mode</span><span class="v">${labelTag("sandbox")}</span></li>
+      <li><span class="k">Defence</span><span class="v">${prof ? esc(prof.title) : v && v.defence_profile === undefined ? "—" : "sample (not changed)"}</span></li>
+      <li><span class="k">Attacks</span><span class="v">${rec.evaluated ?? 0} of ${rec.attack_count ?? "?"} evaluated · timing bucket ${esc(rec.policy && rec.policy.timing_bucket_ms)} ms${rec.complete === false ? ` · <span class="st warn">incomplete</span>` : rec.complete ? " · complete" : ""}</span></li>
+      ${v ? `<li><span class="k">Audit log</span><span class="v">${v.audit_entries} entries, signed up to #${v.signed_upto} · <a href="${href("audit", { src: "log", run: rec.id })}">open</a></span></li>` : ""}
+      ${rec.state === "RELEASED" && rec.outcomes ? `<li><span class="k">Outcomes</span><span class="v">${Object.entries(rec.outcomes).map(([k, n]) => `${esc(k)} ${n}`).join(" · ")}</span></li>` : ""}
+      ${v && v.next_actions.length ? `<li><span class="k">Next</span><span class="v">${v.next_actions.map((a) => esc(a.label)).join("<br>")}</span></li>` : ""}
+    </ul>${S.lab.stale ? `<p class="tiny st warn">Status could not be refreshed; showing the last known state.</p>` : ""}` : "";
+  const last = S.lab.last;
   el.innerHTML = `${secHead("Evaluation run", lr.length ? `<label class="field">Run <select id="run-sel">${lr.map((r) => `<option value="${esc(r.id)}" ${r.id === S.lab.run ? "selected" : ""}>${esc(r.id)}: ${esc(r.state)}</option>`).join("")}</select></label>` : "")}
     <div class="cols" style="--n:2"><div>
-      ${rec ? lifecycle(rec) + `<p class="small muted mt">${rec.evaluated ?? 0} of ${rec.attack_count ?? "?"} attacks evaluated · timing bucket ${esc(rec.policy && rec.policy.timing_bucket_ms)} ms · ${rec.complete === false ? `<span class="st warn">incomplete</span>` : rec.complete ? "complete" : "in progress"}</p>`
-        : `<p class="muted">No lab run yet. Starting one creates, freezes and starts a run as the operator; the broker then drives a red sandbox through 10 synthetic attacks and 5 forbidden requests in real containers. It takes about 5 seconds.</p>`}
+      ${rec ? lifecycle(rec) + facts : `<p class="muted">No lab run yet. Create one, choose a defence, freeze it and start it. The broker then drives a red sandbox through 10 synthetic attacks and 5 forbidden requests in real containers.</p>`}
     </div><div>
+      ${ctl}
+      <p class="lbl">${rec ? "New run" : "Step 1 · Create a run"}</p>
       <div class="row">
         <label class="field">Timing padding<select id="bucket"><option value="250">250 ms buckets (default policy)</option><option value="0">none (faster)</option></select></label>
-        <button class="btn solid lg" id="start-run" type="button" ${!live || running || !S.tokens.operator ? "disabled" : ""}>${icon("play")} Start a live run</button>
+        ${profileSel("prof1")}
+        <button class="btn ${rec && rec.state !== "RELEASED" && rec.state !== "FAILED" ? "" : "solid"} lg" id="start-run" type="button" ${off || (running ? "disabled" : "")}>${icon("plus")} Create run</button>
       </div>
-      <p class="why mt">${!live ? "Needs live containers." : !S.tokens.operator ? "No operator identity in this browser: start the console with scripts/start_prototype.sh." : running ? "A run is executing; a new one can start once it seals." : "Scenarios that need a SEALED run use the run selected here."}</p>
+      <p class="why mt">${why || (running ? "A run is executing; a new one can be created once it seals." : "Each step calls the real control plane; the run ID appears only after the server confirms it.")}</p>
+      ${last ? `<div class="ev mt" id="last-step"><b>Last step</b> · ${last.error ? `<span class="st fail">${esc(last.error)}</span>` : `${(last.steps || []).map((s) => `${esc(s.actor)} ${esc(s.action)} <span class="st ${s.status === 200 ? "pass" : "fail"}">HTTP ${esc(s.status)}</span>`).join("<br>")}`}<br><span class="tiny">${when(last.t)}</span></div>` : ""}
     </div></div>`;
   const sel = $("#run-sel");
-  if (sel) sel.addEventListener("change", () => { S.lab.run = sel.value; drawRunBox(); drawLabCards(); refreshSheet(); });
+  if (sel) sel.addEventListener("change", () => { S.lab.run = sel.value; S.lab.view = null; pollRun(); drawRunBox(); drawLabCards(); refreshSheet(); });
   $("#start-run").addEventListener("click", startRun);
+  $$("[data-step]", el).forEach((b) => b.addEventListener("click", () => runStep(b.dataset.step, b)));
   drawRings(el);
 }
-async function startRun(ev) {
-  const btn = ev.currentTarget; busy(btn, true);
+async function labPost(btn, path, body, ok) {
+  busy(btn, true);
   try {
-    const bucket = $("#bucket") ? Number($("#bucket").value) : 250;
-    const r = await call("/api/lab/runs", { method: "POST", role: "operator", body: { timing_bucket_ms: bucket } });
-    if (!r.ok) { toast(classify(r.status).text + ": " + ((r.body && r.body.detail) || ""), true); return; }
-    S.lab.run = r.body.run_id;
+    const r = await call(path, { method: "POST", body });
+    if (!r.ok) {
+      const msg = classify(r.status).text + ": " + ((r.body && r.body.detail) || "");
+      S.lab.last = { t: Date.now() / 1000, error: msg }; toast(msg, true);
+    } else {
+      S.lab.run = r.body.run_id; S.lab.view = r.body.run;
+      S.lab.last = { t: Date.now() / 1000, steps: r.body.steps || [r.body.step] };
+      toast(ok(r.body));
+    }
     await Promise.all([loadRuns(), loadJournal()]);
-    toast(r.body.run_id + " started: the operator created, froze and started it");
+    if (S.page !== "lab") return r;
     drawRunBox(); drawLabCards(); probeRuns(); refreshSheet();
-  } catch (e) { toast(e.message, true); } finally { if (document.contains(btn)) busy(btn, false); }
+    return r;
+  } catch (e) { toast(e.message, true); return null; } finally { if (document.contains(btn)) busy(btn, false); }
+}
+async function startRun(ev) {
+  const bucket = $("#bucket") ? Number($("#bucket").value) : 250, prof = $("#prof1") ? $("#prof1").value : "sample";
+  await labPost(ev.currentTarget, "/api/lab/runs", { timing_bucket_ms: bucket, defence_profile: prof, stop_after: "created" },
+    (b) => `${b.run_id} created by the operator; defence submitted by the blue participant`);
+}
+async function runStep(step, btn) {
+  const id = S.lab.run, base = "/api/lab/runs/" + encodeURIComponent(id);
+  if (step === "defence") return labPost(btn, base + "/defence", { profile: $("#prof2").value }, () => `Blue participant submitted the ${$("#prof2") ? $("#prof2").value : ""} profile for ${id}`);
+  if (step === "freeze") return labPost(btn, base + "/freeze", undefined, () => `${id} frozen: digests fixed and checkpoint signed`);
+  if (step === "start") return labPost(btn, base + "/start", undefined, () => `${id} started: the broker is launching the containers`);
+  if (step === "release") return runScenario("authorized-release", btn);
 }
 function scnBlocker(c) {
   const s = scn(c), rec = labRec();
   if (!isLive()) return "Needs live containers.";
-  if (!S.tokens.operator) return "Needs the operator identity.";
+  if (!canAct()) return NO_SESSION;
   if (s.needs && !rec) return "Start a live run first.";
   if (s.needs && rec.state !== s.needs) return rec.state === "RUNNING" ? "Waiting for " + rec.id + " to seal." : `Needs a ${s.needs} run; ${rec.id} is ${rec.state}. Start a new run.`;
   return "";
@@ -669,7 +773,7 @@ async function labOpen(key) {
     if (!R) actual += `<p class="tiny">${lastJ(c.id) ? "From the console journal. Run it again to see each request and audit entry here." : "Run the scenario to see each request, the policy decision and the audit entry it produced."}</p>`;
   } else if (c.id === "run") {
     const rec = labRec();
-    action = `<div class="row"><button class="btn solid lg" type="button" id="do-start" ${!isLive() || labRuns().some((r) => r.state === "RUNNING") || !S.tokens.operator ? "disabled" : ""}>${icon("play")} Start a live run</button><a href="#/connections?view=timeline${rec ? "&run=" + encodeURIComponent(rec.id) : ""}">Open its timeline</a></div>`;
+    action = `<div class="row"><a class="btn solid lg" href="#/lab">${icon("play")} Go to the evaluation run</a><a href="#/connections?view=timeline${rec ? "&run=" + encodeURIComponent(rec.id) : ""}">Open its timeline</a></div>`;
     if (rec) actual += lifecycle(rec) + `<p class="tiny mt">${rec.evaluated ?? 0} of ${rec.attack_count ?? "?"} attacks evaluated · model backend errors ${esc(rec.model_backend_errors ?? 0)}</p>`;
   } else if (c.id === "tamper") {
     const sys = S.exp && S.exp.system_tests && (S.exp.system_tests.rows || []).filter((r) => r.file === "audit_tamper.json");
@@ -707,7 +811,6 @@ async function labOpen(key) {
       ${limits.length ? `<p class="lbl">Limitations</p><ul class="dash" style="padding-left:18px;margin:0">${limits.map((x) => `<li class="small">${esc(x)}</li>`).join("")}</ul>` : ""}`,
     after: (b) => {
       const run = $("#do-scn", b); if (run) run.addEventListener("click", () => runScenario(c.id, run));
-      const st = $("#do-start", b); if (st) st.addEventListener("click", startRun);
     },
   };
 }
@@ -718,7 +821,7 @@ async function runScenario(sid, btn) {
   }
   busy(btn, true);
   try {
-    const r = await call(`/api/lab/scenarios/${sid}/run`, { method: "POST", role: "operator", body: { run_id: S.lab.run } });
+    const r = await call(`/api/lab/scenarios/${sid}/run`, { method: "POST", body: { run_id: S.lab.run } });
     S.lab.results[sid] = r.ok ? r.body : { http: r.status, detail: (r.body && r.body.detail) || "", sid, verdict: classify(r.status).kind === "error" ? "ERROR" : "FAIL", run_id: S.lab.run };
   } catch (e) { S.lab.results[sid] = { http: 0, detail: e.message, sid, verdict: "ERROR" }; }
   await Promise.all([loadRuns(), loadJournal()]);
@@ -737,8 +840,8 @@ function resultView(R) {
     return `<span class="stamp ${d}">${{ denied: "DENIED", allowed: "ALLOWED", error: "ERROR", attempted: "ATTEMPTED" }[d]}<small>${esc(typeof s.status === "number" ? "HTTP " + s.status : s.status)}</small></span>`;
   };
   return `<div id="scn-result" tabindex="-1">
-    <p class="lbl">Result of this run ${labelTag("live")}</p>
-    <p class="tiny">${R.run_id ? "Run " + esc(R.run_id) + " · " : ""}${when(R.started_at)} · ${(R.finished_at - R.started_at).toFixed(2)} s · launched by the operator; each step uses the role named on it</p>
+    <p class="lbl">Result of this run ${labelTag(R.scenario === "sandbox-containment" ? "sandbox" : "live")}</p>
+    <p class="tiny">${R.run_id ? "Run " + esc(R.run_id) + " · " : ""}${when(R.started_at)} · ${(R.finished_at - R.started_at).toFixed(2)} s · ${R.result_id ? "recorded result #" + esc(R.result_id) + " · " : ""}started from the operator session; each step was sent server-side as the role named on it</p>
     ${verdictBox(R.verdict, R.expected)}
     ${R.error ? `<div class="note bad">${esc(R.error)}</div>` : ""}
     <p class="lbl">Requests and decisions</p>
@@ -754,46 +857,48 @@ function resultView(R) {
     <ul class="checks">${R.checks.map((c) => `<li><span class="${c.ok ? "ok" : "no"}" role="img" aria-label="${c.ok ? "holds" : "does not hold"}">${icon(c.ok ? "check" : "x")}</span><div>${esc(c.label)}<span class="found">${esc(c.found)}</span></div></li>`).join("")}</ul>
     ${R.hardening_flags ? `<p class="lbl">Container flags used</p><div class="cmd">podman run ${esc(R.hardening_flags.join(" "))}</div>` : ""}
     ${R.terminal_hash ? `<div class="note info">Terminal checkpoint hash, the value a reviewer writes down at release: <span class="hash">${esc(R.terminal_hash)}</span>. The bundle is now on the <a href="#/evidence">Evidence</a> page.</div>` : ""}
-    <p class="small mt"><a href="#/audit${R.run_id ? "?run=" + encodeURIComponent(R.run_id) : ""}">See these entries in the audit archive</a></p></div>`;
+    <p class="small mt">${R.run_id ? `<a href="${href("audit", { src: "log", run: R.run_id })}">See these entries in the signed audit log</a> · ` : ""}<a href="${href("connections", { view: "topology", node: OBS_NODE[R.scenario] || "policy" })}">See the tested boundary on the graph</a></p></div>`;
 }
 const PROBE_OPS = {
-  artifacts: { m: "GET", p: (r) => `/api/runs/${r}/artifacts`, t: "Read sealed attack artifacts" },
-  evidence: { m: "GET", p: (r) => `/api/runs/${r}/evidence`, t: "Read the evidence report" },
-  detail: { m: "GET", p: (r) => `/api/runs/${r}`, t: "Read run detail (secret digests?)" },
-  verify: { m: "GET", p: (r) => `/api/runs/${r}/verify`, t: "Verify the audit log" },
-  release: { m: "POST", p: (r) => `/api/runs/${r}/release`, t: "Release the run" },
+  artifacts: "Read sealed attack artifacts",
+  evidence: "Read the evidence report",
+  detail: "Read run detail (secret digests?)",
+  verify: "Verify the audit log",
+  release: "Release the run",
 };
 function probeRuns() {
   const sel = $("#p-run"); if (!sel) return;
-  const cur = sel.value;
-  sel.innerHTML = S.runs.length ? S.runs.map((r) => `<option value="${esc(r.id)}" ${r.id === (cur || S.lab.run) ? "selected" : ""}>${esc(r.id)} (${esc(r.state)})</option>`).join("") : `<option value="">no runs yet</option>`;
-  $("#p-send").disabled = !S.runs.length;
+  const cur = sel.value, lr = labRuns();
+  sel.innerHTML = lr.length ? lr.map((r) => `<option value="${esc(r.id)}" ${r.id === (cur || S.lab.run) ? "selected" : ""}>${esc(r.id)} (${esc(r.state)})</option>`).join("") : `<option value="">no lab runs yet</option>`;
+  $("#p-send").disabled = !lr.length || !canAct();
 }
 function drawProbe() {
-  const runs = S.runs;
+  const lr = labRuns();
   $("#probe-box").innerHTML = `${secHead("Try a request yourself", labelTag("live"))}
-    <p class="small muted">Pick an identity and an operation. The browser sends the request straight to the control plane with that identity's token; nothing is simulated.</p>
+    <p class="small muted">Pick an identity and an operation. The console sends that exact request to the control plane server-side, with the identity's token (which never reaches this page), and shows the decision, the audit entry it produced and the shape of the response. Values the role received stay on the server.</p>
     <div class="row mt">
       <label class="field">Identity<select id="p-role">${Object.entries(ROLE_NAMES).map(([k, v]) => `<option value="${k}" ${k === "red_participant" ? "selected" : ""}>${esc(v)}</option>`).join("")}</select></label>
-      <label class="field">Operation<select id="p-op">${Object.entries(PROBE_OPS).map(([k, v]) => `<option value="${k}">${esc(v.t)}</option>`).join("")}</select></label>
-      <label class="field">Run<select id="p-run">${runs.length ? runs.map((r) => `<option value="${esc(r.id)}" ${r.id === S.lab.run ? "selected" : ""}>${esc(r.id)} (${esc(r.state)})</option>`).join("") : `<option value="">no runs yet</option>`}</select></label>
-      <button class="btn lg" id="p-send" type="button" ${runs.length ? "" : "disabled"}>Send request ${icon("right")}</button>
-    </div><div id="p-out" aria-live="polite"></div>`;
+      <label class="field">Operation<select id="p-op">${Object.entries(PROBE_OPS).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join("")}</select></label>
+      <label class="field">Run<select id="p-run">${lr.length ? lr.map((r) => `<option value="${esc(r.id)}" ${r.id === S.lab.run ? "selected" : ""}>${esc(r.id)} (${esc(r.state)})</option>`).join("") : `<option value="">no lab runs yet</option>`}</select></label>
+      <button class="btn lg" id="p-send" type="button" ${lr.length && canAct() ? "" : "disabled"}>Send request ${icon("right")}</button>
+    </div>${canAct() ? "" : `<p class="why mt">${esc(NO_SESSION)}</p>`}<div id="p-out" aria-live="polite"></div>`;
   $("#p-send").addEventListener("click", async (ev) => {
-    const role = $("#p-role").value, op = PROBE_OPS[$("#p-op").value], run = $("#p-run").value;
+    const role = $("#p-role").value, op = $("#p-op").value, run = $("#p-run").value;
     if (!run) return;
     const btn = ev.currentTarget;
-    if (op.m === "POST" && role === "reviewer" && !(await confirmAction("Release " + run + "?", "<p>This is a real release by the reviewer and it is final.</p>", "Release " + run))) return;
+    if (op === "release" && role === "reviewer" && !(await confirmAction("Release " + run + "?", "<p>This is a real release by the reviewer and it is final.</p>", "Release " + run))) return;
     busy(btn, true);
     try {
-      const r = await call(op.p(run), { method: op.m, role });
-      const c = classify(r.status);
-      let body = JSON.stringify(r.body, null, 1) || "";
-      if (body.length > 1400) body = body.slice(0, 1400) + "\n… (" + body.length + " characters; truncated in this view)";
+      const r = await call("/api/lab/probe", { method: "POST", body: { role, op, run_id: run } });
+      if (!r.ok) { $("#p-out").innerHTML = `<div class="note bad">${esc(classify(r.status).text)}: ${esc((r.body && r.body.detail) || "")}</div>`; return; }
+      const P = r.body, c = classify(P.status);
       const k = c.kind === "allowed" ? "allowed" : c.kind === "denied" ? "denied" : c.kind === "error" ? "error" : "attempted";
-      $("#p-out").innerHTML = `<div class="ev mt"><div class="row"><span class="stamp ${k}">${{ allowed: "ALLOWED", denied: "DENIED", error: "ERROR", attempted: "REJECTED" }[k]}<small>HTTP ${r.status}</small></span>
-        <div><div class="small">${esc(op.m + " " + op.p(run))}</div><div class="tiny">as ${esc(ROLE_NAMES[role])}: ${esc(c.text)}</div></div></div>
-        <pre class="json">${esc(body)}</pre></div>`;
+      $("#p-out").innerHTML = `<div class="ev mt"><div class="row"><span class="stamp ${k}">${{ allowed: "ALLOWED", denied: "DENIED", error: "ERROR", attempted: "REJECTED" }[k]}<small>HTTP ${P.status}</small></span>
+        <div><div class="small">${esc(P.request)}</div><div class="tiny">as ${esc(ROLE_NAMES[role])}: ${esc(c.text)}${P.detail ? " · “" + esc(P.detail) + "”" : ""}</div></div></div>
+        ${P.audit.length ? P.audit.map((a) => `<p class="small">Audit entry <b>#${a.seq}</b> ${esc(a.type)} by ${esc(a.actor)}${a.data.reason ? ": " + esc(a.data.reason) : ""} <span class="hash">${short(a.hash, 16)}</span> <a href="${href("audit", { src: "log", run: P.run_id })}">open</a></p>`).join("") : `<p class="tiny">No audit entry: this operation is not logged when ${P.status < 300 ? "allowed" : "refused"}.</p>`}
+        ${P.summary ? `<p class="lbl">What the role received</p><pre class="json">${esc(JSON.stringify(P.summary, null, 1))}</pre>` : ""}
+        ${P.response_shape ? `<details><summary>Response structure</summary><pre class="json">${esc(JSON.stringify(P.response_shape, null, 1))}</pre></details>` : ""}
+        <p class="tiny">${P.status < 300 ? `Protected values in the raw response: ${P.protected_values_in_raw_response} (kept on the server).` : `Protected values in the refusal: ${P.protected_values_in_raw_response}.`} ${esc(P.note)}</p></div>`;
       loadRuns().then(() => { drawRunBox(); drawLabCards(); probeRuns(); });
     } catch (e) { $("#p-out").innerHTML = `<div class="note bad">${esc(e.message)}</div>`; }
     finally { busy(btn, false); }
@@ -854,7 +959,7 @@ const TOPO = {
       trust: "TRUSTED. Containers share this kernel: one kernel or runtime bug defeats the boundary. Not separate hosts, not hardware isolation.",
       allow: ["Run the three tenant containers and the broker process"], deny: [], controls: ["Rootless, default seccomp, SELinux labels, cgroup v2 limits"], test: ["sandbox-containment"] },
     people: { x: 630, y: 36, w: 252, h: 54, t: "People (browser)", s: "every role, by local token", cls: "out",
-      role: "Humans using the control plane through this console.", trust: "Identified by local demo tokens; production would use SSO with run-scoped claims.",
+      role: "Humans using the control plane through this console.", trust: "The console acts for each role with server-held local tokens after a loopback operator session; production would use SSO with run-scoped claims.",
       allow: ["Observer: the redacted monitoring stream", "Operator: create, freeze, start", "Reviewer: release, then read results"],
       deny: ["Participants reading sealed results before release", "Anyone but the reviewer releasing a run"], controls: ["Constant-time token comparison", "Role checks in every handler"], test: ["prohibited-access"] },
     policy: { x: 630, y: 150, w: 252, h: 62, t: "Policy enforcement", s: "control-plane API, result gate", cls: "trusted",
@@ -898,6 +1003,27 @@ const TOPO = {
     { a: "broker", b: "host", k: "trust", d: "M346 310 C 316 380, 316 500, 330 536", m: [322, 470], why: "The broker runs as a host process." },
   ],
 };
+/* Observed overlay: which static topology paths a recorded scenario result exercised. The marks come from results this console
+   recorded (/api/lab/results), each tied to a run and audit entries; the graph is still not a packet trace. */
+const OBS_MAP = {
+  "prohibited-access": [["people", "sealed", "Participant and anonymous reads of sealed results refused"], ["policy", "audit", "Each refusal written to the audit log"]],
+  "cross-role-isolation": [["people", "sealed", "Blue read of red's payloads refused; forged token rejected"], ["red", "broker", "Forbidden mailbox requests of the red sandbox refused by the broker"]],
+  "authorized-release": [["policy", "sealed", "Reviewer release opened the result gate after verification"], ["audit", "verifier", "Reviewer bundle exported and verified strictly"]],
+  "sandbox-containment": [["red", "net", "Network, DNS and root-filesystem writes refused inside a hardened container"]],
+  tamper: [["audit", "verifier", "Tampered copy rejected by the independent verifier; original accepted"]],
+};
+const OBS_NODE = { "prohibited-access": "sealed", "cross-role-isolation": "broker", "authorized-release": "policy", "sandbox-containment": "red", tamper: "verifier" };
+const OBS_TITLE = { "prohibited-access": "Prohibited access", "cross-role-isolation": "Cross-role isolation", "authorized-release": "Authorised release", "sandbox-containment": "Sandbox containment", tamper: "Tamper detection" };
+function obsLatest() {
+  const out = {};
+  (S.conn.obs || []).forEach((r) => { if (r.scenario && OBS_MAP[r.scenario] && !out[r.scenario]) out[r.scenario] = r; });
+  return out;
+}
+function obsFor(a, b) {
+  const L = obsLatest(), hits = [];
+  Object.entries(OBS_MAP).forEach(([sid, edges]) => edges.forEach(([x, y, what]) => { if (x === a && y === b && L[sid]) hits.push({ sid, what, r: L[sid] }); }));
+  return hits;
+}
 const HIER = {
   w: 1000, h: 640,
   heads: [[20, "Actor"], [330, "Operation"], [760, "Resource"]],
@@ -969,6 +1095,7 @@ async function connections(q) {
   if (!C.off[C.view]) C.off[C.view] = {};
   if (!S.status) await refreshStatus();
   band({ placeholder: C.view === "timeline" ? "Find an event, actor or summary" : "Find a component, role or operation", value: C.search, onSearch: (v) => { C.search = v; markSearch(); } });
+  if (C.view === "topology") C.obs = await get("/api/lab/results?limit=50").catch(() => []);
   if (C.view === "timeline") {
     await loadRuns();
     C.run = q.run && S.runs.some((r) => r.id === q.run) ? q.run : (S.runs[0] || {}).id || null;
@@ -995,6 +1122,7 @@ function drawKinds() {
   $("#kinds").innerHTML = `<button type="button" class="chip kind${anyOff ? " off" : ""}" data-kind="all" aria-pressed="${!anyOff}" style="--fc:var(--ink)">All</button>
     ${kinds.map(([k, t, c]) => `<button type="button" class="chip kind${off[k] ? " off" : ""}" data-kind="${k}" aria-pressed="${!off[k]}" style="--fc:${c}">${t} ${count(k)}</button>`).join("")}
     ${C.view === "timeline" ? `<label class="field" style="flex-direction:row;align-items:center;gap:8px">Run <select id="tl-run">${S.runs.map((r) => `<option ${r.id === C.run ? "selected" : ""}>${esc(r.id)}</option>`).join("")}</select></label>` : ""}
+    ${C.view === "topology" ? `<button type="button" class="chip kind obs${C.showObs ? "" : " off"}" id="obs-toggle" aria-pressed="${C.showObs}" style="--fc:var(--s-pass)">Observed ${Object.keys(obsLatest()).length}</button>` : ""}
     <span class="total">${C.view === "timeline" ? "Events" : "Paths"}: ${total}</span>`;
   $$("#kinds [data-kind]").forEach((b) => b.addEventListener("click", () => {
     const k = b.dataset.kind;
@@ -1003,6 +1131,8 @@ function drawKinds() {
     else { off[k] = !off[k]; if (kinds.every(([x]) => C.off[C.view][x])) C.off[C.view] = {}; }
     drawKinds(); applyKinds();
   }));
+  const ot = $("#obs-toggle");
+  if (ot) ot.addEventListener("click", () => { C.showObs = !C.showObs; drawKinds(); drawGraph(); });
   const tr = $("#tl-run");
   if (tr) tr.addEventListener("change", () => { setQuery({ run: tr.value, node: null }); C.sel.timeline = null; connections({ view: "timeline", run: tr.value }); });
 }
@@ -1031,7 +1161,10 @@ function boxesSVG(G) {
     const g = edgeGeom(e, N), kcls = e.k === "cond" ? "audit" : e.k === "acts" ? "acts" : e.k;
     const x = e.k === "deny" ? `<path class="x" d="M${g.m[0] - 5} ${g.m[1] - 5} l10 10 M${g.m[0] + 5} ${g.m[1] - 5} l-10 10"/>` : "";
     const lab = e.l ? `<text x="${(g.m[0] + (e.lx || 0)).toFixed(1)}" y="${(g.m[1] + (e.ly || -6)).toFixed(1)}" text-anchor="middle">${esc(e.l)}</text>` : "";
-    return `<g class="edge ${kcls}" data-kind="${e.k}" data-e="${i}" data-a="${e.a}" data-b="${e.b}" ${kcls === "acts" ? 'style="--kc:var(--ink2)"' : ""}><path d="${g.d}" ${e.k === "deny" ? "" : `marker-end="url(#ar-${e.k})"`}/>${x}${lab}</g>`;
+    const ob = G === TOPO && S.conn.showObs ? obsFor(e.a, e.b) : [];
+    const okAll = ob.every((o) => o.r.verdict === "PASS");
+    const om = ob.length ? `<g class="obsmark ${okAll ? "pass" : "fail"}"><circle cx="${(g.m[0] + 14).toFixed(1)}" cy="${(g.m[1] + 12).toFixed(1)}" r="8"/><text x="${(g.m[0] + 14).toFixed(1)}" y="${(g.m[1] + 15.5).toFixed(1)}" text-anchor="middle">${okAll ? "✓" : "!"}</text><title>${esc(ob.map((o) => `Observed: ${OBS_TITLE[o.sid]} ${o.r.verdict} (${o.r.run_id || "no run"})`).join("; "))}</title></g>` : "";
+    return `<g class="edge ${kcls}${ob.length ? " obs" : ""}" data-kind="${e.k}" data-e="${i}" data-a="${e.a}" data-b="${e.b}" ${kcls === "acts" ? 'style="--kc:var(--ink2)"' : ""}><path d="${g.d}" ${e.k === "deny" ? "" : `marker-end="url(#ar-${e.k})"`}/>${x}${lab}${om}</g>`;
   }).join("");
   const nodes = Object.entries(N).map(([k, n]) => {
     const two = !!n.s;
@@ -1075,7 +1208,7 @@ function drawGraph() {
     }
     ({ w, h, svg: inner } = timelineSVG(C.events));
   } else { const G = graphData(); w = G.w; h = G.h; inner = boxesSVG(G); }
-  const foot = C.view === "topology" ? "All components run on one Linux host and share its kernel. The graph shows process, container and network boundaries, not separate machines or hardware isolation."
+  const foot = C.view === "topology" ? `All components run on one Linux host and share its kernel. Lines are the static architecture at this commit; ${C.showObs ? "a ✓ marks a path a recorded scenario of this console exercised (select a node for the run and audit entries), not a packet trace." : "observed marks are hidden."}`
     : C.view === "hierarchy" ? "Static description of the role checks in aegis/api.py and the broker's mailbox policy; the Lab runs them live."
     : `Run ${C.run}: ${C.events.length} monitoring events. Grey lane lines are actors; colour is the recorded decision.`;
   frame.innerHTML = `<div class="gtools">
@@ -1136,7 +1269,18 @@ function topoSide(k) {
     ${list("Permitted", n.allow)}${list("Denied", n.deny)}${list("Security controls", n.controls)}
     ${flags ? `<p class="lbl">Flags this host applies</p><div class="cmd">podman run ${esc(flags.join(" "))}</div>${st.podman && st.podman.available && !st.podman.cpuset_delegated ? `<p class="tiny st warn" style="font-weight:400">cpuset pinning is not applied: the controller is not delegated to rootless users on this host.</p>` : ""}` : ""}
     <p class="lbl">Connections</p>${linkRows(edgeRows(TOPO, k))}
+    ${obsSide(k)}
     ${n.test && n.test.length ? `<p class="lbl">Supporting evidence</p>${linkRows(n.test.map((t) => { const c = CATALOG.find((x) => x.id === t); return { href: "#/lab?open=" + t, title: c ? c.title || (S.lab.scenarios || []).find((s) => s.id === t)?.title || t : t, sub: c ? LAB_TYPE[c.kind] : "", icon: "right" }; }))}` : ""}`;
+}
+function obsSide(k) {
+  const rows = [];
+  TOPO.edges.filter((e) => e.a === k || e.b === k).forEach((e) => obsFor(e.a, e.b).forEach((o) => rows.push({ e, ...o })));
+  if (!rows.length) return `<p class="lbl">Observed in this console</p><p class="small muted">No recorded scenario has exercised a path of this component yet.</p>`;
+  return `<p class="lbl">Observed in this console ${labelTag(rows.some((o) => o.sid === "sandbox-containment") ? "sandbox" : "live")}</p><ul class="dash">${rows.map((o) => {
+    const seqs = (o.r.steps || []).map((s) => s.audit && s.audit.seq).filter(Boolean);
+    return `<li class="small"><span class="st ${o.r.verdict === "PASS" ? "pass" : "fail"}">${esc(o.r.verdict)}</span> ${esc(OBS_TITLE[o.sid])}: ${esc(o.what)}.<br><span class="tiny">${esc(TOPO.nodes[o.e.a].t)} → ${esc(TOPO.nodes[o.e.b].t)} · ${o.r.run_id ? esc(o.r.run_id) + " · " : ""}${when(o.r.finished_at)}${seqs.length ? " · audit #" + seqs.join(", #") : ""}</span>
+      <br>${o.sid === "tamper" ? `<a href="${href("evidence", { open: o.r.bundle ? o.r.bundle.id : "" })}">Open the bundle</a>` : `<a href="${href("lab", { open: o.sid })}">Open the result</a>`}${o.r.run_id && o.sid !== "sandbox-containment" && o.sid !== "tamper" ? ` · <a href="${href("audit", { src: "log", run: o.r.run_id })}">audit log</a>` : ""}</li>`;
+  }).join("")}</ul>`;
 }
 function hierSide(k) {
   const n = HIER.nodes[k];
@@ -1246,14 +1390,21 @@ const AUD_FACETS = [
   { key: "signed", title: "Signature", get: signedOf, order: ["signed", "pending", "after close"] },
 ];
 const audSearch = () => S.audit.data.filter((e) => textMatch(S.audit.search, e.summary, e.type, e.actor, e.run_id, String(e.seq ?? "")));
-PAGES.audit = { render: audit, open: auditOpen, sync: (q) => { if (q.run && !(S.audit.f.sel.run && S.audit.f.sel.run.has(q.run))) { S.audit.f.sel.run = new Set([q.run]); drawAudit(); } } };
+PAGES.audit = { render: audit, open: auditOpen, sync: (q) => {
+  if ((q.src === "log" ? "log" : "monitor") !== S.audit.src || (q.src === "log" && q.run && q.run !== S.audit.run)) { hideSheet(); teardown(); return audit(q); }
+  if (S.audit.src === "monitor" && q.run && !(S.audit.f.sel.run && S.audit.f.sel.run.has(q.run))) { S.audit.f.sel.run = new Set([q.run]); drawAudit(); }
+} };
+const AUD_SRC = { monitor: "Monitoring stream", log: "Signed audit log" };
 async function audit(q) {
   const A = S.audit;
+  A.src = q.src === "log" ? "log" : "monitor";
+  const persp = `<nav class="persp" aria-label="Source">${Object.entries(AUD_SRC).map(([k, t]) => `<a href="${href("audit", { src: k === "log" ? "log" : null, run: q.run || null })}" ${k === A.src ? 'aria-current="page"' : ""}><span ${k === A.src ? 'class="ringed" data-ring="1"' : ""}>${t}</span></a>`).join("")}</nav>`;
+  if (A.src === "log") return auditLog(q, persp);
   if (q.run) A.f.sel = { ...A.f.sel, run: new Set([q.run]) };
   band({ placeholder: "Summaries, event types, actors", value: A.search, onSearch: (v) => { A.search = v; A.limit = 300; drawAudit(); },
     filter: filterCfg(AUD_FACETS, A.f, audSearch, () => { A.limit = 300; drawAudit(); }),
     sort: { label: () => (A.sort === "desc" ? "Newest" : "Oldest"), icon: () => (A.sort === "desc" ? "sortDesc" : "sortAsc"), onClick: () => { A.sort = A.sort === "desc" ? "asc" : "desc"; drawAudit(); } } });
-  render(`<div class="intro"><p>The redacted monitoring stream of every run: who did what, and what the system decided. It carries no payloads, model outputs or defence rules, so any viewer may read it. Each entry's sequence number points into the run's hash-chained audit log.</p>${labelTag("live")}</div>
+  render(`${persp}<div class="intro"><p>The redacted monitoring stream of every run: who did what, and what the system decided. It carries no payloads, model outputs or defence rules, so any viewer may read it. Each entry's sequence number points into the run's hash-chained audit log (the other perspective).</p>${labelTag("live")}</div>
     <div class="meta-row"><span id="a-meta" role="status" aria-live="polite">Loading…</span><label class="switch"><input type="checkbox" id="a-live" ${A.live ? "checked" : ""}> Update every 2 s</label></div>
     <div id="a-table">${loading("Loading events…")}</div>`);
   $("#a-live").addEventListener("change", (e) => { A.live = e.target.checked; });
@@ -1261,6 +1412,58 @@ async function audit(q) {
   $("#a-table").addEventListener("keydown", (e) => { const tr = e.target.closest("tr[data-key]"); if (tr && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openKey(tr.dataset.key); } });
   await fetchAudit(true);
   every(2000, () => { if (A.live && !document.hidden) fetchAudit(); });
+}
+/* signed audit log: metadata of every entry of one run, filtered and paged on the server */
+const LOG_PAGE = 100;
+async function auditLog(q, persp) {
+  const A = S.audit;
+  band(null);
+  await loadRuns();
+  const lr = labRuns();
+  A.run = q.run && lr.some((r) => r.id === q.run) ? q.run : (lr[0] || {}).id || null;
+  render(`${persp}<div class="intro"><p>The run's hash-chained audit log, entry by entry: sequence, actor, operation, decision, the entry's hash and whether a signed checkpoint covers it. Metadata only: payloads, model outputs, defence rules and the digests of team inputs never leave the server; attack outcomes appear once the run is released.</p>${labelTag("live")}</div>
+    ${canAct() ? "" : `<div class="note">${esc(NO_SESSION)} The signed log is readable only in the operator session; the monitoring stream stays public.</div>`}
+    <div class="row" id="l-filters"></div>
+    <div class="meta-row"><span id="l-meta" role="status" aria-live="polite"></span><label class="switch"><input type="checkbox" id="l-live" ${A.live ? "checked" : ""}> Update every 2 s</label></div>
+    <div id="l-table">${A.run ? loading("Reading the audit log…") : `<div class="empty"><strong>No lab run yet</strong><a href="#/lab">Create one in the lab</a>; its audit log appears here.</div>`}</div>`);
+  if (!A.run || !canAct()) { if (A.run && !canAct()) $("#l-table").innerHTML = ""; return; }
+  $("#l-live").addEventListener("change", (e) => { A.live = e.target.checked; });
+  $("#l-table").addEventListener("click", (e) => {
+    const tr = e.target.closest("tr[data-key]"); if (tr) openKey(tr.dataset.key);
+    const pg = e.target.closest("[data-page]"); if (pg) { A.off = Math.max(0, A.off + Number(pg.dataset.page) * LOG_PAGE); fetchLog(); }
+  });
+  $("#l-table").addEventListener("keydown", (e) => { const tr = e.target.closest("tr[data-key]"); if (tr && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openKey(tr.dataset.key); } });
+  A.off = 0; A.log = null;
+  await fetchLog(true);
+  every(2000, () => { if (A.live && !document.hidden && A.off === 0) fetchLog(); });
+}
+async function fetchLog(first) {
+  const A = S.audit;
+  const qs = new URLSearchParams({ offset: A.off, limit: LOG_PAGE, order: "desc" });
+  Object.entries(A.lf).forEach(([k, v]) => v && qs.set(k, v));
+  try {
+    const d = await get(`/api/lab/runs/${encodeURIComponent(A.run)}/audit?${qs}`);
+    const sig = [d.total, d.matched, d.signed_upto, A.off].join(":");
+    const changed = !A.log || sig !== A.logSig;
+    A.log = d; A.logSig = sig;
+    if (first || changed) drawLog();
+    else $("#l-meta").textContent = $("#l-meta").textContent.replace(/updated .*/, "updated " + new Date().toLocaleTimeString());
+  } catch (e) { const m = $("#l-meta"); if (m) m.innerHTML = `<span class="st fail">Could not read the audit log: ${esc(e.message)}</span> <span class="muted">(showing the last data received)</span>`; }
+}
+function drawLog() {
+  const A = S.audit, d = A.log, el = $("#l-table"); if (!el || !d) return;
+  const sel = (key, label, vals) => `<label class="field">${label}<select data-lf="${key}"><option value="">all</option>${vals.map((v) => `<option ${A.lf[key] === v ? "selected" : ""}>${esc(v)}</option>`).join("")}</select></label>`;
+  $("#l-filters").innerHTML = `<label class="field">Run<select id="l-run">${labRuns().map((r) => `<option ${r.id === A.run ? "selected" : ""}>${esc(r.id)}</option>`).join("")}</select></label>
+    ${sel("type", "Event type", d.facets.type)}${sel("actor", "Actor", d.facets.actor)}${sel("decision", "Decision", ["denied", "allowed", "failed", "ok", "info"])}`;
+  $("#l-run").addEventListener("change", (e) => { setQuery({ run: e.target.value, open: null }); A.run = e.target.value; A.off = 0; A.lf = { type: "", actor: "", decision: "" }; fetchLog(true); });
+  $$("[data-lf]").forEach((x) => x.addEventListener("change", () => { A.lf[x.dataset.lf] = x.value; A.off = 0; fetchLog(true); }));
+  $("#l-meta").textContent = `${d.run_id} · ${d.state} · ${fmt(d.matched)} of ${fmt(d.total)} entries · signed up to #${d.signed_upto} by ${d.checkpoints} checkpoints${d.terminal_anchor ? " · terminal anchor written" : ""} · updated ${new Date().toLocaleTimeString()}`;
+  if (!d.entries.length) { el.innerHTML = `<div class="empty"><strong>No entry matches</strong>Clear the filters.</div>`; return; }
+  el.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Seq</th><th>Time</th><th>Actor</th><th>Event</th><th>Operation</th><th>Decision</th><th>Hash</th><th>Signature</th></tr></thead><tbody>
+    ${d.entries.map((e) => { const k = `log~${d.run_id}~${e.seq}`; return `<tr class="click${S.q.open === k ? " sel" : ""}" tabindex="0" data-key="${esc(k)}"><td>${e.seq}</td><td class="nw">${clock(e.ts)}</td><td class="nw">${esc(e.actor)}</td><td class="nw">${esc(e.type)}</td><td>${esc([e.data.op, e.data.reason].filter(Boolean).join(": ") || e.data.attack_id || "")}</td><td>${decTag(e.decision)}</td><td class="hash nw">${short(e.hash, 12)}</td><td class="nw">${e.signed ? `<span class="st ok">signed</span>` : `<span class="muted">pending</span>`}</td></tr>`; }).join("")}
+    </tbody></table></div>
+    <div class="row mt"><button type="button" class="btn" data-page="-1" ${A.off ? "" : "disabled"}>${icon("left")} Newer</button><span class="small muted">${fmt(A.off + 1)}–${fmt(Math.min(A.off + LOG_PAGE, d.matched))} of ${fmt(d.matched)}</span><button type="button" class="btn" data-page="1" ${A.off + LOG_PAGE < d.matched ? "" : "disabled"}>Older ${icon("right")}</button></div>`;
+  wrapTables(el);
 }
 async function fetchAudit(first) {
   try {
@@ -1282,6 +1485,7 @@ function drawAudit() {
   wrapTables(el);
 }
 async function auditOpen(key) {
+  if (key.startsWith("log~")) return logOpen(key);
   if (!S.audit.data.length) await fetchAudit(true);
   const e = S.audit.data.find((x) => evKey(x) === key);
   if (!e) return { title: "Event not found", body: `<p class="muted">This event is no longer in the most recent 1,500 events.</p>` };
@@ -1296,6 +1500,28 @@ async function auditOpen(key) {
       <p class="lbl">Monitoring record</p><pre class="json">${esc(JSON.stringify(e, null, 2))}</pre>
       <p class="tiny mt">The monitoring stream holds digests and counts only. Payloads, model outputs and defence rules stay in the sealed store.</p>
       <p class="mt"><a href="${href("connections", { view: "timeline", run: e.run_id })}">See it on the run's timeline</a></p>`,
+  };
+}
+
+async function logOpen(key) {
+  const [, rid, seq] = key.split("~");
+  let e = ((S.audit.log || {}).entries || []).find((x) => String(x.seq) === seq && S.audit.log.run_id === rid);
+  if (!e) {
+    const d = await get(`/api/lab/runs/${encodeURIComponent(rid)}/audit?offset=${Math.max(0, Number(seq) - 1)}&limit=1`);
+    e = d.entries.find((x) => String(x.seq) === seq);
+  }
+  if (!e) return { title: "Entry not found", body: `<p class="muted">Entry ${esc(seq)} of ${esc(rid)} was not found.</p>` };
+  $$("#l-table tr[data-key]").forEach((tr) => tr.classList.toggle("sel", tr.dataset.key === key));
+  return {
+    title: e.type, meta: `${esc(rid)} · #${e.seq} · ${esc(e.actor)} · ${when(e.ts)}`,
+    body: `<ul class="ledger"><li><span class="k">Decision</span><span class="v">${decTag(e.decision)}</span></li>
+      <li><span class="k">Actor</span><span class="v">${esc(e.actor)}</span></li>
+      <li><span class="k">Hash</span><span class="v hash">${esc(e.hash)}</span></li>
+      <li><span class="k">Previous hash</span><span class="v hash">${esc(e.prev)}</span></li>
+      <li><span class="k">Evidence</span><span class="v">${e.signed ? "Covered by a signed checkpoint in the reviewer vault; the exported bundle lets anyone check it with the independent verifier." : "Not yet covered by a signed checkpoint (the next periodic, seal, pre-release or terminal checkpoint covers it)."}</span></li></ul>
+      <p class="lbl">Recorded metadata</p><pre class="json">${esc(JSON.stringify(e.data, null, 2))}</pre>
+      <p class="tiny mt">Fields outside the metadata allowlist (payload and output digests, defence-config digests, rule text) are withheld by the server.</p>
+      <p class="mt"><a href="${href("connections", { view: "timeline", run: rid })}">See the run's timeline</a>${S.runs.some((r) => r.id === rid && r.state === "RELEASED") ? ` · <a href="${href("evidence", { open: rid })}">Verify its bundle</a>` : ""}</p>`,
   };
 }
 
@@ -1367,9 +1593,9 @@ function tamperView(t) {
       <li><span class="k">Original</span><span class="v"><span class="st ${t.original.exit_code === 0 ? "pass" : "fail"}">exit ${esc(t.original.exit_code)}, ${(t.original.result || {}).ok ? "accepted" : "rejected"}</span><br><span class="tiny">byte-identical before and after: <b>${t.original_unchanged ? "yes" : "NO"}</b> · copy deleted: ${t.copy_deleted ? "yes" : "no"}</span></span></li></ul>
     <details class="mt"><summary>Original file digests (SHA-256, first 16 hex)</summary><pre class="json">${esc(JSON.stringify(t.original_sha256, null, 1))}</pre></details>`;
 }
-function memView(rows) {
-  const det = rows.filter((r) => r.detected).length;
-  return `<p class="small mt"><b>${det} of ${rows.length}</b> modifications detected.</p><div class="table-wrap"><table><thead><tr><th>Modification</th><th>Detected</th><th>First finding</th></tr></thead><tbody>
+function memView(m) {
+  const rows = m.rows || [], det = rows.filter((r) => r.detected).length;
+  return `${verdictBox(m.verdict, `${det} of ${rows.length} in-memory modifications detected; stored log unchanged: ${m.stored_log_unchanged ? "yes" : "NO"}`)}<div class="table-wrap"><table><thead><tr><th>Modification</th><th>Detected</th><th>First finding</th></tr></thead><tbody>
     ${rows.map((r) => `<tr><td>${esc(r.description || r.mode)}</td><td>${r.error ? `<span class="st fail">${esc(r.error)}</span>` : r.detected ? `<span class="st pass">yes</span>` : `<span class="st fail">NO</span>`}</td><td class="tiny">${esc((((r.verification || {}).findings || [])[0] || {}).issue || "")}</td></tr>`).join("")}</tbody></table></div>`;
 }
 async function evOpen(id) {
@@ -1378,7 +1604,7 @@ async function evOpen(id) {
   const b = S.ev.bundles.find((x) => x.id === id);
   if (!b) return null;
   $$("#ev-cards .card").forEach((c) => c.classList.toggle("sel", c.dataset.key === id));
-  const v = S.ev.verify[id], t = S.ev.tamper[id], canTamper = b.expected === "pass" && (S.tokens.reviewer || S.tokens.operator);
+  const v = S.ev.verify[id], t = S.ev.tamper[id], canTamper = b.expected === "pass" && canAct();
   return {
     title: b.label, meta: `${esc(EV_KIND[b.kind] || b.kind)} · expected: ${b.expected === "pass" ? "accept" : "reject"} · ${esc(b.path)}`,
     body: `<p>${esc(b.note)}</p>
@@ -1388,13 +1614,14 @@ async function evOpen(id) {
       <div id="v-out" aria-live="polite">${v ? `<p class="lbl">Verification ${v.matches_expectation ? `<span class="st pass">as expected</span>` : `<span class="st fail">NOT as expected</span>`}</p>
         <p class="small">${(v.result || {}).ok ? `<span class="st pass">Accepted.</span> The log is complete and unmodified relative to the signed terminal checkpoint.` : `<span class="st fail">Rejected.</span> The verifier could not establish an intact, complete log; the findings say why.`}</p>${verifyView(v)}` : `<p class="tiny mt">Not verified in this session yet.</p>`}</div>
       ${b.expected === "pass" ? `<hr><p class="lbl">Tamper with a disposable copy</p>
-        <p class="small muted">The server copies this bundle to a temporary directory, applies one change, runs the verifier on the copy and on the original, compares the original's SHA-256 digests before and after, and deletes the copy. Runs as the reviewer identity.</p>
-        <div class="row mt"><label class="field">Change<select id="t-mode">${Object.entries(S.ev.modes.disk_copy).map(([k, d]) => `<option value="${k}">${esc(d)}</option>`).join("")}</select></label>
+        <p class="small muted">The server copies this bundle to a temporary directory, applies one change, runs the verifier on the copy and on the original, compares the original's SHA-256 digests before and after, and deletes the copy. Needs the operator session.</p>
+        <div class="row mt"><label class="field">Change<select id="t-mode">${Object.entries(S.ev.modes.disk_copy).map(([k, d]) => `<option value="${k}" ${k === S.ev.tmode ? "selected" : ""}>${esc(d)}</option>`).join("")}</select></label>
           <button class="btn lg" id="do-tamper" type="button" ${canTamper ? "" : "disabled"}>Tamper and verify</button></div>
         <div id="t-out" aria-live="polite" class="mt">${t ? tamperView(t) : ""}</div>` : ""}
       ${b.kind === "lab" ? `<hr><p class="lbl">In-memory tamper suite for ${esc(b.run_id)}</p>
-        <p class="small muted">The control plane's own tamper test (POST /api/runs/{id}/tamper-test): each modification applied to an in-memory copy of the stored log and vault, verified strictly. The stored log is unchanged.</p>
-        <button class="btn lg mt" id="do-mem" type="button" ${S.tokens.reviewer ? "" : "disabled"}>Run all ${Object.keys(S.ev.modes.in_memory_run || {}).length}</button><div id="m-out">${S.ev.mem[id] ? memView(S.ev.mem[id]) : ""}</div>` : ""}`,
+        <p class="small muted">The control plane's own tamper test (POST /api/runs/{id}/tamper-test), sent server-side as the reviewer: each modification applied to an in-memory copy of the stored log and vault, verified strictly. The stored log is hashed before and after.</p>
+        <button class="btn lg mt" id="do-mem" type="button" ${canAct() ? "" : "disabled"}>Run all ${Object.keys(S.ev.modes.in_memory_run || {}).length}</button><div id="m-out">${S.ev.mem[id] ? memView(S.ev.mem[id]) : ""}</div>` : ""}
+      ${b.expected === "pass" && !canAct() ? `<p class="tiny mt">${esc(NO_SESSION)}</p>` : ""}`,
     after: (body) => {
       $("#do-verify", body).addEventListener("click", async (ev) => {
         const btn = ev.currentTarget; busy(btn, true);
@@ -1407,7 +1634,7 @@ async function evOpen(id) {
       if (tb) tb.addEventListener("click", async (ev) => {
         const btn = ev.currentTarget; busy(btn, true);
         try {
-          const r = await call(`/api/lab/bundles/${encodeURIComponent(id)}/tamper`, { method: "POST", role: S.tokens.reviewer ? "reviewer" : "operator", body: { mode: $("#t-mode").value } });
+          const r = await call(`/api/lab/bundles/${encodeURIComponent(id)}/tamper`, { method: "POST", body: { mode: (S.ev.tmode = $("#t-mode").value) } });
           if (!r.ok) toast(classify(r.status).text + ": " + ((r.body && r.body.detail) || ""), true); else { S.ev.tamper[id] = r.body; loadJournal(); await refreshSheet(); }
         } catch (e) { toast(e.message, true); } finally { if (document.contains(btn)) busy(btn, false); }
       });
@@ -1415,12 +1642,9 @@ async function evOpen(id) {
       if (mb) mb.addEventListener("click", async (ev) => {
         const btn = ev.currentTarget; busy(btn, true);
         try {
-          const out = [];
-          for (const m of Object.keys(S.ev.modes.in_memory_run)) {
-            const r = await call(`/api/runs/${encodeURIComponent(b.run_id)}/tamper-test`, { method: "POST", role: "reviewer", body: { mode: m } });
-            out.push(r.ok ? r.body : { mode: m, error: classify(r.status).text });
-          }
-          S.ev.mem[id] = out; await refreshSheet();
+          const r = await call(`/api/lab/runs/${encodeURIComponent(b.run_id)}/tamper-suite`, { method: "POST" });
+          if (!r.ok) toast(classify(r.status).text + ": " + ((r.body && r.body.detail) || ""), true);
+          else { S.ev.mem[id] = r.body; await refreshSheet(); }
         } catch (e) { toast(e.message, true); } finally { if (document.contains(btn)) busy(btn, false); }
       });
     },
@@ -1485,7 +1709,7 @@ async function threatModel() {
       <div><p class="lbl"><span class="st warn">Not proven</span> or not addressed</p><ul class="ledger">
         ${li("Compromised broker", "It sees everything and can sign a false but consistent record.")}
         ${li("Compromised signing key", "Same Unix user as the broker. Only a terminal hash the reviewer wrote down at release detects a full re-signed rewrite.")}
-        ${li("Global role tokens", "Tokens are per role, not per run, and this local console hands them to the browser in demo mode.")}
+        ${li("Global role tokens", "Tokens are per role, not per run. The console keeps them server-side, but one local operator session drives every role: not multi-user authentication.")}
         ${li("Detector bypasses", "Base64, ciphers or spelled-out digits carry a canary past the detector (test P3B02d).")}
         ${li("Timing side channels", "One classifier is weakened by padding; cache and memory-bandwidth channels are not measured.")}
         ${li("Kernel or runtime escape", "Containers share the host kernel; no escape exploits were attempted.")}</ul></div>
@@ -1527,7 +1751,7 @@ async function threatModel() {
       ${li("Loopback only", "Binds to 127.0.0.1 and refuses requests whose Host header is not a loopback name (blocks DNS rebinding).")}
       ${li("Fixed actions", "Scenarios, bundles and tamper modes are fixed lists on the server; the browser cannot send a command, path, container option or network target.")}
       ${li("Disposable copies", "Tamper demonstrations work on deleted-after-use copies; originals are hashed before and after.")}
-      ${li("Demo identities", "For a local demonstration only. Never expose this console beyond loopback.")}</ul></section>`);
+      ${li("Operator session", "The launch link sets an HttpOnly, SameSite=Strict cookie; writes need a per-session CSRF token and a same-origin request. AEGIS_DEMO_MODE is refused. Never expose this console beyond loopback.")}</ul></section>`);
 }
 
 /* ---------------------------------------------------------------- boot */
@@ -1543,8 +1767,8 @@ async function boot() {
   window.addEventListener("popstate", route);
   let rt = 0;
   window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { drawRings(document, true); wrapTables(document); }, 150); });
-  try { S.tokens = (await get("/api/demo/identities")).tokens || {}; } catch (e) { S.tokens = {}; }
-  await refreshStatus();
+  $("#sess").innerHTML = `<span class="dot" aria-hidden="true"></span><span class="txt">Session…</span>`;
+  await Promise.all([loadSession(), refreshStatus()]);
   setInterval(refreshStatus, 15000);
   await route();
   S.booted = true;
