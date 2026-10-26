@@ -110,21 +110,64 @@ SECURITY_HEADERS = {
 @app.middleware("http")
 async def guard(request: Request, call_next):
     """Loopback console only: a Host header other than a loopback name is refused (stops DNS rebinding from turning a web page
-    into a same-origin caller of /api/demo/identities). Oversized bodies are refused before any handler runs."""
+    into a same-origin caller of /api/demo/identities). Body size is enforced before this, by BodyLimit."""
     if _host_only(request.headers.get("host", "")) not in _allowed_hosts():
-        return JSONResponse({"detail": "host not allowed: the console answers on loopback names only"}, status_code=421)
-    try:
-        if int(request.headers.get("content-length") or 0) > MAX_BODY:
-            return JSONResponse({"detail": "request body too large"}, status_code=413)
-    except ValueError:
-        return JSONResponse({"detail": "invalid content-length"}, status_code=400)
+        return JSONResponse({"detail": "host not allowed: the console answers on loopback names only"}, status_code=421,
+                            headers=SECURITY_HEADERS)
     why = _cross_origin(request)
     if why:
-        return JSONResponse({"detail": why}, status_code=403)
+        return JSONResponse({"detail": why}, status_code=403, headers=SECURITY_HEADERS)
     response = await call_next(request)
     for k, v in SECURITY_HEADERS.items():
         response.headers.setdefault(k, v)
     return response
+
+
+class BodyLimit:
+    """Request-body limit on the bytes actually received (Phase R3), as plain ASGI middleware around everything, including the
+    mounted control plane. A declared Content-Length above the limit, a malformed or conflicting one, and a body that grows past
+    the limit while it streams in (chunked transfer, or no length at all) are refused before any handler runs: the body is read
+    into a buffer of at most MAX_BODY bytes first and only then handed to the application. So an oversized request never
+    reaches a handler, whether or not that handler reads its body, and cannot change session or run state. Refusals close the
+    connection, because the rest of an unread body would otherwise be parsed as the next request."""
+
+    def __init__(self, app, limit=MAX_BODY):
+        self.app, self.limit = app, limit
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        lengths = [v for k, v in scope.get("headers", []) if k == b"content-length"]
+        if lengths:
+            if len(set(lengths)) != 1 or not lengths[0].strip().isdigit():
+                return await self._refuse(send, 400, "invalid content-length")
+            if int(lengths[0]) > self.limit:
+                return await self._refuse(send, 413, "request body too large (limit %d bytes)" % self.limit)
+        body, more = bytearray(), True
+        while more:
+            msg = await receive()
+            if msg["type"] == "http.disconnect":
+                return  # the client went away before sending its body: nobody to answer
+            body += msg.get("body", b"")
+            more = msg.get("more_body", False)
+            if len(body) > self.limit:
+                return await self._refuse(send, 413, "request body too large (limit %d bytes)" % self.limit)
+        pending = [{"type": "http.request", "body": bytes(body), "more_body": False}]
+
+        async def replay():
+            return pending.pop() if pending else await receive()
+        await self.app(scope, replay, send)
+
+    @staticmethod
+    async def _refuse(send, status, detail):
+        payload = json.dumps({"detail": detail}).encode()
+        headers = [(b"content-type", b"application/json"), (b"content-length", str(len(payload)).encode()), (b"connection", b"close")]
+        headers += [(k.lower().encode(), v.encode()) for k, v in SECURITY_HEADERS.items()]
+        await send({"type": "http.response.start", "status": status, "headers": headers})
+        await send({"type": "http.response.body", "body": payload})
+
+
+app.add_middleware(BodyLimit)  # added last, so it is the outermost user middleware: it runs before guard
 
 
 def _cross_origin(request: Request):
@@ -251,7 +294,7 @@ def status():
                      "entries": v["entries"], "checkpoints_checked": v["checkpoints_checked"], "findings": [f["issue"] for f in v["findings"]][:5],
                      "checked_against": v.get("checked_against")}
     ref = _bundles().get("DEMO-001-RELEASED")
-    shipped = _cached("shipped-verify", 3600, lambda: _verify_bundle(ref, quiet=True)) if ref else {}
+    shipped = _shipped_status(ref) if ref else {}
     return {
         "control_plane": {"ok": True, "service": "aegislab-control-plane", "console": "r1"},
         "mode": "live" if podman.get("available") else "degraded",
@@ -273,6 +316,20 @@ def status():
         "code_revision": _cached("revision", 3600, _code_revision),
         "generated_at": time.time(),
     }
+
+
+def _shipped_status(ref) -> dict:
+    """Verification of the shipped bundle for the status page, cached for an hour, but only once it is conclusive: a busy
+    verifier slot or a timeout is reported as unknown now and retried on the next status request."""
+    with _cache_lock:
+        hit = _cache.get("shipped-verify")
+    if hit and time.monotonic() - hit[0] < 3600:
+        return hit[1]
+    res = _verify_bundle(ref, quiet=True)
+    if res.get("exit_code") is not None:
+        with _cache_lock:
+            _cache["shipped-verify"] = (time.monotonic(), res)
+    return res
 
 
 def _code_revision():
@@ -357,12 +414,25 @@ def defence_profiles():
     return [{"id": k, **{f: v[f] for f in ("title", "rules", "summary")}} for k, v in DEFENCE_PROFILES.items()]
 
 
+IDEMPOTENCY_RE = re.compile(r"[A-Za-z0-9_-]{8,64}")
+_created = {}  # (caller, idempotency key) -> response of the create request that used it (bounded, this process only)
+
+
 @app.post("/api/lab/runs")
-def prepare_run(req: PrepareReq, request: Request, x_aegis_token: str | None = Header(None)):
+def prepare_run(req: PrepareReq, request: Request, x_aegis_token: str | None = Header(None),
+                x_aegis_idempotency_key: str | None = Header(None)):
     """Create a new evaluation run LAB-nnn through the real API, optionally with a defence profile. With stop_after="started"
     (the R1 behaviour) it is also frozen and started; the broker then runs the red sandbox, defence runner and model worker
-    in real rootless containers in the background. The console UI uses stop_after="created" and the per-step endpoints."""
-    _authorize(request, x_aegis_token, "operator")
+    in real rootless containers in the background. The console UI uses stop_after="created" and the per-step endpoints.
+
+    X-Aegis-Idempotency-Key (Phase R3, optional): a retried or duplicated request with the same key and the same caller gets
+    the original answer with replayed=true instead of creating a second run (the UI sends one key per click)."""
+    who = _authorize(request, x_aegis_token, "operator")
+    key = None
+    if x_aegis_idempotency_key is not None:
+        if not IDEMPOTENCY_RE.fullmatch(x_aegis_idempotency_key):
+            raise HTTPException(422, "X-Aegis-Idempotency-Key must be 8-64 characters of A-Z a-z 0-9 _ -")
+        key = (who["via"], x_aegis_token or request.cookies.get(lab_session.COOKIE), x_aegis_idempotency_key)
     if req.timing_bucket_ms not in (0, 250):
         raise HTTPException(422, "timing_bucket_ms must be 0 or 250")
     if req.defence_profile is not None and req.defence_profile not in DEFENCE_PROFILES:
@@ -371,6 +441,9 @@ def prepare_run(req: PrepareReq, request: Request, x_aegis_token: str | None = H
     if not _lab_lock.acquire(blocking=False):
         raise HTTPException(409, "another lab action is in progress")
     try:
+        if key and key in _created:
+            prior = _created[key]
+            return dict(prior, replayed=True, state=runs.Run(prior["run_id"]).state, run=_run_view(prior["run_id"]))
         existing = _lab_runs()
         if len(existing) >= MAX_LAB_RUNS:
             raise HTTPException(409, "lab run limit (%d) reached; restart with scripts/start_prototype.sh --reset" % MAX_LAB_RUNS)
@@ -387,7 +460,11 @@ def prepare_run(req: PrepareReq, request: Request, x_aegis_token: str | None = H
             _journal("prepare", run_id, "STARTED", "operator created, froze and started %s" % run_id)
         else:
             _journal("create", run_id, "CREATED", "operator created %s" % run_id)
-        return {"run_id": run_id, "steps": steps, "state": runs.Run(run_id).state, "run": _run_view(run_id)}
+        if key:
+            while len(_created) >= 256:
+                del _created[next(iter(_created))]
+            _created[key] = {"run_id": run_id, "steps": steps}
+        return {"run_id": run_id, "steps": steps, "state": runs.Run(run_id).state, "run": _run_view(run_id), "replayed": False}
     finally:
         _lab_lock.release()
 
@@ -417,6 +494,7 @@ def configure_defence(run_id: str, req: ProfileReq, request: Request, x_aegis_to
 
 @app.post("/api/lab/runs/{run_id}/freeze")
 def freeze_run(run_id: str, request: Request, x_aegis_token: str | None = Header(None)):
+    _authorize(request, x_aegis_token, "operator")  # authorisation first: an unauthenticated caller learns nothing about the host
     _require_live()  # freezing records the sandbox image digest and the host environment
     res = _lab_step(request, x_aegis_token, run_id, lambda: _api_step("operator", "POST", "/api/runs/%s/freeze" % run_id))
     _journal("freeze", run_id, "FROZEN", "operator froze %s" % run_id)
@@ -425,6 +503,7 @@ def freeze_run(run_id: str, request: Request, x_aegis_token: str | None = Header
 
 @app.post("/api/lab/runs/{run_id}/start")
 def start_run(run_id: str, request: Request, x_aegis_token: str | None = Header(None)):
+    _authorize(request, x_aegis_token, "operator")
     _require_live()
 
     def go():
@@ -824,16 +903,20 @@ def journal():
 MAX_RESULTS = 200
 
 
+_results_lock = threading.Lock()  # tamper demonstrations run outside the lab lock; numbering must not collide
+
+
 def _save_result(sid, res):
     """Keep the full result of a scenario or tamper demonstration so the UI can show it after a reload and the graph can mark
     the boundary it exercised. Results hold only what the scenario already returned (scanned for protected values)."""
     d = store.p("lab", "results")
-    d.mkdir(parents=True, exist_ok=True)
-    files = sorted(d.glob("*.json"))
-    n = int(files[-1].name[:5]) + 1 if files else 1
-    store.write_json(d / ("%05d-%s.json" % (n, re.sub(r"[^a-z0-9-]", "", sid)[:40])), dict(res, result_id=n))
-    for old in files[:max(0, len(files) + 1 - MAX_RESULTS)]:
-        old.unlink(missing_ok=True)
+    with _results_lock:
+        d.mkdir(parents=True, exist_ok=True)
+        files = sorted(d.glob("*.json"))
+        n = int(files[-1].name[:5]) + 1 if files else 1
+        store.write_json(d / ("%05d-%s.json" % (n, re.sub(r"[^a-z0-9-]", "", sid)[:40])), dict(res, result_id=n))
+        for old in files[:max(0, len(files) + 1 - MAX_RESULTS)]:
+            old.unlink(missing_ok=True)
 
 
 @app.get("/api/lab/results")
@@ -893,7 +976,25 @@ def run_audit(run_id: str, request: Request, x_aegis_token: str | None = Header(
             "terminal_anchor": store.anchor_path(run_id).is_file(),
             "facets": {"type": sorted({e["type"] for e in read_jsonl(run.dir / "audit.jsonl")}),
                        "actor": sorted({e["actor"] for e in read_jsonl(run.dir / "audit.jsonl")})},
-            "entries": rows[offset:offset + limit]}
+            "entries": rows[offset:offset + limit], "after_close": _after_close(run)}
+
+
+def _post_terminal_view(e):
+    data = e.get("data") or {}
+    return {"ts": e.get("ts"), "type": e.get("type"), "actor": e.get("actor"), "data": {k: data[k] for k in ("op", "reason") if k in data},
+            "signed": False}
+
+
+def _after_close(run) -> dict:
+    """What happened after the signed chain closed (Phase R3). The terminal checkpoint covers the chain up to the final
+    lifecycle event and the chain is never reopened. Later events, typically refused requests against a released run, are
+    kept by the control plane in post_terminal.jsonl: unsigned, informational, capped (runs.POST_TERMINAL_CAP), outside the
+    evidence the verifier checks. Shown separately so they are never mistaken for signed entries."""
+    rows = read_jsonl(run.dir / "post_terminal.jsonl")
+    rec = run.record
+    return {"closed": run.audit.closed, "recorded": len(rows), "seen": rec.get("post_terminal_events", len(rows)),
+            "signed": False, "entries": [_post_terminal_view(e) for e in rows[-50:]][::-1],
+            "note": "Recorded after the signed chain closed: unsigned, informational, not covered by the terminal checkpoint."}
 
 
 # ------------------------------------------------------------------------------------------------ manual request probe
@@ -945,8 +1046,11 @@ def probe(req: ProbeReq, request: Request, x_aegis_token: str | None = Header(No
     try:
         s = _Steps()
         pre = read_jsonl(store.run_dir(run_id) / "audit.jsonl")[-1]["seq"]
+        pre_counts = _record_counts(run_id)
         r = s.call(_client(), req.role, method, "/api/runs/%s%s" % (run_id, suffix), token, None, title)
         new = _audit_since(run_id, pre)
+        late = read_jsonl(store.run_dir(run_id) / "post_terminal.jsonl")[pre_counts["post_terminal"]:]
+        recording = _recording(new, late, pre_counts, _record_counts(run_id))
         exported = _export_if_released(run_id) if req.op == "release" and r.status_code == 200 else None
     finally:
         _lab_lock.release()
@@ -966,12 +1070,37 @@ def probe(req: ProbeReq, request: Request, x_aegis_token: str | None = Header(No
         summary = {"artifacts": len(body) if isinstance(body, list) else None}
     res = {"role": req.role, "op": req.op, "run_id": run_id, "request": "%s /api/runs/%s%s" % (method, run_id, suffix),
            "status": r.status_code, "decision": s.steps[0]["decision"], "detail": _detail(r),
-           "audit": [_public_entry(e, signed) for e in new], "summary": summary,
+           "audit": [_public_entry(e, signed) for e in new], "recording": recording,
+           "post_terminal": [_post_terminal_view(e) for e in late], "summary": summary,
            "response_shape": _shape(body) if r.status_code == 200 else None,
            "protected_values_in_raw_response": leaks, "bundle_exported": exported,
            "note": "The raw response stays on the server; the browser receives its status, structure and a count of protected values."}
     _journal("probe:%s:%s" % (req.role, req.op), run_id, "HTTP %d" % r.status_code, title)
     return res
+
+
+def _record_counts(run_id) -> dict:
+    rec = runs.Run(run_id).record
+    return {"post_terminal": len(read_jsonl(store.run_dir(run_id) / "post_terminal.jsonl")),
+            "post_terminal_seen": rec.get("post_terminal_events", 0), "suppressed": rec.get("denials_suppressed", 0)}
+
+
+def _recording(new, late, before, after) -> dict:
+    """Where the control plane recorded one request, stated exactly: in the signed chain, after the chain closed (unsigned),
+    only counted (a cap was reached), or not at all. Never claims a signature that does not exist."""
+    if new:
+        return {"where": "audit_chain", "signed_chain": True,
+                "explain": "Appended to the run's hash-chained audit log; a signed checkpoint covers it (see 'signed' per entry)."}
+    if late:
+        return {"where": "post_terminal", "signed_chain": False,
+                "explain": "The run's signed chain is closed (terminal checkpoint written at release or failure) and is never "
+                           "reopened. The control plane kept this event in post_terminal.jsonl: unsigned and informational."}
+    if after["suppressed"] > before["suppressed"] or after["post_terminal_seen"] > before["post_terminal_seen"]:
+        return {"where": "counted_only", "signed_chain": False,
+                "explain": "A logging cap for repeated refusals was reached: the event was counted, not recorded individually."}
+    return {"where": "not_recorded", "signed_chain": False,
+            "explain": "The control plane wrote no audit entry for this request. It logs refused artifact reads and refused "
+                       "releases; permitted reads, refused evidence reads and unknown tokens (401) are answered without one."}
 
 
 def _export_if_released(run_id):
@@ -1012,12 +1141,15 @@ def tamper_suite(run_id: str, request: Request, x_aegis_token: str | None = Head
 
 # ------------------------------------------------------------------------------------------------ operator session
 @app.get("/session/start")
-def session_start(code: str = ""):
-    """Exchange the launch code (printed by scripts/start_prototype.sh) for an operator session cookie, then open the console."""
+def session_start(request: Request, code: str = ""):
+    """Exchange the single-use launch code (printed by scripts/start_prototype.sh) for an operator session cookie, then open
+    the console. The session this browser held before, if any, is ended: one browser, one current session."""
     sid, why = lab_session.start(code[:200])
     if not sid:
-        return PlainTextResponse("AegisLab console: %s.\nOpen the launch link printed by scripts/start_prototype.sh "
-                                 "(the code is also in $AEGIS_VAR/console/launch_code).\n" % why, status_code=403)
+        return PlainTextResponse("AegisLab console: %s.\nEach launch link works once. Print a new one with "
+                                 "scripts/start_prototype.sh --link (the current code is in $AEGIS_VAR/console/launch_code).\n" % why,
+                                 status_code=403)
+    lab_session.end(request.cookies.get(lab_session.COOKIE))
     resp = RedirectResponse("/#/lab", status_code=303)
     resp.set_cookie(lab_session.COOKIE, sid, max_age=lab_session.SESSION_TTL_S, path="/", httponly=True, samesite="strict")
     return resp
@@ -1096,7 +1228,7 @@ def _bundles() -> dict:
     for rid in _lab_runs():
         d = store.p("bundles", rid)
         run = runs.Run(rid)
-        if d.is_dir() and run.state == "RELEASED":
+        if d.is_dir() and not d.is_symlink() and run.state == "RELEASED":
             out[rid] = {"id": rid, "abs": d, "path": _rel(d), "run_id": rid, "expect_state": "RELEASED", "expected": "pass", "kind": "lab",
                         "label": "%s (this console, live run)" % rid, "pin_key": runs.signer().public_b64(),
                         "pin_terminal_hash": run.record.get("terminal_checkpoint_hash"),
@@ -1109,6 +1241,15 @@ def _bundle(bid) -> dict:
     if not b:
         raise HTTPException(404, "unknown bundle")
     return b
+
+
+def _links(d: Path) -> list:
+    """Bundle files (or the bundle directory) that are symbolic links. The evidence centre refuses such a bundle outright:
+    a link could point the verifier, a tamper copy or a download at a file outside the bundle."""
+    d = Path(d)
+    if d.is_symlink():
+        return ["(bundle directory)"]
+    return [n for n in BUNDLE_FILES if (d / n).is_symlink()]
 
 
 def _public_bundle(b):
@@ -1126,6 +1267,10 @@ def bundles():
 def _verify_bundle(b, path=None, quiet=False) -> dict:
     """Run the independent verifier program on a bundle directory, exactly as a reviewer would."""
     path = Path(path or b["abs"])
+    links = _links(path)
+    if links:
+        return {"exit_code": None, "result": None, "error": "refused: symbolic link in the bundle (%s)" % ", ".join(links),
+                "command": "not run"}
     cmd = [sys.executable, "-m", "aegis.verify_cli", "--bundle", str(path), "--run-id", b["run_id"], "--expect-state", b["expect_state"]]
     shown = ["python", "-m", "aegis.verify_cli", "--bundle", b["path"] if path == b["abs"] else "<disposable copy>", "--run-id", b["run_id"], "--expect-state", b["expect_state"]]
     if b.get("pin_key"):
@@ -1145,6 +1290,8 @@ def _verify_bundle(b, path=None, quiet=False) -> dict:
         took = time.monotonic() - t
     except subprocess.TimeoutExpired:
         return {"exit_code": None, "result": None, "error": "verifier did not finish within %d s" % VERIFY_TIMEOUT_S, "command": " ".join(shown)}
+    except OSError as exc:  # the interpreter or the verifier could not be started: no verdict at all
+        return {"exit_code": None, "result": None, "error": "verifier could not be started (%s)" % type(exc).__name__, "command": " ".join(shown)}
     finally:
         _verify_slots.release()
     try:
@@ -1243,6 +1390,8 @@ def tamper_bundle(bid: str, req: TamperReq, request: Request, x_aegis_token: str
     b = _bundle(bid)
     if b["expected"] != "pass":
         raise HTTPException(409, "tamper demonstrations start from a genuine bundle that verifies")
+    if _links(b["abs"]):
+        raise HTTPException(409, "refused: the bundle contains a symbolic link")
     before = _digests(b["abs"])
     work = Path(tempfile.mkdtemp(prefix="tamper-", dir=_mk(store.p("lab"))))
     try:
@@ -1250,7 +1399,10 @@ def tamper_bundle(bid: str, req: TamperReq, request: Request, x_aegis_token: str
         os.mkdir(copy)
         for n in before:  # regular files from the fixed list only; nothing else in the bundle directory is copied
             shutil.copyfile(b["abs"] / n, copy / n)
-        change = _mutate(copy, req.mode)
+        try:
+            change = _mutate(copy, req.mode)
+        except (IndexError, KeyError, ValueError, TypeError):
+            raise HTTPException(409, "this bundle is too short or malformed for tamper mode %s" % req.mode)
         tampered = _verify_bundle(b, path=copy)
     finally:
         shutil.rmtree(work, ignore_errors=True)
@@ -1272,6 +1424,8 @@ def download_bundle(bid: str):
     b = _bundle(bid)
     if b["expected"] != "pass":
         raise HTTPException(409, "only genuine bundles are offered for download")
+    if _links(b["abs"]):
+        raise HTTPException(409, "refused: the bundle contains a symbolic link")
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         for n in BUNDLE_FILES:
