@@ -79,10 +79,10 @@ The demos use a deterministic **stub** model by design: it makes leakage behavio
 ## Interactive prototype console
 
 ```bash
-bash scripts/start_prototype.sh       # then open http://127.0.0.1:8400 (loopback only; Ctrl-C stops it)
+bash scripts/start_prototype.sh       # then open the launch link it prints (loopback only; Ctrl-C stops it)
 ```
 
-The console is a browser interface on the same control plane. It starts live runs in rootless containers, runs four allowlisted attack scenarios against them, shows the security events, and verifies (and tampers with copies of) the signed evidence through `aegis.verify_cli`. Without Podman it starts in a labelled degraded mode with a recorded replay. Guide: [`docs/prototype/PROTOTYPE_GUIDE.md`](docs/prototype/PROTOTYPE_GUIDE.md). Five-minute judge path: [`docs/prototype/JUDGE_WALKTHROUGH.md`](docs/prototype/JUDGE_WALKTHROUGH.md).
+The console is a browser interface on the same control plane. The launch link starts a local operator session; the browser never holds a role token. It drives the run lifecycle step by step (create, defence, freeze, start, seal, release) in rootless containers, runs four allowlisted attack scenarios against them, shows the security events, and verifies (and tampers with copies of) the signed evidence through `aegis.verify_cli`. Without Podman it starts in a labelled degraded mode with a recorded replay. Guide: [`docs/prototype/PROTOTYPE_GUIDE.md`](docs/prototype/PROTOTYPE_GUIDE.md). Five-minute judge path: [`docs/prototype/JUDGE_WALKTHROUGH.md`](docs/prototype/JUDGE_WALKTHROUGH.md).
 
 ## Verify the evidence yourself
 
@@ -112,7 +112,7 @@ From the evidence in `aegislab/evidence/` (one Fedora host, CPU only). Every fig
 Stated here because a security result is only as credible as its limits.
 
 - **Trusted broker and signing key.** The broker sees everything and signs the checkpoints. A compromised broker or a stolen key can produce false but consistent records.
-- **Global role tokens.** Tokens are per role, not per run, and are local demo tokens (`var/keys/tokens.json`). `AEGIS_DEMO_MODE=1` hands every token to any local caller: demo only.
+- **Global role tokens.** Tokens are per role, not per run, and are local demo tokens (`var/keys/tokens.json`). `AEGIS_DEMO_MODE=1` hands every token to any local caller: demo only. The prototype console refuses to start with it: it keeps the tokens on the server and gives the browser a loopback operator session instead (one local operator, not multi-user authentication).
 - **One host.** Validated on a single Fedora machine. Containers share the host kernel; a kernel or runtime escape is out of scope.
 - **Small model, few prompts.** One 0.5B model on CPU and ten probe wordings; three probes stayed silent even when sharing was on purpose. Zero observed leaks is not proof of zero risk (one-sided 95% upper bound: 2.84% of sessions for this setup).
 - **Detector gaps.** The canary detector misses some re-encodings, for example **base64**.
