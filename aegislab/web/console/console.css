@@ -122,6 +122,7 @@ button:disabled { cursor: not-allowed; }
 .sys.live .dot { background: var(--s-pass); }
 .sys.degraded .dot { background: var(--s-warn); }
 .sys.offline .dot { background: var(--s-fail); }
+.sys.ro .dot { background: var(--ink3); }
 .iconbtn { display: inline-grid; place-items: center; width: var(--ico-lg); height: var(--ico-lg); border: 0; background: none; padding: 0; border-radius: var(--ctl-r); color: var(--ink); text-decoration: none; }
 .iconbtn:hover { background: var(--soft); }
 
@@ -193,7 +194,7 @@ button:disabled { cursor: not-allowed; }
 .linkbtn { border: 0; background: none; padding: 0; text-decoration: underline; text-underline-offset: 3px; font-size: inherit; }
 .why { font-size: var(--fs-ctl-sm); color: var(--ink2); font-style: italic; }
 
-.field { display: inline-flex; flex-direction: column; gap: 4px; font-size: var(--fs-ctl-sm); color: var(--ink2); }
+.field { display: inline-flex; flex-direction: column; gap: 4px; font-size: var(--fs-ctl-sm); color: var(--ink2); max-width: 100%; min-width: 0; }
 .field select, .select { appearance: none; height: var(--ctl-h); padding: 0 32px 0 12px; font-size: var(--fs-ctl); color: var(--ink); background: var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%23111111' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 11px center / 11px 8px; border: 0; box-shadow: inset 0 0 0 2px var(--ink); border-radius: var(--ctl-r); max-width: 100%; }
 .field select:hover { background-color: var(--soft); }
 
@@ -225,6 +226,8 @@ button:disabled { cursor: not-allowed; }
 .label.rec { --lc: var(--l-rec); }
 .label.pre { --lc: var(--l-pre); }
 .label.stub { --lc: var(--l-stub); }
+.label.sandbox { --lc: var(--l-live); }
+.label.na { --lc: var(--s-none); }
 .st { font-weight: 500; }
 .st.pass, .st.ok { color: var(--s-pass); }
 .st.deny, .st.denied { color: var(--s-deny); }
@@ -468,6 +471,12 @@ dialog.confirm .row { justify-content: flex-end; margin-top: 18px; }
 .g .edge.audit { --kc: var(--e-audit); }
 .g .edge.trust { --kc: var(--e-trust); }
 .g .edge.hide { display: none; }
+.g .edge.obs path { stroke-width: 2.6; }
+.g .obsmark circle { fill: var(--panel); stroke: var(--s-pass); stroke-width: 2; }
+.g .obsmark text { font: 500 11px var(--font); fill: var(--s-pass); stroke: none; }
+.g .obsmark.fail circle { stroke: var(--s-fail); }
+.g .obsmark.fail text { fill: var(--s-fail); }
+.g.focus .edge.obs:not(.hot) { opacity: .45; }
 .g .node { cursor: pointer; outline: none; }
 .g .node rect.box { fill: var(--panel); stroke: var(--ink); stroke-width: 2; transition: fill .15s var(--lift); }
 .g .node.trusted rect.box { stroke-width: 2; stroke-dasharray: none; fill: var(--bg); }

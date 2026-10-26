@@ -1,5 +1,7 @@
 # Judge walkthrough: AegisLab prototype console (about 5 minutes)
 
+> Phase R1 walkthrough, kept for the record. Since Phase R2 the console starts from a launch link and runs the lifecycle step by step; follow [JUDGE_INTERACTIVE_WALKTHROUGH.md](JUDGE_INTERACTIVE_WALKTHROUGH.md) instead.
+
 This walkthrough needs Linux with rootless Podman and Python 3.11 or newer. Without Podman, follow steps 1, 5, 6 and 7: the console runs in degraded mode and shows a recorded execution instead of live runs. It labels that recording clearly.
 
 ## 1. Start (30 s)
