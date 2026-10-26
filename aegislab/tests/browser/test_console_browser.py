@@ -95,6 +95,9 @@ def test_judge_flow_desktop(server, browser):
     expect(page.locator("#sess")).to_contain_text("Operator session")
     _run_box_state(page, "SEALED")
     expect(page.locator("#run-box")).to_contain_text("signed up to #")
+    # R4 regression: the lifecycle row ran straight into the "Run ID" row below it (no gap), which read as one list
+    gap = page.evaluate("(() => { const l = document.querySelector('#run-box .life'); return l.nextElementSibling.getBoundingClientRect().top - l.getBoundingClientRect().bottom; })()")
+    assert gap >= 8, "lifecycle row touches the next row (gap %s px)" % gap
     _shot(page, "03_run_sealed.png")
 
     # 4. scenario B: unauthorised cross-role access is denied and audited
