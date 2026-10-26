@@ -3,6 +3,8 @@ var/
 **/var/
 .venv/
 **/.venv/
+.venv-browser/
+**/.venv-browser/
 __pycache__/
 *.pyc
 .pytest_cache/
