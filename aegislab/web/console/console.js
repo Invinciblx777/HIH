@@ -57,9 +57,10 @@ const icon = (n, cls = "") => `<svg class="ico ${cls}" viewBox="0 0 24 24" fill=
 class NetError extends Error {}
 /* The browser holds no role token. Writes carry the operator session's CSRF token; the session cookie itself is HttpOnly
    and is sent by the browser to this origin only (SameSite=Strict). The server performs each role's request. */
-async function call(path, { method = "GET", body } = {}) {
+async function call(path, { method = "GET", body, idem } = {}) {
   const headers = {};
   if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (idem) headers["X-Aegis-Idempotency-Key"] = idem;
   if (method !== "GET" && S.session && S.session.csrf) headers["X-Aegis-CSRF"] = S.session.csrf;
   let r;
   try { r = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), cache: "no-store", credentials: "same-origin" }); }
@@ -79,6 +80,16 @@ function paintSession() {
   el.className = "sys " + (on ? "live" : "ro");
   el.title = on ? (S.session.limitation || "") : NO_SESSION;
   $(".txt", el).innerHTML = on ? `Operator session<span class="long"> · roles act server-side</span>` : `Read-only<span class="long"> · open the launch link</span>`;
+  const end = $("#sess-end"); if (end) end.hidden = !on;
+}
+async function endSession(ev) {
+  const btn = ev.currentTarget; busy(btn, true);
+  try {
+    const r = await call("/api/lab/session/end", { method: "POST" });
+    await loadSession();
+    toast(r.ok ? "Operator session ended. The console is read-only; a new launch link is needed to act again." : "The session had already ended.");
+    await route();
+  } catch (e) { toast(e.message, true); } finally { busy(btn, false); }
 }
 async function get(path, opts) {
   const r = await call(path, opts);
@@ -722,17 +733,17 @@ function drawRunBox() {
   $$("[data-step]", el).forEach((b) => b.addEventListener("click", () => runStep(b.dataset.step, b)));
   drawRings(el);
 }
-async function labPost(btn, path, body, ok) {
+async function labPost(btn, path, body, ok, idem) {
   busy(btn, true);
   try {
-    const r = await call(path, { method: "POST", body });
+    const r = await call(path, { method: "POST", body, idem });
     if (!r.ok) {
       const msg = classify(r.status).text + ": " + ((r.body && r.body.detail) || "");
       S.lab.last = { t: Date.now() / 1000, error: msg }; toast(msg, true);
     } else {
       S.lab.run = r.body.run_id; S.lab.view = r.body.run;
       S.lab.last = { t: Date.now() / 1000, steps: r.body.steps || [r.body.step] };
-      toast(ok(r.body));
+      toast(r.body.replayed ? `${r.body.run_id}: this request was already processed; no second run was created` : ok(r.body));
     }
     await Promise.all([loadRuns(), loadJournal()]);
     if (S.page !== "lab") return r;
@@ -740,10 +751,12 @@ async function labPost(btn, path, body, ok) {
     return r;
   } catch (e) { toast(e.message, true); return null; } finally { if (document.contains(btn)) busy(btn, false); }
 }
+/* One key per click: a retried or duplicated create request returns the run it already created instead of a second one. */
+const idemKey = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), (x) => x.toString(16).padStart(2, "0")).join("");
 async function startRun(ev) {
   const bucket = $("#bucket") ? Number($("#bucket").value) : 250, prof = $("#prof1") ? $("#prof1").value : "sample";
   await labPost(ev.currentTarget, "/api/lab/runs", { timing_bucket_ms: bucket, defence_profile: prof, stop_after: "created" },
-    (b) => `${b.run_id} created by the operator; defence submitted by the blue participant`);
+    (b) => `${b.run_id} created by the operator; defence submitted by the blue participant`, idemKey());
 }
 async function runStep(step, btn) {
   const id = S.lab.run, base = "/api/lab/runs/" + encodeURIComponent(id);
@@ -895,7 +908,7 @@ function drawProbe() {
       const k = c.kind === "allowed" ? "allowed" : c.kind === "denied" ? "denied" : c.kind === "error" ? "error" : "attempted";
       $("#p-out").innerHTML = `<div class="ev mt"><div class="row"><span class="stamp ${k}">${{ allowed: "ALLOWED", denied: "DENIED", error: "ERROR", attempted: "REJECTED" }[k]}<small>HTTP ${P.status}</small></span>
         <div><div class="small">${esc(P.request)}</div><div class="tiny">as ${esc(ROLE_NAMES[role])}: ${esc(c.text)}${P.detail ? " · “" + esc(P.detail) + "”" : ""}</div></div></div>
-        ${P.audit.length ? P.audit.map((a) => `<p class="small">Audit entry <b>#${a.seq}</b> ${esc(a.type)} by ${esc(a.actor)}${a.data.reason ? ": " + esc(a.data.reason) : ""} <span class="hash">${short(a.hash, 16)}</span> <a href="${href("audit", { src: "log", run: P.run_id })}">open</a></p>`).join("") : `<p class="tiny">No audit entry: this operation is not logged when ${P.status < 300 ? "allowed" : "refused"}.</p>`}
+        ${P.audit.length ? P.audit.map((a) => `<p class="small">Audit entry <b>#${a.seq}</b> ${esc(a.type)} by ${esc(a.actor)}${a.data.reason ? ": " + esc(a.data.reason) : ""} <span class="hash">${short(a.hash, 16)}</span> <a href="${href("audit", { src: "log", run: P.run_id })}">open</a></p>`).join("") : `<p class="tiny">${P.post_terminal && P.post_terminal.length ? P.post_terminal.map((a) => `Recorded after the signed chain closed: ${esc(a.type)} by ${esc(a.actor)}${a.data.reason ? ": " + esc(a.data.reason) : ""} <b>(unsigned, no audit sequence number)</b>`).join("<br>") + ". " : ""}${esc((P.recording || {}).explain || "No audit entry was written for this request.")}</p>`}
         ${P.summary ? `<p class="lbl">What the role received</p><pre class="json">${esc(JSON.stringify(P.summary, null, 1))}</pre>` : ""}
         ${P.response_shape ? `<details><summary>Response structure</summary><pre class="json">${esc(JSON.stringify(P.response_shape, null, 1))}</pre></details>` : ""}
         <p class="tiny">${P.status < 300 ? `Protected values in the raw response: ${P.protected_values_in_raw_response} (kept on the server).` : `Protected values in the refusal: ${P.protected_values_in_raw_response}.`} ${esc(P.note)}</p></div>`;
@@ -1458,11 +1471,13 @@ function drawLog() {
   $("#l-run").addEventListener("change", (e) => { setQuery({ run: e.target.value, open: null }); A.run = e.target.value; A.off = 0; A.lf = { type: "", actor: "", decision: "" }; fetchLog(true); });
   $$("[data-lf]").forEach((x) => x.addEventListener("change", () => { A.lf[x.dataset.lf] = x.value; A.off = 0; fetchLog(true); }));
   $("#l-meta").textContent = `${d.run_id} · ${d.state} · ${fmt(d.matched)} of ${fmt(d.total)} entries · signed up to #${d.signed_upto} by ${d.checkpoints} checkpoints${d.terminal_anchor ? " · terminal anchor written" : ""} · updated ${new Date().toLocaleTimeString()}`;
-  if (!d.entries.length) { el.innerHTML = `<div class="empty"><strong>No entry matches</strong>Clear the filters.</div>`; return; }
+  const ac = d.after_close, late = ac && ac.seen ? `<div class="note mt"><b>${fmt(ac.seen)} event${ac.seen === 1 ? "" : "s"} after the signed chain closed</b> (${fmt(ac.recorded)} kept in post_terminal.jsonl). ${esc(ac.note)}
+    ${ac.entries.length ? `<ul class="small">${ac.entries.slice(0, 5).map((e) => `<li>${clock(e.ts)} · ${esc(e.actor)} · ${esc(e.type)}${e.data.op ? " · " + esc([e.data.op, e.data.reason].filter(Boolean).join(": ")) : ""} · <span class="muted">unsigned</span></li>`).join("")}</ul>` : ""}</div>` : "";
+  if (!d.entries.length) { el.innerHTML = `<div class="empty"><strong>No entry matches</strong>Clear the filters.</div>${late}`; return; }
   el.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Seq</th><th>Time</th><th>Actor</th><th>Event</th><th>Operation</th><th>Decision</th><th>Hash</th><th>Signature</th></tr></thead><tbody>
     ${d.entries.map((e) => { const k = `log~${d.run_id}~${e.seq}`; return `<tr class="click${S.q.open === k ? " sel" : ""}" tabindex="0" data-key="${esc(k)}"><td>${e.seq}</td><td class="nw">${clock(e.ts)}</td><td class="nw">${esc(e.actor)}</td><td class="nw">${esc(e.type)}</td><td>${esc([e.data.op, e.data.reason].filter(Boolean).join(": ") || e.data.attack_id || "")}</td><td>${decTag(e.decision)}</td><td class="hash nw">${short(e.hash, 12)}</td><td class="nw">${e.signed ? `<span class="st ok">signed</span>` : `<span class="muted">pending</span>`}</td></tr>`; }).join("")}
     </tbody></table></div>
-    <div class="row mt"><button type="button" class="btn" data-page="-1" ${A.off ? "" : "disabled"}>${icon("left")} Newer</button><span class="small muted">${fmt(A.off + 1)}–${fmt(Math.min(A.off + LOG_PAGE, d.matched))} of ${fmt(d.matched)}</span><button type="button" class="btn" data-page="1" ${A.off + LOG_PAGE < d.matched ? "" : "disabled"}>Older ${icon("right")}</button></div>`;
+    <div class="row mt"><button type="button" class="btn" data-page="-1" ${A.off ? "" : "disabled"}>${icon("left")} Newer</button><span class="small muted">${fmt(A.off + 1)}–${fmt(Math.min(A.off + LOG_PAGE, d.matched))} of ${fmt(d.matched)}</span><button type="button" class="btn" data-page="1" ${A.off + LOG_PAGE < d.matched ? "" : "disabled"}>Older ${icon("right")}</button></div>${late}`;
   wrapTables(el);
 }
 async function fetchAudit(first) {
@@ -1612,7 +1627,7 @@ async function evOpen(id) {
       <div class="row mt"><button class="btn solid lg" id="do-verify" type="button">${icon("shield")} Verify with the independent verifier</button>
         ${b.expected === "pass" ? `<a class="btn lg" href="/api/lab/bundles/${encodeURIComponent(b.id)}/download" download>${icon("download")} Download .zip</a>` : ""}</div>
       <div id="v-out" aria-live="polite">${v ? `<p class="lbl">Verification ${v.matches_expectation ? `<span class="st pass">as expected</span>` : `<span class="st fail">NOT as expected</span>`}</p>
-        <p class="small">${(v.result || {}).ok ? `<span class="st pass">Accepted.</span> The log is complete and unmodified relative to the signed terminal checkpoint.` : `<span class="st fail">Rejected.</span> The verifier could not establish an intact, complete log; the findings say why.`}</p>${verifyView(v)}` : `<p class="tiny mt">Not verified in this session yet.</p>`}</div>
+        <p class="small">${v.exit_code == null ? `<span class="st fail">No verdict.</span> The verifier gave no result, which never counts as a pass or as a rejection.` : (v.result || {}).ok ? `<span class="st pass">Accepted.</span> The log is complete and unmodified relative to the signed terminal checkpoint.` : `<span class="st fail">Rejected.</span> The verifier could not establish an intact, complete log; the findings say why.`}</p>${verifyView(v)}` : `<p class="tiny mt">Not verified in this session yet.</p>`}</div>
       ${b.expected === "pass" ? `<hr><p class="lbl">Tamper with a disposable copy</p>
         <p class="small muted">The server copies this bundle to a temporary directory, applies one change, runs the verifier on the copy and on the original, compares the original's SHA-256 digests before and after, and deletes the copy. Needs the operator session.</p>
         <div class="row mt"><label class="field">Change<select id="t-mode">${Object.entries(S.ev.modes.disk_copy).map(([k, d]) => `<option value="${k}" ${k === S.ev.tmode ? "selected" : ""}>${esc(d)}</option>`).join("")}</select></label>
@@ -1768,6 +1783,7 @@ async function boot() {
   let rt = 0;
   window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { drawRings(document, true); wrapTables(document); }, 150); });
   $("#sess").innerHTML = `<span class="dot" aria-hidden="true"></span><span class="txt">Session…</span>`;
+  $("#sess-end").addEventListener("click", endSession);
   await Promise.all([loadSession(), refreshStatus()]);
   setInterval(refreshStatus, 15000);
   await route();
