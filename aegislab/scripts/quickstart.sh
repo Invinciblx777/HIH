@@ -116,7 +116,7 @@ pass verify "genuine bundle accepted; truncated copy rejected"
 
 # 8 --------------------------------------------------------------------------------- console
 echo "[8/8] console"
-CMD="AEGIS_VAR=\"$AEGIS_VAR\" AEGIS_DEMO_MODE=1 .venv/bin/uvicorn aegis.api:app --host 127.0.0.1 --port $PORT"
+CMD="AEGIS_VAR=\"$AEGIS_VAR\" AEGIS_DEMO_MODE=1 .venv/bin/uvicorn aegis.console:app --host 127.0.0.1 --port $PORT"
 pass console "not started automatically"
 summary
 echo
@@ -131,5 +131,5 @@ s = socket.socket(); s.settimeout(0.5)
 sys.exit(0 if s.connect_ex(("127.0.0.1", int(sys.argv[1]))) else 1)
 PY
   echo "Serving on http://127.0.0.1:$PORT (demo identities enabled, loopback only). Ctrl-C to stop."
-  AEGIS_DEMO_MODE=1 exec .venv/bin/uvicorn aegis.api:app --host 127.0.0.1 --port "$PORT"
+  AEGIS_DEMO_MODE=1 exec .venv/bin/uvicorn aegis.console:app --host 127.0.0.1 --port "$PORT"
 fi
