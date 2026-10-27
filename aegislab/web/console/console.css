@@ -563,6 +563,14 @@ dialog.confirm .row { justify-content: flex-end; margin-top: 18px; }
   :root { --gutter: 24px; --fs-tab: 18px; --tab-h: 46px; --sheet-w: 100vw; }
   .site-head { padding-top: 24px; }
   .brand small { display: none; }
+  /* R4.5: in an operator session the header row was ~512 px of unwrapped text and ran off a phone screen (the page then
+     stayed panned sideways). Phones get two lines: brand, status and info first; the session controls below. */
+  .hrow1 { flex-wrap: wrap; gap: 0 16px; }
+  .hrow1 .tools { display: contents; }
+  .hrow1::after { content: ""; order: 2; flex-basis: 100%; }
+  .hrow1 #sys { order: 1; margin-left: auto; }
+  .hrow1 #tm-link { order: 1; }
+  .hrow1 #sess, .hrow1 #sess-end { order: 3; margin: 2px 0 6px; }
   .cards, .cards.three, .cards.five { grid-template-columns: minmax(0, 1fr); }
   .card { min-height: 0; }
   main { padding-top: 28px; }

@@ -142,8 +142,11 @@ def watch(page):
 
 
 def no_overflow(page):
-    w = page.evaluate("[document.documentElement.scrollWidth, window.innerWidth]")
+    # R4.5: compare with clientWidth (the screen width), not innerWidth. In a mobile context (is_mobile=True) Chromium widens
+    # the layout viewport to the content, so innerWidth grew with the overflow and this check could never fail on a phone.
+    w = page.evaluate("[document.documentElement.scrollWidth, document.documentElement.clientWidth, Math.round(visualViewport.pageLeft)]")
     assert w[0] <= w[1], "horizontal overflow %s" % w
+    assert w[2] == 0, "page shifted sideways by %s px" % w[2]
 
 
 def shot(page, name, expect):
