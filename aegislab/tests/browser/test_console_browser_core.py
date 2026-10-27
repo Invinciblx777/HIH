@@ -230,6 +230,28 @@ def test_graph_caption_does_not_cover_the_drawing(server, browser, vp):
     ctx.close()
 
 
+@pytest.mark.parametrize("width", [320, 360, 390])
+def test_phone_header_fits_and_the_page_does_not_shift(server, browser, width):
+    """R4.5 regression: during an operator session the header row (brand, Operator session, End session, Live, info) was one
+    unwrapped line about 512 px wide. On a phone it ran up to 200 px past the screen, and after the evidence sheet had been
+    open the whole page stayed panned sideways (the phone screenshot of the graph showed only its right half)."""
+    ctx = browser.new_context(viewport={"width": width, "height": 844}, device_scale_factor=2, is_mobile=True, has_touch=True)
+    page = ctx.new_page()
+    errors = watch(page)
+    _login(page, server)
+    for sel in (".brand", "#sess", "#sess-end", "#sys", "#tm-link"):
+        r = page.locator(sel).bounding_box()
+        assert r["x"] >= 0 and r["x"] + r["width"] <= width + 1, "%s runs off the screen: %s" % (sel, r)
+    no_overflow(page)
+    for p in ("#/evidence?open=DEMO-001-RELEASED", "#/connections?view=topology", "#/audit"):
+        go(page, server["base"], p)
+        page.wait_for_timeout(400)
+        no_overflow(page)
+        assert page.locator("#main").bounding_box()["x"] >= 0, "main column shifted left on %s" % p
+    assert not errors, errors
+    ctx.close()
+
+
 @pytest.mark.parametrize("width", [320, 390])
 def test_evidence_actions_fit_a_phone_screen(server, browser, width):
     """R4 regression: on a phone the evidence sheet's main action, "Verify with the independent verifier", was a fixed-width
