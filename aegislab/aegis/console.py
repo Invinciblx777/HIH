@@ -180,7 +180,8 @@ def _cross_origin(request: Request):
     if site and site not in ("same-origin", "none"):
         return "cross-origin request refused (Sec-Fetch-Site: %s)" % site[:20]
     origin = request.headers.get("origin")
-    if origin is not None and origin.lower() != "http://" + request.headers.get("host", "").lower():
+    host = request.headers.get("host", "").lower()
+    if origin is not None and origin.lower() not in ("http://" + host, "https://" + host):  # https when served behind a TLS proxy
         return "cross-origin request refused (Origin does not match this console)"
     return None
 
@@ -1151,7 +1152,8 @@ def session_start(request: Request, code: str = ""):
                                  status_code=403)
     lab_session.end(request.cookies.get(lab_session.COOKIE))
     resp = RedirectResponse("/#/lab", status_code=303)
-    resp.set_cookie(lab_session.COOKIE, sid, max_age=lab_session.SESSION_TTL_S, path="/", httponly=True, samesite="strict")
+    resp.set_cookie(lab_session.COOKIE, sid, max_age=lab_session.SESSION_TTL_S, path="/", httponly=True, samesite="strict",
+                    secure=request.url.scheme == "https")
     return resp
 
 
