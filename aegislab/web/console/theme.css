@@ -89,6 +89,7 @@ svg.rg path { fill: none; stroke: var(--blue); stroke-width: 1.7; stroke-linecap
 
 @media (max-width: 1480px) {
   .site-head { grid-template-columns: auto 1fr; }
+  .hrow1 .tools { grid-column: 2; }
   .hrow2 { grid-column: 1 / -1; grid-row: 2; }
   .subnav { justify-content: flex-start; }
 }
@@ -301,8 +302,12 @@ tbody tr.sel td:first-child { box-shadow: none; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .page { animation: none; } .hero-r .chipf, .hero-r svg.scene .fl { animation: none; } }
 @media (max-width: 760px) {
-  #sess { display: none; }
-  .site-head { padding-top: 16px; column-gap: 12px; }
+  .site-head { padding-top: 16px; column-gap: 10px; grid-template-columns: auto minmax(0, 1fr); }
+  .hrow1 .tools { grid-column: 1 / -1; grid-row: 2; justify-self: stretch; flex-wrap: wrap; justify-content: flex-start; gap: 6px; min-width: 0; }
+  .hrow2 { grid-row: 3; }
+  .band { grid-row: 4; }
+  .fpanel { grid-row: 5; }
+  .sys { padding: 6px 10px; font-size: 11.5px; }
   .brand { font-size: 26px; }
   .sec { margin-top: 60px; }
   .hero-l::after { display: none; }
