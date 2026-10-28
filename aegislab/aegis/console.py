@@ -111,7 +111,7 @@ SECURITY_HEADERS = {
 async def guard(request: Request, call_next):
     """Loopback console only: a Host header other than a loopback name is refused (stops DNS rebinding from turning a web page
     into a same-origin caller of /api/demo/identities). Body size is enforced before this, by BodyLimit."""
-    if _host_only(request.headers.get("host", "")) not in _allowed_hosts():
+    if os.environ.get("AEGIS_PUBLIC_DEMO") != "1" and not os.environ.get("VERCEL") and _host_only(request.headers.get("host", "")) not in _allowed_hosts():  # public demo: read-only, no operator session can be started
         return JSONResponse({"detail": "host not allowed: the console answers on loopback names only"}, status_code=421,
                             headers=SECURITY_HEADERS)
     why = _cross_origin(request)
