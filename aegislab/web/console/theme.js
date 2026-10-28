@@ -96,17 +96,39 @@
     return '<div class="node" data-g="' + n.g + '"' + st + '><div class="ic">' + svg(n.ic) + "</div><div><strong>" + n.t + "</strong><span>" + n.s + "</span></div></div>";
   }
 
-  function landscape() {
-    return '<svg class="land" viewBox="0 0 600 560" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">' +
-      '<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4f8fd6"/><stop offset=".55" stop-color="#bcd4e6"/><stop offset="1" stop-color="#f3dfc4"/></linearGradient>' +
-      '<linearGradient id="lake" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a9c2cf"/><stop offset="1" stop-color="#e8d7bd"/></linearGradient>' +
-      '<linearGradient id="m1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b8734a"/><stop offset="1" stop-color="#8e4b2e"/></linearGradient></defs>' +
-      '<rect width="600" height="560" fill="url(#sky)"/>' +
-      '<ellipse cx="420" cy="120" rx="150" ry="26" fill="#fff" opacity=".35"/><ellipse cx="150" cy="170" rx="110" ry="18" fill="#fff" opacity=".3"/>' +
-      '<path d="M0 360 L90 300 L150 330 L230 250 L330 340 L420 290 L520 330 L600 300 V420 H0Z" fill="#7d93a8" opacity=".7"/>' +
-      '<path d="M-10 420 L70 350 L130 390 L210 320 L300 400 L380 330 L470 400 L560 350 L610 390 V450 H-10Z" fill="url(#m1)"/>' +
-      '<path d="M-10 450 H610 V560 H-10Z" fill="url(#lake)"/>' +
-      '<path d="M40 470 H260 M300 492 H520 M90 516 H330" stroke="#fff" stroke-opacity=".5" stroke-width="2" stroke-linecap="round"/></svg>';
+  // isometric scene: three sealed tenants around one broker on a platform (illustration, not data)
+  function cube(cx, cy, a, h, c, cls, delay) {
+    var P = function (x, y) { return x + " " + y; };
+    var top = [P(cx, cy), P(cx + a, cy + a / 2), P(cx, cy + a), P(cx - a, cy + a / 2)].join(" L");
+    var left = [P(cx - a, cy + a / 2), P(cx, cy + a), P(cx, cy + a + h), P(cx - a, cy + a / 2 + h)].join(" L");
+    var right = [P(cx, cy + a), P(cx + a, cy + a / 2), P(cx + a, cy + a / 2 + h), P(cx, cy + a + h)].join(" L");
+    return '<g class="fl" style="animation-delay:' + (delay || 0) + 's">' +
+      '<path d="M' + left + 'Z" fill="' + c[1] + '"/><path d="M' + right + 'Z" fill="' + c[2] + '"/><path d="M' + top + 'Z" fill="' + c[0] + '"/>' +
+      '<path d="M' + top + 'Z" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="1.5"/>' +
+      '<path d="M' + P(cx - a, cy + a / 2) + " L" + P(cx, cy + a) + " L" + P(cx + a, cy + a / 2) + '" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="1.5"/></g>';
+  }
+  function scene() {
+    var red = ["#ff9aa8", "#d92d4b", "#9c1c34"], blue = ["#a9c3ff", "#1757ff", "#0e3bb8"], grey = ["#b4bac2", "#555b63", "#32363b"], dark = ["#e4f66a", "#26282d", "#14151a"];
+    return '<svg class="land scene" viewBox="0 0 600 560" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">' +
+      '<defs><radialGradient id="bg" cx=".5" cy=".42" r=".75"><stop offset="0" stop-color="#2c55e8"/><stop offset=".55" stop-color="#13237a"/><stop offset="1" stop-color="#080d2b"/></radialGradient>' +
+      '<linearGradient id="slab" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity=".22"/><stop offset="1" stop-color="#ffffff" stop-opacity=".06"/></linearGradient>' +
+      '<filter id="gl" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="9"/></filter></defs>' +
+      '<rect width="600" height="560" fill="url(#bg)"/>' +
+      '<circle cx="300" cy="300" r="210" fill="#4f7bff" opacity=".28" filter="url(#gl)"/>' +
+      // platform
+      '<path d="M300 250 L548 374 L300 498 L52 374Z" fill="url(#slab)" stroke="#fff" stroke-opacity=".35" stroke-width="1.5"/>' +
+      '<path d="M52 374 L300 498 L548 374 V398 L300 522 L52 398Z" fill="#fff" opacity=".1"/>' +
+      // paths on the platform: tenants to broker (allowed), red to blue (denied)
+      '<path d="M170 372 L300 372" stroke="#e4f66a" stroke-width="3" stroke-linecap="round" fill="none"/>' +
+      '<path d="M430 372 L300 372" stroke="#e4f66a" stroke-width="3" stroke-linecap="round" fill="none"/>' +
+      '<path d="M300 300 L300 372" stroke="#e4f66a" stroke-width="3" stroke-linecap="round" fill="none"/>' +
+      cube(130, 262, 78, 62, red, "", 0) +
+      cube(470, 262, 78, 62, blue, "", -2.2) +
+      cube(300, 170, 62, 50, grey, "", -4.4) +
+      cube(300, 330, 52, 92, dark, "", -1.2) +
+      // shield above the broker
+      '<g transform="translate(300 244)"><g class="fl" style="animation-delay:-3s"><path d="M0 -44 -30 -31v22c0 22 13 40 30 48 17-8 30-26 30-48v-22z" fill="#e4f66a"/><path d="m-12 -6 9 9 17-19" fill="none" stroke="#14151a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></g></g>' +
+      "</svg>";
   }
 
   function heroHTML() {
@@ -115,7 +137,7 @@
       "<p>Attack payloads, defence rules and the model under test share one machine. Rootless containers and a trusted broker keep them apart, and every decision lands in a signed log you can check yourself.</p>" +
       '<div class="proof"><b>' + svg("check") + "</b><span>The fail-closed verifier caught 30 of 30 tamper cases in the recorded evaluation.</span></div>" +
       '<div class="hero-cta"><a class="pillbtn dark" href="#/evidence">Verify the evidence ' + svg("arrow") + '</a><a class="pillbtn ghost" href="#/lab">Open the lab</a></div></div>' +
-      '<div class="hero-r">' + landscape() +
+      '<div class="hero-r">' + scene() +
       '<span class="chipf c1"><i></i>Red sandbox, no network</span>' +
       '<span class="chipf c2 no"><i></i>Release denied to red</span>' +
       '<span class="chipf c3 ok" id="hero-ver"><i></i>Shipped bundle DEMO-001</span>' +
@@ -196,6 +218,30 @@
     loadShipped(); paintShipped();
   }
 
+
+  /* ------------------------------------------------------------ hand-drawn ring on hover, focus and the current tab */
+  var RING_SEL = ".subnav a, .pillbtn, .btn, .arch-bar .pill";
+  var ringSeed = 3;
+  function ringPath(w, h) {
+    // slightly irregular loop that overshoots its start, like a pen circling a word
+    var cx = w / 2, cy = h / 2, rx = w / 2 - 1, ry = h / 2 - 1, pts = [], t, k = ringSeed++ % 5;
+    for (t = -2.55; t <= 3.75; t += 0.18) {
+      var grow = 1 + 0.035 * (t + 2.55) / 6.3, wob = 1 + 0.018 * Math.sin(t * 3 + k);
+      pts.push((cx + rx * grow * wob * Math.cos(t)).toFixed(1) + " " + (cy + ry * grow * wob * Math.sin(t)).toFixed(1));
+    }
+    return "M" + pts.join(" L");
+  }
+  function ensureRing(el) {
+    var w = el.offsetWidth + 20, h = el.offsetHeight + 12;
+    var old = el.querySelector(":scope > svg.rg");
+    if (old && old.dataset.w === w + "x" + h) return;
+    if (old) old.remove();
+    el.insertAdjacentHTML("beforeend", '<svg class="rg" data-w="' + w + "x" + h + '" aria-hidden="true" focusable="false" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + " " + h + '"><path pathLength="1" d="' + ringPath(w, h) + '"/></svg>');
+  }
+  document.addEventListener("pointerover", function (e) { var t = e.target.closest && e.target.closest(RING_SEL); if (t) ensureRing(t); }, { passive: true });
+  document.addEventListener("focusin", function (e) { var t = e.target.closest && e.target.closest(RING_SEL); if (t) ensureRing(t); });
+  function ringCurrent() { document.querySelectorAll(".subnav a[aria-current]").forEach(ensureRing); }
+
   /* ------------------------------------------------------------ scroll reveal */
   var io = null;
   var SEL = ".hero-l, .hero-r, .flow > div, .intro, .statement, .sec, .arch, .acard, .roles, .card, .gwrap, .table-wrap, .verdict, .strip, .note, .empty, .persp, .life, .cols > *";
@@ -203,7 +249,7 @@
   function scan() {
     var main = document.getElementById("main");
     if (!main) return;
-    try { inject(); } catch (e) { /* the page stays usable without the injected blocks */ }
+    try { inject(); ringCurrent(); } catch (e) { /* the page stays usable without the injected blocks */ }
     if (!io) return;
     var nodes = main.querySelectorAll(SEL), batch = 0;
     for (var i = 0; i < nodes.length; i++) {
