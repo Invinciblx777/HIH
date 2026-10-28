@@ -34,7 +34,7 @@
       e.target.classList.add("in");
       io.unobserve(e.target);
     });
-  }, { threshold: 0.08, rootMargin: "0px 0px -6% 0px" });
+  }, { threshold: 0, rootMargin: "0px 0px -4% 0px" });
 
   function scan() {
     var main = document.getElementById("main");
@@ -49,7 +49,7 @@
       var inView = r.top < innerHeight && r.bottom > 0;
       el.classList.add("rv");
       el.style.setProperty("--rd", Math.min(batch++ * 70, 420) + "ms");
-      if (inView) { var t = el; requestAnimationFrame(function () { requestAnimationFrame(function () { t.classList.add("in"); }); }); }
+      if (inView) { (function (t) { setTimeout(function () { t.classList.add("in"); }, 40); })(el); }
       else io.observe(el);
     }
   }
@@ -60,11 +60,9 @@
   if (main) new MutationObserver(schedule).observe(main, { childList: true, subtree: true });
   root.classList.add("anim");
   scan();
-  // safety net: nothing may stay hidden if an observer callback is missed
-  setTimeout(function () {
-    document.querySelectorAll(".rv:not(.in)").forEach(function (el) {
-      var r = el.getBoundingClientRect();
-      if (r.top < innerHeight) el.classList.add("in");
-    });
-  }, 1800);
+  // safety net: anything in or above the viewport is revealed within 250 ms, whatever the observer or frame timing did
+  setInterval(function () {
+    var list = document.querySelectorAll(".rv:not(.in)");
+    for (var i = 0; i < list.length; i++) { var r = list[i].getBoundingClientRect(); if (r.top < innerHeight) list[i].classList.add("in"); }  // also anything already scrolled past
+  }, 250);
 })();
