@@ -219,7 +219,7 @@
   }
 
 
-  /* ------------------------------------------------------------ hand-drawn ring on hover, focus and the current tab */
+  /* ------------------------------------------------------------ hand-drawn ring on hover only */
   var RING_SEL = ".subnav a, .pillbtn, .btn, .arch-bar .pill";
   var ringSeed = 3;
   function ringPath(w, h) {
@@ -239,8 +239,6 @@
     el.insertAdjacentHTML("beforeend", '<svg class="rg" data-w="' + w + "x" + h + '" aria-hidden="true" focusable="false" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + " " + h + '"><path pathLength="1" d="' + ringPath(w, h) + '"/></svg>');
   }
   document.addEventListener("pointerover", function (e) { var t = e.target.closest && e.target.closest(RING_SEL); if (t) ensureRing(t); }, { passive: true });
-  document.addEventListener("focusin", function (e) { var t = e.target.closest && e.target.closest(RING_SEL); if (t) ensureRing(t); });
-  function ringCurrent() { document.querySelectorAll(".subnav a[aria-current]").forEach(ensureRing); }
 
   /* ------------------------------------------------------------ scroll reveal */
   var io = null;
@@ -249,7 +247,7 @@
   function scan() {
     var main = document.getElementById("main");
     if (!main) return;
-    try { inject(); ringCurrent(); } catch (e) { /* the page stays usable without the injected blocks */ }
+    try { inject(); } catch (e) { /* the page stays usable without the injected blocks */ }
     if (!io) return;
     var nodes = main.querySelectorAll(SEL), batch = 0;
     for (var i = 0; i < nodes.length; i++) {

@@ -83,7 +83,7 @@ html.scrolled .site-head { box-shadow: 0 1px 0 var(--line); }
 .subnav a, .pillbtn, .btn, .arch-bar .pill { position: relative; }
 svg.rg { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); pointer-events: none; overflow: visible; z-index: 2; }
 svg.rg path { fill: none; stroke: var(--blue); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; filter: url(#pencil); transition: stroke-dashoffset .6s var(--ease); }
-:hover > svg.rg path, :focus-visible > svg.rg path, [aria-current="page"] > svg.rg path { stroke-dashoffset: 0; }
+:hover > svg.rg path { stroke-dashoffset: 0; }  /* hover only: not on the current tab, not on focus */
 .pillbtn.dark svg.rg path, .acard svg.rg path { stroke: var(--blue); }
 @media (prefers-reduced-motion: reduce) { svg.rg path { transition: none; } }
 
@@ -309,3 +309,14 @@ tbody tr.sel td:first-child { box-shadow: none; }
   .sheet { border-radius: 28px 28px 0 0; }
   .sec-head > span, .sec-head > a { text-align: left; }
 }
+
+/* hover = the drawn ring only: no fill, lift or colour change inside it */
+.subnav a:not([aria-current]):hover { background: transparent; color: var(--ink); }
+.pillbtn:hover, .pillbtn.dark:hover, .pillbtn.ghost:hover { transform: none; }
+.pillbtn.dark:hover { background: var(--ink); }
+.pillbtn.ghost:hover { background: rgba(255, 255, 255, .55); }
+.btn:hover:not(:disabled), .btn.solid:hover:not(:disabled) { transform: none; }
+.btn:not(.solid):hover:not(:disabled) { background: #fff; }
+.btn.solid:hover:not(:disabled) { background: var(--graphite); }
+.arch-bar .pill:not([aria-pressed="true"]):hover { background: transparent; color: var(--ink); }
+.iconbtn:hover { background: var(--graphite); transform: none; }
