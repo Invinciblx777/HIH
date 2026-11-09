@@ -2,7 +2,9 @@
 
 The prototype console is an interactive web app on top of the existing AegisLab control plane. From a browser you can start a real evaluation run in rootless containers, attack its boundaries with fixed scenarios, watch the security events, verify the signed evidence with the independent verifier, and break a copy of it to see the verifier refuse it.
 
-It runs on your own machine and answers on loopback only. It is a local demonstration tool, not a hosted service.
+It runs on your own machine and answers on loopback only. The live console is a local demonstration tool, not a hosted service.
+
+A **read-only public demo** of the same console runs at https://aegislab.vercel.app (see [Public read-only demo](#public-read-only-demo) below). It can browse, replay, run the real verifier and tamper with copies. It cannot start live runs and has no operator session.
 
 ![Overview page](screenshots/01_overview.jpg)
 
@@ -106,9 +108,19 @@ Each result shows every request, its expected and observed HTTP status, the poli
   The server copies the bundle's allowlisted files to a temporary directory and changes the copy. It verifies both the copy and the original, compares the original's SHA-256 digests before and after, then deletes the copy. The original is never written.
 - **Download:** a zip of the allowlisted bundle files plus `VERIFY.txt` with the command to verify it elsewhere. Only genuine bundles are offered.
 
+## Public read-only demo
+
+https://aegislab.vercel.app runs `aegislab/app.py`, which forces `AEGIS_PUBLIC_DEMO=1` and keeps state in `/tmp`. In that mode (Finale P1, `aegis/console.py`, `aegis/lab_session.py`):
+
+- **Can do:** browse every page, play the recorded replay, run the independent verifier on the shipped bundles (`POST /api/lab/bundles/{id}/verify`), and tamper with a disposable copy (`POST /api/lab/bundles/{id}/tamper`). Tamper results are returned to the browser only. Nothing is written to the journal or the results list.
+- **Cannot do:** start live runs; live mode is forced off even on a host with Podman. No launch code is issued or accepted: `/session/start` answers 403, and no operator session can exist. Every other state-changing request answers 403 with a message that starts `public read-only demo:`. This covers runs, defence, freeze, start, scenarios, probe, tamper suite, session end and the mounted control plane.
+- **Limits:** verify and tamper requests together are limited to 10 per minute per client IP (from `X-Real-IP` / `X-Forwarded-For`, set by the hosting proxy) and 60 per minute overall, each per server process. Over the limit the answer is HTTP 429 with a fixed message. The two concurrent verifier slots still apply.
+- `/api/lab/status` reports `"public_demo": true`, and the header shows **Public demo**.
+- Only `AEGIS_PUBLIC_DEMO=1` lifts the loopback Host guard. A bare `VERCEL` variable does not. Behind HTTPS, the browser's `Origin: https://<host>` is accepted for the same host.
+
 ## Security of the console itself
 
-- **Loopback only.** uvicorn binds to 127.0.0.1. Requests whose Host header is not a loopback name are refused with HTTP 421, which stops DNS-rebinding pages from calling the console.
+- **Loopback only.** uvicorn binds to 127.0.0.1. Requests whose Host header is not a loopback name are refused with HTTP 421, which stops DNS-rebinding pages from calling the console. The one exception is the public read-only demo above, which serves no write except verify and tamper-on-a-copy.
 - **No role tokens in the browser.** The page never receives a role token. The launch link exchanges a one-time launch code for an opaque session cookie (HttpOnly, SameSite=Strict). Each state-changing request also needs the session's CSRF token in `X-Aegis-CSRF`, and requests whose `Origin` or `Sec-Fetch-Site` show another site are refused (403), for the console's own routes and for the mounted control plane. The console then acts as each demonstration role server-side, with that role's token, through the unchanged role checks. `AEGIS_DEMO_MODE=1` is refused at start-up.
 - **What the session is, and is not.** The session is the single local operator of this console. Inside it the operator drives all demonstration roles; switching roles in the page is not multi-user authentication, and the roles are not separate people. Whoever holds the launch link is that operator. Sessions expire after 2 hours idle or 8 hours in total; 20 wrong launch codes lock the link for a minute.
 - **No free-form input to privileged code.**

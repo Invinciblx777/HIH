@@ -74,7 +74,7 @@ async def lifespan(_app):
         raise RuntimeError("refusing to start: AEGIS_DEMO_MODE=1 would hand every role token to any page that reaches this port. "
                            "The console uses an operator session instead (scripts/start_prototype.sh).")
     _recover_interrupted()
-    lab_session.launch_code()
+    lab_session.launch_code()  # writes nothing in the public read-only demo
     yield
 
 
@@ -110,13 +110,24 @@ SECURITY_HEADERS = {
 @app.middleware("http")
 async def guard(request: Request, call_next):
     """Loopback console only: a Host header other than a loopback name is refused (stops DNS rebinding from turning a web page
-    into a same-origin caller of /api/demo/identities). Body size is enforced before this, by BodyLimit."""
-    if os.environ.get("AEGIS_PUBLIC_DEMO") != "1" and not os.environ.get("VERCEL") and _host_only(request.headers.get("host", "")) not in _allowed_hosts():  # public demo: read-only, no operator session can be started
+    into a same-origin caller of /api/demo/identities). Body size is enforced before this, by BodyLimit.
+
+    Finale P1: the Host guard is lifted only in the public read-only demo (AEGIS_PUBLIC_DEMO=1; a bare VERCEL variable no
+    longer lifts it). That mode then refuses every state-changing request except the two evidence actions that write no
+    evidence (verify a bundle, tamper with a disposable copy), and those are rate-limited."""
+    public = lab_session.public_demo()
+    if not public and _host_only(request.headers.get("host", "")) not in _allowed_hosts():
         return JSONResponse({"detail": "host not allowed: the console answers on loopback names only"}, status_code=421,
                             headers=SECURITY_HEADERS)
     why = _cross_origin(request)
     if why:
         return JSONResponse({"detail": why}, status_code=403, headers=SECURITY_HEADERS)
+    if public:
+        refused = _public_refusal(request)
+        if refused:
+            return JSONResponse({"detail": refused}, status_code=403, headers=SECURITY_HEADERS)
+        if request.method in UNSAFE_METHODS and not _public_rate_ok(_client_ip(request)):
+            return JSONResponse({"detail": PUBLIC_RATE_MESSAGE}, status_code=429, headers=dict(SECURITY_HEADERS, **{"Retry-After": "60"}))
     response = await call_next(request)
     for k, v in SECURITY_HEADERS.items():
         response.headers.setdefault(k, v)
@@ -180,9 +191,85 @@ def _cross_origin(request: Request):
     if site and site not in ("same-origin", "none"):
         return "cross-origin request refused (Sec-Fetch-Site: %s)" % site[:20]
     origin = request.headers.get("origin")
-    if origin is not None and origin.lower() != "http://" + request.headers.get("host", "").lower():
+    host = request.headers.get("host", "").lower()
+    if origin is not None and origin.lower() not in ("http://" + host, "https://" + host):  # https: served behind a TLS proxy (public demo)
         return "cross-origin request refused (Origin does not match this console)"
     return None
+
+
+def _is_https(request: Request) -> bool:
+    """Whether the browser reached us over HTTPS. Uvicorn rewrites the ASGI scheme from X-Forwarded-Proto only for trusted
+    proxies (--forwarded-allow-ips, default 127.0.0.1); other front ends pass the header through. Trusting the header for the
+    cookie's Secure flag is safe either way: a false https only makes the cookie stricter for that client."""
+    proto = request.headers.get("x-forwarded-proto", "").split(",")[0].strip().lower()
+    return request.url.scheme == "https" or proto == "https"
+
+
+# ------------------------------------------------------------------------------------------------ public read-only demo
+# Finale P1. With AEGIS_PUBLIC_DEMO=1 (aegislab/app.py, the hosted site) the console is a read-only viewer: no launch code,
+# no operator session, no live execution, and no state-changing request except the two evidence actions below. Both copy or
+# read shipped bundles and run the independent verifier; neither writes evidence or lab state.
+PUBLIC_WRITES = re.compile(r"/api/lab/bundles/[A-Za-z0-9_-]{1,64}/(verify|tamper)")
+PUBLIC_REFUSAL = ("public read-only demo: %s is disabled on this site. It can browse, replay, run the independent verifier "
+                  "and tamper with disposable copies; live runs need a local console (scripts/start_prototype.sh).")
+PUBLIC_PODMAN = {"available": False, "reason": "public read-only demo: live execution is disabled on this site; run "
+                                               "scripts/start_prototype.sh on your own machine for live containers"}
+PUBLIC_RATE_GLOBAL = (60, 60.0)   # verifier requests per window, all clients together (per server process)
+PUBLIC_RATE_CLIENT = (10, 60.0)   # verifier requests per window and client IP
+PUBLIC_RATE_MESSAGE = "public demo rate limit reached: the verifier runs a limited number of times per minute; try again in a minute"
+_rate_lock = threading.Lock()
+_rate = {"global": [], "clients": {}}
+
+
+def _public_refusal(request: Request):
+    """The refusal message for a request the public demo does not serve, or None."""
+    path = request.url.path
+    if path == "/session/start":
+        return PUBLIC_REFUSAL % "the operator session"
+    if request.method in UNSAFE_METHODS and not PUBLIC_WRITES.fullmatch(path):
+        return PUBLIC_REFUSAL % ("%s %s" % (request.method, path[:80]))
+    return None
+
+
+def _client_ip(request: Request) -> str:
+    """Client address for the per-client limit. Behind the hosting proxy the TCP peer is the proxy, which sets X-Real-IP and
+    X-Forwarded-For; a client could forge them where no proxy rewrites them, which is why a global limit backs this one."""
+    for h in ("x-real-ip", "x-forwarded-for"):
+        v = request.headers.get(h)
+        if v and v.split(",")[0].strip():
+            return v.split(",")[0].strip()[:64]
+    return request.client.host if request.client else "unknown"
+
+
+def _public_rate_ok(ip: str) -> bool:
+    """Sliding-window limit on public verifier requests (verify and tamper), global and per client IP. It sits in front of the
+    two verifier slots (_verify_slots), which still cap concurrency."""
+    now = time.monotonic()
+    (g_max, g_win), (c_max, c_win) = PUBLIC_RATE_GLOBAL, PUBLIC_RATE_CLIENT
+    with _rate_lock:
+        g = _rate["global"] = [t for t in _rate["global"] if now - t < g_win]
+        clients = _rate["clients"]
+        c = clients[ip] = [t for t in clients.get(ip, []) if now - t < c_win]
+        if len(g) >= g_max or len(c) >= c_max:
+            return False
+        g.append(now)
+        c.append(now)
+        if len(clients) > 4096:  # bounded: forget clients with no request in the window
+            for k in [k for k, v in clients.items() if not v or now - v[-1] >= c_win]:
+                del clients[k]
+        return True
+
+
+def reset_public_limits():
+    """Forget the public rate-limit windows (tests)."""
+    with _rate_lock:
+        _rate["global"] = []
+        _rate["clients"] = {}
+
+
+def _host_podman() -> dict:
+    """Podman status for live mode; in the public demo live execution is off whatever the host has."""
+    return dict(PUBLIC_PODMAN) if lab_session.public_demo() else _cached("podman", 20, _podman_status)
 
 
 def _role(token):
@@ -283,7 +370,7 @@ def _signed_upto(run_id) -> int:
 
 @app.get("/api/lab/status")
 def status():
-    podman = _cached("podman", 20, _podman_status)
+    podman = _host_podman()
     rec_all = runs.list_runs()
     latest = api.public_view(rec_all[0]) if rec_all else None
     integrity = None
@@ -315,7 +402,17 @@ def status():
                                      "terminal_verified": (shipped.get("result") or {}).get("terminal_verified")},
         "code_revision": _cached("revision", 3600, _code_revision),
         "generated_at": time.time(),
-    }
+    } | (_public_status() if lab_session.public_demo() else {})
+
+
+def _public_status() -> dict:
+    """Extra status fields of the public read-only demo, so the UI can label it (absent outside that mode)."""
+    return {"public_demo": True,
+            "identity_model": "public read-only demo: no launch code, no operator session; role tokens stay on the server",
+            "public_demo_allows": ["browse", "replay", "verify bundles with the independent verifier", "tamper with disposable copies"],
+            "public_demo_refuses": ["live runs", "operator session", "every other state-changing request"],
+            "public_demo_rate_limit": {"per_client": {"requests": PUBLIC_RATE_CLIENT[0], "seconds": PUBLIC_RATE_CLIENT[1]},
+                                       "global": {"requests": PUBLIC_RATE_GLOBAL[0], "seconds": PUBLIC_RATE_GLOBAL[1]}}}
 
 
 def _shipped_status(ref) -> dict:
@@ -360,7 +457,7 @@ def _client() -> TestClient:
 
 
 def _require_live():
-    st = _cached("podman", 20, _podman_status)
+    st = _host_podman()
     if not st.get("available"):
         raise HTTPException(503, "live execution unavailable: %s. The evidence centre and the replay recording still work." % st.get("reason"))
 
@@ -1151,7 +1248,8 @@ def session_start(request: Request, code: str = ""):
                                  status_code=403)
     lab_session.end(request.cookies.get(lab_session.COOKIE))
     resp = RedirectResponse("/#/lab", status_code=303)
-    resp.set_cookie(lab_session.COOKIE, sid, max_age=lab_session.SESSION_TTL_S, path="/", httponly=True, samesite="strict")
+    resp.set_cookie(lab_session.COOKIE, sid, max_age=lab_session.SESSION_TTL_S, path="/", httponly=True, samesite="strict",
+                    secure=_is_https(request))
     return resp
 
 
@@ -1159,6 +1257,9 @@ def session_start(request: Request, code: str = ""):
 def session_info(request: Request):
     """Whether this browser holds an operator session, and its CSRF token. Readable only by pages of this origin."""
     sess = lab_session.get(request.cookies.get(lab_session.COOKIE))
+    if not sess and lab_session.public_demo():
+        return {"authenticated": False, "public_demo": True,
+                "how": "This is the public read-only demo: no operator session exists here. Run scripts/start_prototype.sh locally to act in the lab."}
     if not sess:
         return {"authenticated": False, "how": "Open the launch link printed by scripts/start_prototype.sh."}
     return {"authenticated": True, "csrf": sess["csrf"], "principal": "local operator (this console's launch link)",
@@ -1384,7 +1485,9 @@ def tamper_modes():
 def tamper_bundle(bid: str, req: TamperReq, request: Request, x_aegis_token: str | None = Header(None)):
     """Copy a genuine bundle to a disposable directory, change the copy, run the verifier on the copy and on the original, prove the
     original is byte-identical, delete the copy. The corrupted copy never leaves this function."""
-    _authorize(request, x_aegis_token, "reviewer", "operator")
+    public = lab_session.public_demo()
+    if not public:  # public demo: anyone may tamper with a disposable copy; nothing is recorded
+        _authorize(request, x_aegis_token, "reviewer", "operator")
     if req.mode not in TAMPER:
         raise HTTPException(400, "unknown tamper mode")
     b = _bundle(bid)
@@ -1414,8 +1517,9 @@ def tamper_bundle(bid: str, req: TamperReq, request: Request, x_aegis_token: str
            "tampered_copy": tampered, "original": original, "original_unchanged": before == after,
            "original_sha256": {k: v[:16] for k, v in after.items()}, "copy_deleted": not work.exists(),
            "verdict": "PASS" if rejected and accepted and before == after else "FAIL"}
-    _journal("tamper:" + req.mode, bid, res["verdict"], TAMPER[req.mode])
-    _save_result("tamper", dict(res, run_id=b["run_id"], scenario="tamper", finished_at=time.time()))
+    if not public:  # the public demo keeps no journal or results: visitors cannot write shared state
+        _journal("tamper:" + req.mode, bid, res["verdict"], TAMPER[req.mode])
+        _save_result("tamper", dict(res, run_id=b["run_id"], scenario="tamper", finished_at=time.time()))
     return res
 
 
