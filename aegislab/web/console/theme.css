@@ -329,3 +329,22 @@ tbody tr.sel td:first-child { box-shadow: none; }
 /* selected = the drawn ring only, no filled pill */
 .subnav a[aria-current="page"] { background: transparent; color: var(--ink); }
 .arch-bar .pill[aria-pressed="true"] { background: transparent; color: var(--ink); }
+
+/* Finale P1 (F11): phone header. console.css (R4.5) dissolves .tools into the header below 700 px, and .hrow1 is already
+   dissolved here, so its items fell into this grid by auto-placement: the info icon got a line of its own and the session
+   controls dropped below the tabs. Place them explicitly: brand, status and info on line 1; session controls on line 2;
+   tabs on line 3. The tab strip fades at an edge that has more tabs beyond it (console.js sets .more-l / .more-r). */
+@media (max-width: 699px) {
+  .site-head { grid-template-columns: minmax(0, 1fr) auto auto; column-gap: 10px; }
+  .brand { grid-column: 1; grid-row: 1; }
+  .hrow1 #sys { grid-column: 2; grid-row: 1; justify-self: end; margin: 0; }
+  .hrow1 #tm-link { grid-column: 3; grid-row: 1; justify-self: end; width: 32px; height: 32px; }
+  .hrow1 #sess { grid-column: 1; grid-row: 2; justify-self: start; margin: 0; min-width: 0; }
+  .hrow1 #sess-end { grid-column: 2 / -1; grid-row: 2; justify-self: end; margin: 0; }
+  .hrow2 { grid-column: 1 / -1; grid-row: 3; }
+  .band { grid-row: 4; }
+  .fpanel { grid-row: 5; }
+}
+.subnav.more-r { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent); }
+.subnav.more-l { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 48px), transparent); }
+.subnav.more-l.more-r { -webkit-mask-image: linear-gradient(to right, transparent, #000 48px, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(to right, transparent, #000 48px, #000 calc(100% - 48px), transparent); }

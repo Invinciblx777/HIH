@@ -72,14 +72,18 @@ async function call(path, { method = "GET", body, idem } = {}) {
   return { status: r.status, ok: r.ok, body: b };
 }
 const canAct = () => !!(S.session && S.session.authenticated);
-const NO_SESSION = "Read-only: open the launch link printed by scripts/start_prototype.sh to act in the lab.";
+const NO_SESSION_LOCAL = "Read-only: open the launch link printed by scripts/start_prototype.sh to act in the lab.";
+const NO_SESSION_PUBLIC = "Public read-only demo: live runs and the operator session are disabled on this site. Run scripts/start_prototype.sh on your own machine to act in the lab.";
+/* public read-only demo (AEGIS_PUBLIC_DEMO=1 on the server): reported by /api/lab/status and /api/lab/session */
+const isPublic = () => !!((S.status && S.status.public_demo) || (S.session && S.session.public_demo));
+const noSession = () => (isPublic() ? NO_SESSION_PUBLIC : NO_SESSION_LOCAL);
 async function loadSession() { try { S.session = await get("/api/lab/session"); } catch (e) { S.session = { authenticated: false }; } paintSession(); return S.session; }
 function paintSession() {
   const el = $("#sess"); if (!el) return;
   const on = canAct();
   el.className = "sys " + (on ? "live" : "ro");
-  el.title = on ? (S.session.limitation || "") : NO_SESSION;
-  $(".txt", el).innerHTML = on ? `Operator session<span class="long"> · roles act server-side</span>` : `Read-only<span class="long"> · open the launch link</span>`;
+  el.title = on ? (S.session.limitation || "") : noSession();
+  $(".txt", el).innerHTML = on ? `Operator session<span class="long"> · roles act server-side</span>` : isPublic() ? `Public demo<span class="long"> · read-only</span>` : `Read-only<span class="long"> · open the launch link</span>`;
   const end = $("#sess-end"); if (end) end.hidden = !on;
 }
 async function endSession(ev) {
@@ -371,6 +375,7 @@ function setNav(page) {
   });
   const act = $("#subnav a[aria-current] span");
   if (act) { ring(act); const nav = $("#subnav"); if (nav.scrollWidth > nav.clientWidth) nav.scrollTo({ left: act.parentElement.offsetLeft - nav.clientWidth / 2 + act.offsetWidth / 2, behavior: "smooth" }); }
+  navEdges();
 }
 
 /* ---------------------------------------------------------------- status */
@@ -382,6 +387,7 @@ async function refreshStatus() {
     const st = S.status, pm = st.podman || {}, live = st.mode === "live";
     cls = live ? "live" : "degraded";
     html = live ? `Live<span class="long"> · Podman ${esc(pm.podman)} rootless · ${esc((st.model || {}).label || "")}</span>` : `Degraded<span class="long"> · replay only</span>`;
+    if (st.public_demo && S.session && !S.session.public_demo) { S.session.public_demo = true; paintSession(); }
     title = live ? "Control plane connected; scenarios start real rootless containers. The model in live runs is the deterministic stub." : "Live containers unavailable: " + (st.mode_reason || "");
   } catch (e) {
     S.status = null; cls = "offline"; html = `Offline<span class="long"> · control plane unreachable</span>`; title = e.message;
@@ -621,7 +627,7 @@ async function lab() {
   render(`
   <div class="intro"><p>Run the evaluation lifecycle yourself, then attack it. Live scenarios send real requests to the control plane as each role, with the role's token held on the server, and judge the security outcome (status, run state, audit entry, leaked values), not whether HTTP succeeded. Precomputed entries summarise saved experiments.</p>
     <div class="labels">${labelTag(live ? "sandbox" : "na")}${live ? "" : labelTag("rec")}${labelTag("pre")}</div></div>
-  ${canAct() ? "" : `<div class="note">${esc(NO_SESSION)} Everything stays visible; nothing can be started.</div>`}
+  ${canAct() ? "" : `<div class="note">${esc(noSession())} Everything stays visible; nothing can be started.</div>`}
   ${live ? "" : `<div class="note">Live containers are unavailable on this machine: ${esc(S.status ? S.status.mode_reason : "status unknown")}. Live scenarios are disabled and a recorded real execution is shown below; evidence verification still works.</div>`}
   <section class="sec" id="run-box"></section>
   <section class="sec">${secHead("Scenarios", `<span id="lab-count"></span>`)}<div class="cards" id="lab-cards"></div></section>
@@ -677,8 +683,8 @@ function drawRunBox() {
   const el = $("#run-box"); if (!el) return;
   const lr = labRuns(), rec = labRec(), live = isLive(), running = lr.some((r) => r.state === "RUNNING"), act = canAct();
   const v = S.lab.view && rec && S.lab.view.run.id === rec.id ? S.lab.view : null;
-  const off = !live ? `disabled title="${esc("Unavailable: " + ((S.status || {}).mode_reason || "live containers missing"))}"` : !act ? `disabled title="${esc(NO_SESSION)}"` : "";
-  const why = !live ? "UNAVAILABLE on this machine: " + ((S.status || {}).mode_reason || "live containers missing") + "." : !act ? NO_SESSION : "";
+  const off = !live ? `disabled title="${esc("Unavailable: " + ((S.status || {}).mode_reason || "live containers missing"))}"` : !act ? `disabled title="${esc(noSession())}"` : "";
+  const why = !live ? "UNAVAILABLE on this machine: " + ((S.status || {}).mode_reason || "live containers missing") + "." : !act ? noSession() : "";
   const prof = (S.lab.profiles || []).find((p) => p.id === (v && v.defence_profile));
   let ctl = "";
   if (rec && rec.state === "CREATED") {
@@ -768,7 +774,7 @@ async function runStep(step, btn) {
 function scnBlocker(c) {
   const s = scn(c), rec = labRec();
   if (!isLive()) return "Needs live containers.";
-  if (!canAct()) return NO_SESSION;
+  if (!canAct()) return noSession();
   if (s.needs && !rec) return "Start a live run first.";
   if (s.needs && rec.state !== s.needs) return rec.state === "RUNNING" ? "Waiting for " + rec.id + " to seal." : `Needs a ${s.needs} run; ${rec.id} is ${rec.state}. Start a new run.`;
   return "";
@@ -894,7 +900,7 @@ function drawProbe() {
       <label class="field">Operation<select id="p-op">${Object.entries(PROBE_OPS).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join("")}</select></label>
       <label class="field">Run<select id="p-run">${lr.length ? lr.map((r) => `<option value="${esc(r.id)}" ${r.id === S.lab.run ? "selected" : ""}>${esc(r.id)} (${esc(r.state)})</option>`).join("") : `<option value="">no lab runs yet</option>`}</select></label>
       <button class="btn lg" id="p-send" type="button" ${lr.length && canAct() ? "" : "disabled"}>Send request ${icon("right")}</button>
-    </div>${canAct() ? "" : `<p class="why mt">${esc(NO_SESSION)}</p>`}<div id="p-out" aria-live="polite"></div>`;
+    </div>${canAct() ? "" : `<p class="why mt">${esc(noSession())}</p>`}<div id="p-out" aria-live="polite"></div>`;
   $("#p-send").addEventListener("click", async (ev) => {
     const role = $("#p-role").value, op = $("#p-op").value, run = $("#p-run").value;
     if (!run) return;
@@ -1435,7 +1441,7 @@ async function auditLog(q, persp) {
   const lr = labRuns();
   A.run = q.run && lr.some((r) => r.id === q.run) ? q.run : (lr[0] || {}).id || null;
   render(`${persp}<div class="intro"><p>The run's hash-chained audit log, entry by entry: sequence, actor, operation, decision, the entry's hash and whether a signed checkpoint covers it. Metadata only: payloads, model outputs, defence rules and the digests of team inputs never leave the server; attack outcomes appear once the run is released.</p>${labelTag("live")}</div>
-    ${canAct() ? "" : `<div class="note">${esc(NO_SESSION)} The signed log is readable only in the operator session; the monitoring stream stays public.</div>`}
+    ${canAct() ? "" : `<div class="note">${esc(noSession())} The signed log is readable only in the operator session; the monitoring stream stays public.</div>`}
     <div class="row" id="l-filters"></div>
     <div class="meta-row"><span id="l-meta" role="status" aria-live="polite"></span><label class="switch"><input type="checkbox" id="l-live" ${A.live ? "checked" : ""}> Update every 2 s</label></div>
     <div id="l-table">${A.run ? loading("Reading the audit log…") : `<div class="empty"><strong>No lab run yet</strong><a href="#/lab">Create one in the lab</a>; its audit log appears here.</div>`}</div>`);
@@ -1619,7 +1625,7 @@ async function evOpen(id) {
   const b = S.ev.bundles.find((x) => x.id === id);
   if (!b) return null;
   $$("#ev-cards .card").forEach((c) => c.classList.toggle("sel", c.dataset.key === id));
-  const v = S.ev.verify[id], t = S.ev.tamper[id], canTamper = b.expected === "pass" && canAct();
+  const v = S.ev.verify[id], t = S.ev.tamper[id], canTamper = b.expected === "pass" && (canAct() || isPublic());
   return {
     title: b.label, meta: `${esc(EV_KIND[b.kind] || b.kind)} · expected: ${b.expected === "pass" ? "accept" : "reject"} · ${esc(b.path)}`,
     body: `<p>${esc(b.note)}</p>
@@ -1629,14 +1635,14 @@ async function evOpen(id) {
       <div id="v-out" aria-live="polite">${v ? `<p class="lbl">Verification ${v.matches_expectation ? `<span class="st pass">as expected</span>` : `<span class="st fail">NOT as expected</span>`}</p>
         <p class="small">${v.exit_code == null ? `<span class="st fail">No verdict.</span> The verifier gave no result, which never counts as a pass or as a rejection.` : (v.result || {}).ok ? `<span class="st pass">Accepted.</span> The log is complete and unmodified relative to the signed terminal checkpoint.` : `<span class="st fail">Rejected.</span> The verifier could not establish an intact, complete log; the findings say why.`}</p>${verifyView(v)}` : `<p class="tiny mt">Not verified in this session yet.</p>`}</div>
       ${b.expected === "pass" ? `<hr><p class="lbl">Tamper with a disposable copy</p>
-        <p class="small muted">The server copies this bundle to a temporary directory, applies one change, runs the verifier on the copy and on the original, compares the original's SHA-256 digests before and after, and deletes the copy. Needs the operator session.</p>
+        <p class="small muted">The server copies this bundle to a temporary directory, applies one change, runs the verifier on the copy and on the original, compares the original's SHA-256 digests before and after, and deletes the copy. ${isPublic() ? "On this public demo anyone may run it (rate-limited); nothing is recorded." : "Needs the operator session."}</p>
         <div class="row mt"><label class="field">Change<select id="t-mode">${Object.entries(S.ev.modes.disk_copy).map(([k, d]) => `<option value="${k}" ${k === S.ev.tmode ? "selected" : ""}>${esc(d)}</option>`).join("")}</select></label>
           <button class="btn lg" id="do-tamper" type="button" ${canTamper ? "" : "disabled"}>Tamper and verify</button></div>
         <div id="t-out" aria-live="polite" class="mt">${t ? tamperView(t) : ""}</div>` : ""}
       ${b.kind === "lab" ? `<hr><p class="lbl">In-memory tamper suite for ${esc(b.run_id)}</p>
         <p class="small muted">The control plane's own tamper test (POST /api/runs/{id}/tamper-test), sent server-side as the reviewer: each modification applied to an in-memory copy of the stored log and vault, verified strictly. The stored log is hashed before and after.</p>
         <button class="btn lg mt" id="do-mem" type="button" ${canAct() ? "" : "disabled"}>Run all ${Object.keys(S.ev.modes.in_memory_run || {}).length}</button><div id="m-out">${S.ev.mem[id] ? memView(S.ev.mem[id]) : ""}</div>` : ""}
-      ${b.expected === "pass" && !canAct() ? `<p class="tiny mt">${esc(NO_SESSION)}</p>` : ""}`,
+      ${b.expected === "pass" && !canAct() && !isPublic() ? `<p class="tiny mt">${esc(noSession())}</p>` : ""}`,
     after: (body) => {
       $("#do-verify", body).addEventListener("click", async (ev) => {
         const btn = ev.currentTarget; busy(btn, true);
@@ -1781,12 +1787,20 @@ async function boot() {
   window.addEventListener("hashchange", route);
   window.addEventListener("popstate", route);
   let rt = 0;
-  window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { drawRings(document, true); wrapTables(document); }, 150); });
+  window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { drawRings(document, true); wrapTables(document); navEdges(); }, 150); });
+  $("#subnav").addEventListener("scroll", navEdges, { passive: true });
   $("#sess").innerHTML = `<span class="dot" aria-hidden="true"></span><span class="txt">Session…</span>`;
   $("#sess-end").addEventListener("click", endSession);
   await Promise.all([loadSession(), refreshStatus()]);
   setInterval(refreshStatus, 15000);
   await route();
+  navEdges();
   S.booted = true;
+}
+/* Finale P1: the tab strip scrolls sideways on a phone with no scroll bar; fade the edge that has more tabs beyond it. */
+function navEdges() {
+  const n = $("#subnav"); if (!n) return;
+  n.classList.toggle("more-l", n.scrollLeft > 2);
+  n.classList.toggle("more-r", n.scrollLeft + n.clientWidth < n.scrollWidth - 2);
 }
 boot();
