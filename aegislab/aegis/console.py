@@ -1689,7 +1689,7 @@ def _experiments() -> dict:
     except Exception as exc:  # noqa: BLE001
         out["system_tests"] = {"available": False, "error": "validation evidence could not be read (%s)" % type(exc).__name__}
     out["detector_limits"] = [
-        {"item": "Re-encoded canaries (base64, ciphers, spelled-out digits) are not recognised by the broker's detector", "test": "tests/test_phase3_llm.py P3B02d"},
+        {"item": "Re-encoded canaries outside the fixed list (base64/hex/rot13/reversed/split/spelled are caught since P4) are not recognised: double encodings, ciphers, base32/85, homoglyphs, paraphrase", "test": "tests/test_phase3_llm.py P3B02d"},
         {"item": "Timing padding lowers one threshold classifier to chance at 250 ms (n=200 per execution); it does not prove the channel is gone", "test": "evidence/closeout_2026-10-22/timing/"},
         {"item": "With cache_prompt=true a cached-token oracle reaches AUC 1.00: cross-session server state exists even when no content leaks", "test": "E3_kv_cache_oracle"},
         {"item": "GPU memory and accelerator KV-cache isolation were not tested (CPU llama.cpp only)", "test": "-"},
