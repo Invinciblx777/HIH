@@ -83,7 +83,7 @@ def hostile_running_run():
 def readers():
     tok = store.tokens()
     return {"anonymous": {}, "red": {"X-Aegis-Token": tok["red_participant"]}, "blue": {"X-Aegis-Token": tok["blue_participant"]},
-            "unknown-token": {"X-Aegis-Token": "not-a-real-token-123456"}}
+            "unknown-token": {"X-Aegis-Token": "bogus-token"}}
 
 
 def participant_bodies():
