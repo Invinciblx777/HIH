@@ -139,6 +139,11 @@ def export_bundle(run_id: str, dest) -> dict:
     if (run.dir / "manifest.json").exists():
         shutil.copy(run.dir / "manifest.json", dest / "manifest.json")
     (dest / "broker_public_key.b64").write_text(signer().public_b64() + "\n")
+    from . import countersign  # finale P4: the reviewer's countersignature, when the release wrote one
+    cs_path = countersign.countersignature_path(run_id)
+    if cs_path.exists() and countersign.reviewer_key_path().exists():
+        shutil.copy(cs_path, dest / "reviewer_countersignature.json")
+        (dest / "reviewer_public_key.b64").write_text(countersign.Signer(countersign.reviewer_key_path()).public_b64() + "\n")
     audit = read_jsonl(run.dir / "audit.jsonl")
     (dest / "bundle.json").write_text(json.dumps({
         "run_id": run_id, "state": run.state, "event_count": len(audit), "final_head": audit[-1]["hash"],

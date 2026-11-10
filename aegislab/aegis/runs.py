@@ -1187,9 +1187,20 @@ def _release_locked(run, run_id, actor) -> dict:
         run.log("run.release_unverified", "control-plane", {"findings": [str(f)[:200] for f in final["findings"][:5]]},
                 monitor={"summary": "Release did not verify after signing: results withheld", "decision": "failed"})
         raise GateError("terminal verification failed after release; results withheld")
+    # Finale P4 (SHOULD 7): the reviewer's countersignature over the verified terminal checkpoint, with the reviewer key
+    # (separate from the evidence key; aegis/countersign.py says where it should live). verify_cli
+    # --require-countersignature then needs both signatures. A failure here does not undo the release: it is recorded.
+    cs = None
+    try:
+        from . import countersign
+        cs = countersign.countersign_on_release(run_id, store.read_json(store.anchor_path(run_id)), read_jsonl(run.dir / "audit.jsonl"))
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        run.log("run.countersign_failed", "control-plane", {"error": type(exc).__name__},
+                monitor={"summary": "Reviewer countersignature could not be written", "decision": "failed"})
     # The reviewer should write this value down: verify_cli --expect-terminal-hash detects any later complete rewrite,
     # including one made with a stolen signing key and every retained copy replaced.
-    return {"state": "RELEASED", "verification": final, "commitments": c, "terminal_hash": final.get("terminal_hash")}
+    return {"state": "RELEASED", "verification": final, "commitments": c, "terminal_hash": final.get("terminal_hash"),
+            "reviewer_countersignature": {k: cs[k] for k in ("terminal_hash", "reviewer_key_id")} if cs else None}
 
 
 def released(rec: dict) -> bool:

@@ -278,3 +278,17 @@ The scripted red agent's forbidden probes fire `denial_burst` and `forbidden_swe
 **Limits.**
 - There is no revocation list. A token is valid until it expires, or until the capability key is replaced, which revokes every token at once (Future).
 - The API still has no TLS. A bearer token sent over a non-loopback link can be copied (Assumption: loopback only, section 5).
+
+### 10.7 Reviewer countersignature (SHOULD 7)
+
+When a release verifies, `aegis/countersign.py` countersigns the terminal checkpoint's hash, the state, the event count and the chain head with the reviewer key (`var/keys/reviewer_ed25519.pem`, or `AEGIS_REVIEWER_KEY`). This key is separate from both the evidence key and the capability key. The exported bundle carries `reviewer_countersignature.json` and `reviewer_public_key.b64`.
+
+`python -m aegis.verify_cli --bundle B --pubkey <broker> --require-countersignature --reviewer-pubkey <reviewer>` then requires both signatures.
+
+| Property | Test | Label |
+|---|---|---|
+| A released bundle verifies with both signatures; a missing countersignature or the wrong reviewer key is refused; without the flag, verification is unchanged | `tests/test_finale_p4_countersign.py` P4S01, P4S02 | Verified |
+| The broker-key forgery (the security demo's limit) verifies alone but is refused when the countersignature is required | P4S03; `scripts/security_demo.sh` step 7, a new PASS check | Verified |
+| Offline countersigning on the reviewer's own machine (`python -m aegis.countersign --bundle ... --key ...`); refuses a bundle that does not verify | P4S04, P4S05 | Verified |
+| Three distinct keys: evidence, capability, reviewer | P4S06 | Verified |
+| Second party against a host compromise | Only when the reviewer key is off the broker host. Countersigning on release, the prototype's default, keeps it on the same host. The security demo shows the remaining limit: a forger holding both keys still succeeds. | **Partial** |
