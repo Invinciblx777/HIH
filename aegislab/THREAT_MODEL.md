@@ -231,3 +231,31 @@ Code: branch `finale/p4-hardening` (one commit per task). Evidence: `evidence/fi
 - A token split across several replies.
 
 `canary_scan.near_misses()` reports shorter fragments for the anomaly detectors: 6 to 11 digits, or a 12-character run of the base64 form. It never withholds. Server-side isolation remains the primary control. The detector is a second line.
+
+### 10.4 Anomaly detectors (task 4)
+
+`aegis/anomaly.py` runs six detectors on what the broker already sees. Each alert is an `anomaly.alert` audit entry: hash-chained and covered by the signed checkpoints. The seal adds one `anomaly.summary` entry with every detector, its threshold and its count.
+
+| Detector | Threshold | Rationale (short) |
+|---|---|---|
+| `denial_burst` | ≥ 5 denied red requests within 10 s | Probing the policy. An honest client is never denied. |
+| `forbidden_sweep` | ≥ 3 distinct forbidden operations in one run | A search for a policy gap. A client bug repeats one operation. |
+| `mailbox_violations` | ≥ 2 red mailbox violations within 60 s | The tenant is tampering with its own mailbox to probe the broker's file handling. |
+| `canary_near_miss` | fragments of one foreign canary in ≥ 3 attacks (6–11 digits), or in 1 attack (12 base64 characters) | Gradual extraction below the withholding rule. Six digits match by chance; three hits on one canary do not. |
+| `model_cutoffs` | ≥ 3 cut-offs or model errors among the last 10 attacks | Prompts made to slow the model, or a failing backend. Either changes what the padding hides. |
+| `latency_drift` | median broker overhead of the last 10 attacks > max(2×, +50 ms) the median of the first 10 | The padding margin is being eroded before slips or overruns show. |
+
+The scripted red agent's forbidden probes fire `denial_burst` and `forbidden_sweep` in every probe run, which is the intended demonstration.
+
+| Property | How | Label |
+|---|---|---|
+| Thresholds as stated | `tests/test_finale_p4_anomaly.py` P4A02–P4A08 test each threshold both at the value and just below it | Verified |
+| Live only to operator and reviewer | `anomaly.*` events are not in `runs.PARTICIPANT_EVENTS`, so the participant view excludes them until SEALED (P4A11). The console endpoint `/api/lab/runs/{id}/anomalies` refuses participants (P4A30). | Verified |
+| No content channel | Detectors never change, refuse or delay a reply. Red gets the same bytes whether or not a detector fired (P4A12). Foreign canaries appear only as digests (P4A05, P4A16). | Verified |
+| No timing channel | Observation is in memory only, on every request. Alerts are written only inside a padded attack window or at the seal, never on a denial's reply path (P4A10, P4A14). With padding off, alerts wait for the seal (P4A15). In deadline mode every attack reply leaves at t0+D with or without alerts (P4A13). | Verified (deadline mode); bucket mode can slip one bucket if a write crosses the planned boundary, and the slip is counted |
+| Operator view | Console, Audit, Signed audit log: the "Anomaly detectors" panel lists thresholds, rationale and the alerts with sequence, hash and signature coverage | Verified (P4A30, P4A31; console Playwright check) |
+
+**Limits.**
+- The thresholds are fixed and not tuned on adversarial traffic.
+- An attacker who stays under every threshold is not flagged.
+- Alerts raised by denials appear in the operator's live view only at the next padded attack or at the seal.
