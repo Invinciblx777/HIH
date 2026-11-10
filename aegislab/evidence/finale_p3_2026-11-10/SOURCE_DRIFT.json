@@ -1,0 +1,117 @@
+{
+ "schema": "aegislab-source-drift/1",
+ "created": "2026-11-10",
+ "phase": "Grand Finale P3",
+ "what": "Acknowledged changes, made in finale P3, to security-relevant sources recorded by the saved Phase 3 runs of 23 Oct 2026 (evidence/phase3_2026-10-23/llm/). Those runs are now HISTORICAL: every experiment was re-run on the P3 code into evidence/finale_p3_2026-11-10/llm/, whose runs record the current hashes and need no acknowledgement. This file only keeps the 23 Oct runs checkable (hashes, recomputation, report quotes). The P2 file evidence/finale_rebaseline_2026-11-10/SOURCE_DRIFT.json is kept unchanged as history; its entries for aegis/runs.py and aegis/api.py still match the current files.",
+ "change_commit": "09b53d13d3b1bff3262c8c595105b9a679f8e963",
+ "base_commit": "947af3e",
+ "recorded_runs": {
+  "E1_canary_matrix": {
+   "dir": "P3-20261023T084629Z-E1_canary_matrix"
+  },
+  "E2_pipeline_canary": {
+   "dir": "P3-20261023T053717Z-E2_pipeline_canary"
+  },
+  "E3_kv_cache_oracle": {
+   "dir": "P3-20261023T054023Z-E3_kv_cache_oracle"
+  },
+  "E4_injection_output_isolation": {
+   "dir": "P3-20261023T054116Z-E4_injection_output_isolation"
+  },
+  "E5_failure_handling": {
+   "dir": "P3-20261023T054144Z-E5_failure_handling"
+  }
+ },
+ "changes": [
+  {
+   "path": "aegis/model_client.py",
+   "old_sha256": "3a0beaec5ab2816cb0fd0579581c7d8ca959d2f3ed7b6a3bca988f9b408ae2a1",
+   "new_sha256": "a10d60f8cac13594e27f2aedb2844c1556487e2af6a120696eb4201e789187d8",
+   "commit": "09b53d13d3b1bff3262c8c595105b9a679f8e963",
+   "reason": "finale P3: UNIX-socket transport for a model server with --network none; declared model identity recorded in describe()",
+   "claims": {
+    "E1_canary_matrix": {
+     "affects": false,
+     "why": "E1/E3 call the adapter directly over TCP. The P3 change adds an optional UNIX-socket transport (AEGIS_MODEL_UNIX_SOCKET) and optional declared-identity fields; both are inactive unless their variables are set, and the saved runs (and the P3 re-measurement) use TCP 127.0.0.1 without them. load_config, the request body built by generate(), the cache guard, the timeout watchdog and the error mapping are unchanged for TCP, and describe() returns the same keys when the new variables are unset (tests/test_finale_p3_model_client.py). The difference from old_sha256 also contains the P2 change (to intermediate_sha256_p2), acknowledged for E1 with its own reason in evidence/finale_rebaseline_2026-11-10/SOURCE_DRIFT.json; that reason still applies."
+    },
+    "E2_pipeline_canary": {
+     "affects": false,
+     "why": "The broker uses the same adapter over TCP in this experiment. The P3 change adds an optional UNIX-socket transport (AEGIS_MODEL_UNIX_SOCKET) and optional declared-identity fields; both are inactive unless their variables are set, and the saved runs (and the P3 re-measurement) use TCP 127.0.0.1 without them. load_config, the request body built by generate(), the cache guard, the timeout watchdog and the error mapping are unchanged for TCP, and describe() returns the same keys when the new variables are unset (tests/test_finale_p3_model_client.py). The difference from old_sha256 also contains the P2 change (to intermediate_sha256_p2), acknowledged for E2 with its own reason in evidence/finale_rebaseline_2026-11-10/SOURCE_DRIFT.json; that reason still applies."
+    },
+    "E3_kv_cache_oracle": {
+     "affects": false,
+     "why": "E1/E3 call the adapter directly over TCP. The P3 change adds an optional UNIX-socket transport (AEGIS_MODEL_UNIX_SOCKET) and optional declared-identity fields; both are inactive unless their variables are set, and the saved runs (and the P3 re-measurement) use TCP 127.0.0.1 without them. load_config, the request body built by generate(), the cache guard, the timeout watchdog and the error mapping are unchanged for TCP, and describe() returns the same keys when the new variables are unset (tests/test_finale_p3_model_client.py). The difference from old_sha256 also contains the P2 change (to intermediate_sha256_p2), acknowledged for E3 with its own reason in evidence/finale_rebaseline_2026-11-10/SOURCE_DRIFT.json; that reason still applies."
+    },
+    "E4_injection_output_isolation": {
+     "affects": false,
+     "why": "The broker uses the same adapter over TCP in this experiment. The P3 change adds an optional UNIX-socket transport (AEGIS_MODEL_UNIX_SOCKET) and optional declared-identity fields; both are inactive unless their variables are set, and the saved runs (and the P3 re-measurement) use TCP 127.0.0.1 without them. load_config, the request body built by generate(), the cache guard, the timeout watchdog and the error mapping are unchanged for TCP, and describe() returns the same keys when the new variables are unset (tests/test_finale_p3_model_client.py). The difference from old_sha256 also contains the P2 change (to intermediate_sha256_p2), acknowledged for E4 with its own reason in evidence/finale_rebaseline_2026-11-10/SOURCE_DRIFT.json; that reason still applies."
+    },
+    "E5_failure_handling": {
+     "affects": false,
+     "why": "The broker uses the same adapter over TCP in this experiment. The P3 change adds an optional UNIX-socket transport (AEGIS_MODEL_UNIX_SOCKET) and optional declared-identity fields; both are inactive unless their variables are set, and the saved runs (and the P3 re-measurement) use TCP 127.0.0.1 without them. load_config, the request body built by generate(), the cache guard, the timeout watchdog and the error mapping are unchanged for TCP, and describe() returns the same keys when the new variables are unset (tests/test_finale_p3_model_client.py). The difference from old_sha256 also contains the P2 change (to intermediate_sha256_p2), acknowledged for E5 with its own reason in evidence/finale_rebaseline_2026-11-10/SOURCE_DRIFT.json; that reason still applies."
+    }
+   },
+   "intermediate_sha256_p2": "2acfdb59d2e44cd8e6e30e3815c4d5000241b7d71ac553867468ee06add4e607"
+  },
+  {
+   "path": "evaluation/llm_common.py",
+   "old_sha256": "fdcde117f8fb67a021849f7726b389e90853de8c04f720524674063894d246be",
+   "new_sha256": "1a84ab5ffaedf1643ae8e61f5f29bd10e76776e651881c1276450dcd55db904f",
+   "commit": "09b53d13d3b1bff3262c8c595105b9a679f8e963",
+   "reason": "finale P3: API key via --api-key-file, never on a command line (Phase 3 residual)",
+   "claims": {
+    "E1_canary_matrix": {
+     "affects": false,
+     "why": "Server now hands llama-server the API key with --api-key-file (a 0600 temporary file removed at stop) instead of --api-key on the command line. The server's authentication, the request bodies, the Proxy fixture, leak_forms, the statistics and the provenance record are unchanged. The difference from old_sha256 also contains the P2 change (to intermediate_sha256_p2), acknowledged for E1 with its own reason in evidence/finale_rebaseline_2026-11-10/SOURCE_DRIFT.json; that reason still applies."
+    },
+    "E2_pipeline_canary": {
+     "affects": false,
+     "why": "Server now hands llama-server the API key with --api-key-file (a 0600 temporary file removed at stop) instead of --api-key on the command line. The server's authentication, the request bodies, the Proxy fixture, leak_forms, the statistics and the provenance record are unchanged. The difference from old_sha256 also contains the P2 change (to intermediate_sha256_p2), acknowledged for E2 with its own reason in evidence/finale_rebaseline_2026-11-10/SOURCE_DRIFT.json; that reason still applies."
+    },
+    "E3_kv_cache_oracle": {
+     "affects": false,
+     "why": "Server now hands llama-server the API key with --api-key-file (a 0600 temporary file removed at stop) instead of --api-key on the command line. The server's authentication, the request bodies, the Proxy fixture, leak_forms, the statistics and the provenance record are unchanged. The difference from old_sha256 also contains the P2 change (to intermediate_sha256_p2), acknowledged for E3 with its own reason in evidence/finale_rebaseline_2026-11-10/SOURCE_DRIFT.json; that reason still applies."
+    },
+    "E4_injection_output_isolation": {
+     "affects": false,
+     "why": "Server now hands llama-server the API key with --api-key-file (a 0600 temporary file removed at stop) instead of --api-key on the command line. The server's authentication, the request bodies, the Proxy fixture, leak_forms, the statistics and the provenance record are unchanged. The difference from old_sha256 also contains the P2 change (to intermediate_sha256_p2), acknowledged for E4 with its own reason in evidence/finale_rebaseline_2026-11-10/SOURCE_DRIFT.json; that reason still applies."
+    },
+    "E5_failure_handling": {
+     "affects": false,
+     "why": "Server now hands llama-server the API key with --api-key-file (a 0600 temporary file removed at stop) instead of --api-key on the command line. The server's authentication, the request bodies, the Proxy fixture, leak_forms, the statistics and the provenance record are unchanged. The difference from old_sha256 also contains the P2 change (to intermediate_sha256_p2), acknowledged for E5 with its own reason in evidence/finale_rebaseline_2026-11-10/SOURCE_DRIFT.json; that reason still applies."
+    }
+   },
+   "intermediate_sha256_p2": "ebc5d266a69a9a650ed49c11b97dd3e45b376b07b9522ce4604c348a40a41eac"
+  },
+  {
+   "path": "evaluation/llm_isolation.py",
+   "old_sha256": "ca814207bbfa97a04ed4c0fc2b682b891d51e6b916ca4b17c20f3cb7e02c3021",
+   "new_sha256": "a2081d3447ac817fd924f20435f3a8ad9e943616ff2fd2a0975feafb09e78dd6",
+   "commit": "09b53d13d3b1bff3262c8c595105b9a679f8e963",
+   "reason": "finale P3: --model-class option for the second model",
+   "claims": {
+    "E1_canary_matrix": {
+     "affects": false,
+     "why": "llm_isolation.py adds the --model-class option, whose default is the exact string the saved runs recorded ('Qwen2.5-0.5B-Instruct Q4_K_M (0.5B parameters)'); the experiments, probes, fixtures and classification rules are unchanged; E1 is unchanged line for line. The difference from old_sha256 also contains the P2 change (to intermediate_sha256_p2), acknowledged for E1 with its own reason in evidence/finale_rebaseline_2026-11-10/SOURCE_DRIFT.json; that reason still applies."
+    },
+    "E2_pipeline_canary": {
+     "affects": false,
+     "why": "llm_isolation.py adds the --model-class option, whose default is the exact string the saved runs recorded ('Qwen2.5-0.5B-Instruct Q4_K_M (0.5B parameters)'); the experiments, probes, fixtures and classification rules are unchanged; E2 is unchanged line for line. The difference from old_sha256 also contains the P2 change (to intermediate_sha256_p2), acknowledged for E2 with its own reason in evidence/finale_rebaseline_2026-11-10/SOURCE_DRIFT.json; that reason still applies."
+    },
+    "E3_kv_cache_oracle": {
+     "affects": false,
+     "why": "llm_isolation.py adds the --model-class option, whose default is the exact string the saved runs recorded ('Qwen2.5-0.5B-Instruct Q4_K_M (0.5B parameters)'); the experiments, probes, fixtures and classification rules are unchanged; E3 is unchanged line for line. The difference from old_sha256 also contains the P2 change (to intermediate_sha256_p2), acknowledged for E3 with its own reason in evidence/finale_rebaseline_2026-11-10/SOURCE_DRIFT.json; that reason still applies."
+    },
+    "E4_injection_output_isolation": {
+     "affects": false,
+     "why": "llm_isolation.py adds the --model-class option, whose default is the exact string the saved runs recorded ('Qwen2.5-0.5B-Instruct Q4_K_M (0.5B parameters)'); the experiments, probes, fixtures and classification rules are unchanged; E4 is unchanged line for line. The difference from old_sha256 also contains the P2 change (to intermediate_sha256_p2), acknowledged for E4 with its own reason in evidence/finale_rebaseline_2026-11-10/SOURCE_DRIFT.json; that reason still applies."
+    },
+    "E5_failure_handling": {
+     "affects": false,
+     "why": "llm_isolation.py adds the --model-class option, whose default is the exact string the saved runs recorded ('Qwen2.5-0.5B-Instruct Q4_K_M (0.5B parameters)'); the experiments, probes, fixtures and classification rules are unchanged; E5 is unchanged line for line. The difference from old_sha256 also contains the P2 change (to intermediate_sha256_p2), acknowledged for E5 with its own reason in evidence/finale_rebaseline_2026-11-10/SOURCE_DRIFT.json; that reason still applies."
+    }
+   },
+   "intermediate_sha256_p2": "7e1753084621f45635437e318f44463b7ba6b444b727ef1bd564a17e39c8d5e7"
+  }
+ ]
+}

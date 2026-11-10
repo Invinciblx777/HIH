@@ -1,0 +1,14 @@
+{
+  "cp_seq": 8,
+  "event_count": 30,
+  "head": "sha256:eb2f4041870b46ec4ca70385e8dfb3fa8f2a95da28bf64d5b0a6a5a69adbdff9",
+  "key_id": "sha256:6ab5ad717f8f3c27",
+  "prev_cp": "sha256:bce053a2ee192e6ecaf69bbb41270127c04a820df2dadb6e559400511bada73d",
+  "reason": "terminal",
+  "run_id": "LAB-001",
+  "seq": 30,
+  "sig": "MBYPxLhEEFAQSWOMZGyPDoAPLTpvx3ocpWQoS11M0KhD+FjB28TyoPVGK+rjbp3z/y0Ezjck3OAuD2p6dR1qAQ==",
+  "state": "RELEASED",
+  "ts": 1794317679.069976,
+  "v": 2
+}
