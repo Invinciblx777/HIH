@@ -462,8 +462,9 @@ def _entries(directory) -> list:
         os.close(dfd)
 
 
-def _safe_read(path: Path):
+def _safe_read(path: Path, sizes=None):
     """Read a tenant-written message without following links, blocking on special files or trusting size.
+    ``sizes`` (finale P4 quotas): a list the number of bytes read is appended to.
 
     O_NONBLOCK matters: opening a FIFO that a tenant planted would otherwise block the broker forever.
     Whatever the outcome, the directory entry is removed so a rejected file cannot be re-processed.
@@ -481,6 +482,8 @@ def _safe_read(path: Path):
             if not stat.S_ISREG(st.st_mode) or st.st_size > MAX_MSG:
                 raise ValueError("rejected message file")
             data = os.read(fd, MAX_MSG + 1)
+            if sizes is not None:
+                sizes.append(len(data))
             if len(data) > MAX_MSG:
                 raise ValueError("rejected message file")
             try:
@@ -538,6 +541,38 @@ def oracle_unsafe(text: str) -> bool:
         return False
 
 
+class MailboxQuota:
+    """Finale P4 (SHOULD 8): per-tenant mailbox quotas. A tenant over any of them is no longer served: the broker stops reading
+    its mailbox, records mailbox.quota_exceeded, and the run is sealed as incomplete (fail closed for that tenant; the control
+    plane and other runs are unaffected). The limits are far above what the scripted red agent needs (about 10 messages plus
+    one per attack, at most MAX_COMMITMENTS attacks)."""
+    MESSAGES = 4 * MAX_COMMITMENTS + 100     # messages read per run
+    RATE_N, RATE_S = 400, 10.0               # messages per sliding window
+    BYTES = 32 * 1024 * 1024                 # bytes read per run
+    FILES = 512                              # entries present in the outbox at once (files, directories, anything)
+
+    def __init__(self, clock=time.monotonic):
+        self.clock, self.count, self.bytes, self.window = clock, 0, 0, []
+
+    def on_listing(self, n_entries):
+        if n_entries > self.FILES:
+            return {"quota": "files", "limit": self.FILES, "observed": n_entries}
+        return None
+
+    def on_message(self, size):
+        now = self.clock()
+        self.count += 1
+        self.bytes += size
+        self.window = [t for t in self.window if now - t <= self.RATE_S] + [now]
+        if self.count > self.MESSAGES:
+            return {"quota": "messages", "limit": self.MESSAGES, "observed": self.count}
+        if len(self.window) > self.RATE_N:
+            return {"quota": "rate", "limit": "%d per %g s" % (self.RATE_N, self.RATE_S), "observed": len(self.window)}
+        if self.bytes > self.BYTES:
+            return {"quota": "bytes", "limit": self.BYTES, "observed": self.bytes}
+        return None
+
+
 CUT_OFF = object()  # Broker.generate: the deadline-mode cut-off fired before the model answered
 
 
@@ -562,6 +597,7 @@ class Broker:
         self.bucket_s = rec["policy"]["timing_bucket_ms"] / 1000.0
         self.deadline_s = rec["policy"].get("timing_deadline_ms", 0) / 1000.0 if rec["policy"].get("timing_mode") == "deadline" else 0.0
         self.shadow = bool(rec["policy"].get("shadow_model_on_refusal")) and self.deadline_s > 0
+        self.quota = MailboxQuota()
         self.anomaly = anomaly.Detectors()  # finale P4: in-memory observation; alerts written only at hidden release points
         self.release = {"mode": "deadline" if self.deadline_s else ("bucket" if self.bucket_s else "none"),
                         "cutoffs": 0, "overruns": 0, "max_late_ms": 0.0, "slips": 0, "shadow_calls": 0, "shadow_errors": 0}
@@ -1023,12 +1059,17 @@ class Broker:
             while not done and not self.aborted and time.monotonic() < deadline:
                 try:
                     names = _list_messages(red_out)
-                    empty = not _entries(red_out)
+                    entries = _entries(red_out)
+                    empty = not entries
                 except OSError as exc:
                     self.aborted = "red mailbox unusable"
                     self.anomaly.observe_mailbox_violation()
                     run.log("mailbox.violation", "broker", {"where": "red/out", "errno": exc.errno},
                             monitor={"summary": "Red mailbox unusable: run sealed as incomplete", "decision": "denied"})
+                    break
+                over = self.quota.on_listing(len(entries))
+                if over:
+                    self._quota_exceeded(over)
                     break
                 if not names:
                     if not runtime.running(self.names["red"]) and empty:
@@ -1036,9 +1077,16 @@ class Broker:
                     time.sleep(0.002)
                     continue
                 for n in names:
+                    sizes = []
                     try:
-                        msg = _safe_read(red_out / n)
+                        msg = _safe_read(red_out / n, sizes)
                     except (OSError, ValueError):
+                        msg = None
+                    over = self.quota.on_message(sizes[0] if sizes else 0)
+                    if over:
+                        self._quota_exceeded(over)
+                        break
+                    if msg is None:
                         self.deny(n, "malformed", "message rejected (link, size or JSON)")
                         continue
                     if self.dispatch(n, msg) == "done":
@@ -1057,6 +1105,14 @@ class Broker:
                         checkpoint=False, close=True)
                 run.update(state="FAILED")
                 run.terminal_checkpoint("FAILED")
+
+    def _quota_exceeded(self, over):
+        """Fail closed for the tenant: stop serving it; the run is sealed as incomplete. Recorded once."""
+        self.aborted = "red mailbox quota exceeded"
+        self.anomaly.observe_mailbox_violation()
+        self.run.log("mailbox.quota_exceeded", "broker", {"tenant": "red", **over},
+                     monitor={"summary": "Red mailbox quota exceeded (%s): tenant no longer served; run sealed as incomplete" % over["quota"],
+                              "decision": "denied"})
 
     def seal(self, complete):
         run = self.run
