@@ -197,3 +197,37 @@ The adapter checks the socket's owner and the directory's mode before every conn
 - GPU and accelerator memory, the accelerator KV cache, CUDA contexts.
 - Inference servers other than llama.cpp b11819 on CPU, and multi-slot (`-np` > 1) configurations under the launcher.
 - Models other than Qwen2.5-0.5B (full) and Qwen2.5-1.5B (reduced E1/E3).
+
+## 10. Grand Finale P4 update (11 Nov 2026): hardening
+
+Code: branch `finale/p4-hardening` (one commit per task). Evidence: `evidence/finale_p4_2026-11-1X/`; this section is completed as each task lands.
+
+### 10.3 Re-encoded canaries (task 3)
+
+`aegis/canary_scan.py` runs on every model answer, after the plain detector (`runs.canary_hits`, unchanged). It looks for every other run's canary in the following forms. Each is checked for the token, its lower and upper case, and its 12 digits.
+
+- base64: standard and URL-safe, padded or not, at any byte offset, with line breaks inside;
+- hex of the ASCII bytes;
+- rot13;
+- reversed;
+- digits split by whitespace or punctuation;
+- digits spelled out as words (zero to nine, alpha to foxtrot).
+
+| Property | How it is enforced | Label |
+|---|---|---|
+| Caught encodings | `tests/test_finale_p4_canary_scan.py` P4C01 (11 cases), P4C20 (the broker withholds base64, rot13 and spelled forms, audit `canary.leak` with `reencoded`), `tests/test_phase3_llm.py` P3B02e | Verified |
+| No false positives on ordinary output | P4C03: a 12-text benign corpus (prose, code, real base64 and hex blobs, number lists, NATO words) against 301 canaries, 0 hits | Verified (on that corpus) |
+| Bounded | It never decodes the text: it encodes the canaries and slides fixed-length windows over normalised views. The text cap is 16,384 characters. The time budget is 50 ms. There is no recursion. A text over the cap or over the budget is withheld and audited as `canary.scan_incomplete` (P4C05, P4C06, P4C21). | Verified |
+| Live, real model | `scripts/real_model_demo.sh` check 9: through the context-sharing control, run B's raw output carries run A's canary in base64 only. The plain detector does not see it; the broker withholds it and nothing reaches red in any encoding. | Verified (Qwen2.5-0.5B) |
+| The model encodes on request | Measured: neither Qwen2.5-0.5B nor 1.5B produced a valid base64 of a canary when asked (0 of 5 each); both copy a base64 form they were given (5 of 5). In the demo the "encode" answer is the planted form, copied. | Measured, not a guarantee |
+
+**Not covered (stated limits, test P3B02d):**
+- Encodings applied twice or combined (base64 of the reversed token).
+- Other bases (base32, base85, decimal bytes).
+- Arbitrary ciphers and keyed encodings.
+- Homoglyphs.
+- Translation.
+- Paraphrase with filler words between the digits ("it starts with seven, and then...").
+- A token split across several replies.
+
+`canary_scan.near_misses()` reports shorter fragments for the anomaly detectors: 6 to 11 digits, or a 12-character run of the base64 form. It never withholds. Server-side isolation remains the primary control. The detector is a second line.
