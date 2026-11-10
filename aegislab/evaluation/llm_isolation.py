@@ -328,11 +328,15 @@ def set_model_env(base, key, cache, timeout=60, max_tokens=48):
     os.environ.update({"AEGIS_MODEL_BACKEND": "openai_compatible", "AEGIS_MODEL_BASE_URL": base, "AEGIS_MODEL_NAME": "local",
                        "AEGIS_MODEL_API_KEY": key, "AEGIS_MODEL_TIMEOUT_S": str(timeout), "AEGIS_MODEL_MAX_TOKENS": str(max_tokens),
                        "AEGIS_MODEL_EXTRA_JSON": json.dumps({"cache_prompt": bool(cache)})})
+    os.environ.pop(mc.UNSAFE_CACHE_OPT_IN, None)
+    if cache:  # the cache-on positive control needs the explicit unsafe opt-in; it is recorded in the run manifest
+        os.environ[mc.UNSAFE_CACHE_OPT_IN] = "1"
 
 
 def clear_model_env():
     for k in [k for k in os.environ if k.startswith("AEGIS_MODEL")]:
         os.environ.pop(k)
+    os.environ.pop(mc.UNSAFE_CACHE_OPT_IN, None)
 
 
 def prepare_run(work, runs, rid, attacks, defence):

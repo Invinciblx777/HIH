@@ -10,6 +10,7 @@ Opt-in only, through environment variables read by the trusted control plane:
     AEGIS_MODEL_TIMEOUT_S=30                  per-request timeout
     AEGIS_MODEL_MAX_TOKENS=96
     AEGIS_MODEL_EXTRA_JSON='{"cache_prompt": false}'   extra request fields (default targets llama.cpp)
+    AEGIS_UNSAFE_EXPERIMENT_SHARED_PROMPT_CACHE=1     the ONLY way to send cache_prompt=true (see below); experiments only
 
 Security properties (each is covered by tests/test_model_client.py):
   * nothing is enabled automatically; a missing or invalid setting raises instead of falling back to the stub
@@ -22,6 +23,10 @@ Security properties (each is covered by tests/test_model_client.py):
     fixed, key-free messages
   * failures, timeouts and malformed replies raise ModelBackendError with a fixed message; the broker turns that into a
     uniform refusal for red and fails the run closed after repeated errors
+  * cache_prompt=true is refused: it turns the server's prompt (KV) cache back on, and experiment E3 measured a cross-session
+    cached-token oracle with AUC 1.00 under it. Only AEGIS_UNSAFE_EXPERIMENT_SHARED_PROMPT_CACHE=1 lets it through, for the
+    positive-control experiments; describe() then carries "unsafe_shared_prompt_cache_experiment": true, so the opt-in is in
+    the frozen run manifest and in the audit entry model.session_opened
 
 What this does NOT do: it cannot clear state inside the inference server (prefix/KV cache, GPU memory).
 Whether such state is reachable from another session is something the experiments in
@@ -39,6 +44,7 @@ from pathlib import Path
 
 MAX_RESPONSE_BYTES = 1 << 20
 MAX_TEXT = 8000
+UNSAFE_CACHE_OPT_IN = "AEGIS_UNSAFE_EXPERIMENT_SHARED_PROMPT_CACHE"
 
 
 class ModelBackendError(RuntimeError):
@@ -59,16 +65,20 @@ class ModelConfig:
     max_tokens: int = 96
     extra: tuple = ()
     allow_remote: bool = False
+    unsafe_shared_prompt_cache: bool = False
 
     def describe(self) -> dict:
         """Everything that may appear in manifests, audit entries and evidence. Never contains the key."""
         if self.backend == "stub":
             return {"backend": "stub"}
         u = urllib.parse.urlsplit(self.base_url)
-        return {"backend": self.backend, "model": self.model, "endpoint": "%s://%s%s" % (u.scheme, u.netloc, u.path),
-                "loopback_only": not self.allow_remote, "api_key_configured": bool(self.api_key),
-                "timeout_s": self.timeout_s, "max_tokens": self.max_tokens,
-                "extra_body_fields": sorted(k for k, _ in self.extra), "stateless_requests": True}
+        out = {"backend": self.backend, "model": self.model, "endpoint": "%s://%s%s" % (u.scheme, u.netloc, u.path),
+               "loopback_only": not self.allow_remote, "api_key_configured": bool(self.api_key),
+               "timeout_s": self.timeout_s, "max_tokens": self.max_tokens,
+               "extra_body_fields": sorted(k for k, _ in self.extra), "stateless_requests": True}
+        if self.unsafe_shared_prompt_cache:  # only present when opted in, so ordinary manifests are unchanged
+            out["unsafe_shared_prompt_cache_experiment"] = True
+        return out
 
 
 def _is_loopback(host: str) -> bool:
@@ -113,8 +123,15 @@ def load_config(env=None) -> ModelConfig:
     if not isinstance(extra, dict) or set(extra) & {"messages", "model", "stream", "user", "n", "max_tokens"} \
             or not (0 < timeout <= 600) or not (0 < max_tokens <= 1024):
         raise ModelBackendError("config")
+    # Anything but an explicit false re-enables the shared prompt cache (llama.cpp treats a missing field as true in some
+    # versions and any truthy value as true), so a missing, null or non-boolean value is replaced or refused, never passed on.
+    unsafe = env.get(UNSAFE_CACHE_OPT_IN) == "1"
+    if "cache_prompt" not in extra or extra["cache_prompt"] is None:
+        extra["cache_prompt"] = False
+    if not isinstance(extra["cache_prompt"], bool) or (extra["cache_prompt"] and not unsafe):
+        raise ModelBackendError("config")
     return ModelConfig("openai_compatible", base.rstrip("/"), model, key, timeout, max_tokens,
-                       tuple(sorted(extra.items())), allow_remote)
+                       tuple(sorted(extra.items())), allow_remote, unsafe and extra["cache_prompt"])
 
 
 class OpenAICompatibleClient:
