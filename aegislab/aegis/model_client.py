@@ -209,19 +209,21 @@ class OpenAICompatibleClient:
             raise ModelBackendError("config")
         self.cfg = cfg
 
-    def _request(self, method, path, body=None):
+    def _request(self, method, path, body=None, timeout_s=None):
         """One HTTP exchange over http.client: no proxy handling and no redirect handling exist in it, so neither can
-        happen. A watchdog closes the socket when the total time budget is spent."""
+        happen. A watchdog closes the socket when the total time budget is spent. timeout_s (finale P4) may only shorten the
+        configured budget, for the broker's deadline-mode cut-off; closing the connection makes llama.cpp stop generating."""
+        budget = self.cfg.timeout_s if timeout_s is None else max(0.001, min(float(timeout_s), self.cfg.timeout_s))
         headers = {"Content-Type": "application/json", "Accept": "application/json", "Connection": "close"}
         if self.cfg.api_key:
             headers["Authorization"] = "Bearer " + self.cfg.api_key
         data = json.dumps(body).encode() if body is not None else None
         u = urllib.parse.urlsplit(self.cfg.base_url + path)
         if self.cfg.unix_socket:
-            conn = _UnixHTTPConnection(self.cfg.unix_socket, self.cfg.timeout_s)
+            conn = _UnixHTTPConnection(self.cfg.unix_socket, budget)
         else:
             factory = http.client.HTTPSConnection if u.scheme == "https" else http.client.HTTPConnection
-            conn = factory(u.hostname, u.port, timeout=self.cfg.timeout_s)
+            conn = factory(u.hostname, u.port, timeout=budget)
         expired = threading.Event()
         live = []  # the connected socket; http.client drops conn.sock once a reply says "Connection: close", the body is still unread
 
@@ -233,7 +235,7 @@ class OpenAICompatibleClient:
                 except OSError:
                     pass
 
-        watchdog = threading.Timer(self.cfg.timeout_s, cut)
+        watchdog = threading.Timer(budget, cut)
         watchdog.daemon = True
         watchdog.start()
         try:
@@ -277,11 +279,11 @@ class OpenAICompatibleClient:
         """Availability check before a run starts; a failure fails the run closed, never falls back to the stub."""
         self._request("GET", "/models")
 
-    def generate(self, prompt: str) -> dict:
-        """One stateless completion. Returns {"text", "usage"}; only ``text`` ever reaches red or blue."""
+    def generate(self, prompt: str, timeout_s=None) -> dict:
+        """One stateless completion. Returns {"text", "usage"}; only ``text`` ever reaches red or blue. timeout_s: see _request."""
         body = {**dict(self.cfg.extra), "model": self.cfg.model, "stream": False, "max_tokens": self.cfg.max_tokens,
                 "temperature": 0, "messages": [{"role": "user", "content": prompt[:8000]}]}
-        reply = self._request("POST", "/chat/completions", body)
+        reply = self._request("POST", "/chat/completions", body, timeout_s)
         try:
             text = reply["choices"][0]["message"]["content"]
         except (KeyError, IndexError, TypeError):

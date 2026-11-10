@@ -73,6 +73,8 @@ class CreateReq(BaseModel):
     run_id: str
     timing_bucket_ms: int = 250
     tags: list[str] = []
+    timing_deadline_ms: int | None = None      # finale P4: decision-independent release; see runs.create_run
+    shadow_model_on_refusal: bool = False
 
 
 class TamperReq(BaseModel):
@@ -117,7 +119,8 @@ def runs():
 @app.post("/api/runs")
 def create(req: CreateReq, x_aegis_token: str | None = Header(None)):
     need(x_aegis_token, "operator")
-    return public_view(gate(create_run, req.run_id, timing_bucket_ms=req.timing_bucket_ms, tags=req.tags).record)
+    return public_view(gate(create_run, req.run_id, timing_bucket_ms=req.timing_bucket_ms, tags=req.tags,
+                            timing_deadline_ms=req.timing_deadline_ms, shadow_model_on_refusal=req.shadow_model_on_refusal).record)
 
 
 SECRET_DIGESTS = ("defence_config_digest", "attack_pack_digest")
