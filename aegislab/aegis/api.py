@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import evidence, runtime, store
+from . import captoken, evidence, runtime, store
 from . import runs as runs_mod
 from .audit import read_jsonl
 from .runs import GateError, Run, artifacts, create_run, freeze, list_runs, release, start, update_defence_config, verify_run
@@ -26,8 +26,12 @@ WEB = store.ROOT / "web"
 
 
 def role_of(token: str | None) -> str:
+    """The role of a global role token. A capability token (finale P4) is refused here: it is valid only on the run and for the
+    operations it names, so only role_for() accepts it."""
     if not token:
         return "observer"
+    if captoken.is_capability(token):
+        raise HTTPException(401, "a capability token is accepted only on the run and for the operations it names")
     found = None
     for role, tok in store.tokens().items():  # constant-time compare against every token
         if hmac.compare_digest(tok.encode(), token.encode()):
@@ -39,6 +43,23 @@ def role_of(token: str | None) -> str:
 
 def need(token, *roles):
     role = role_of(token)
+    if role not in roles:
+        raise HTTPException(403, "role '%s' is not permitted; requires %s" % (role, " or ".join(roles)))
+    return role
+
+
+def role_for(token, run_id, op) -> str:
+    """role_of() for a run-scoped request: a global role token as before, or a capability token for this run and operation."""
+    if captoken.is_capability(token):
+        try:
+            return captoken.verify(token, run_id, op)["role"]
+        except captoken.CapabilityError as exc:
+            raise HTTPException(exc.status, str(exc))
+    return role_of(token)
+
+
+def need_for(token, run_id, op, *roles):
+    role = role_for(token, run_id, op)
     if role not in roles:
         raise HTTPException(403, "role '%s' is not permitted; requires %s" % (role, " or ".join(roles)))
     return role
@@ -132,7 +153,7 @@ def run_detail(run_id: str, x_aegis_token: str | None = Header(None)):
     the file, e.g. the sample config, could confirm it by hashing), so only the operator and reviewer see them
     before release."""
     run = get_run(run_id)
-    role = role_of(x_aegis_token)
+    role = role_for(x_aegis_token, run_id, "detail")
     manifest = store.read_json(run.dir / "manifest.json") or {}
     show_secret = role in ("operator", "reviewer") or runs_mod.released(run.record)
     keys = ("sandbox_image_id", "base_image_digest", "signing_key_id", "hardening_flags", "environment",
@@ -147,7 +168,7 @@ def events(run_id: str, x_aegis_token: str | None = Header(None)):
     gets the least-privileged view, as before this endpoint looked at tokens at all, rather than a 401."""
     run = get_run(run_id)
     try:
-        trusted = role_of(x_aegis_token) in runs_mod.MONITOR_TRUSTED_ROLES
+        trusted = role_for(x_aegis_token, run_id, "events") in runs_mod.MONITOR_TRUSTED_ROLES
     except HTTPException:
         trusted = False
     return runs_mod.monitor_view(run, trusted)
@@ -155,7 +176,7 @@ def events(run_id: str, x_aegis_token: str | None = Header(None)):
 
 @app.post("/api/runs/{run_id}/freeze")
 def do_freeze(run_id: str, x_aegis_token: str | None = Header(None)):
-    need(x_aegis_token, "operator")
+    need_for(x_aegis_token, run_id, "freeze", "operator")
     get_run(run_id)
     gate(freeze, run_id)
     return run_detail(run_id, x_aegis_token)
@@ -163,7 +184,7 @@ def do_freeze(run_id: str, x_aegis_token: str | None = Header(None)):
 
 @app.post("/api/runs/{run_id}/defence-config")
 def change_config(run_id: str, body: dict, x_aegis_token: str | None = Header(None)):
-    role = need(x_aegis_token, "blue_participant", "operator")
+    role = need_for(x_aegis_token, run_id, "defence_config", "blue_participant", "operator")
     get_run(run_id)
     gate(update_defence_config, run_id, body, actor=role)
     return {"ok": True}
@@ -171,7 +192,7 @@ def change_config(run_id: str, body: dict, x_aegis_token: str | None = Header(No
 
 @app.post("/api/runs/{run_id}/start")
 def do_start(run_id: str, x_aegis_token: str | None = Header(None)):
-    need(x_aegis_token, "operator")
+    need_for(x_aegis_token, run_id, "start", "operator")
     get_run(run_id)
     gate(start, run_id)
     return {"ok": True, "state": "RUNNING"}
@@ -179,8 +200,8 @@ def do_start(run_id: str, x_aegis_token: str | None = Header(None)):
 
 @app.post("/api/runs/{run_id}/release")
 def do_release(run_id: str, x_aegis_token: str | None = Header(None)):
-    role = role_of(x_aegis_token)
     run = get_run(run_id)
+    role = _role_or_denied(run, x_aegis_token, "release")
     if role != "reviewer":
         run.log("policy.denied", role, {"op": "release", "reason": "not an authorised reviewer"},
                 monitor={"summary": "Release attempt by %s rejected" % role, "decision": "denied"})
@@ -190,14 +211,48 @@ def do_release(run_id: str, x_aegis_token: str | None = Header(None)):
 
 @app.get("/api/runs/{run_id}/artifacts")
 def get_artifacts(run_id: str, x_aegis_token: str | None = Header(None)):
-    role = role_of(x_aegis_token)
     run = get_run(run_id)
+    role = _role_or_denied(run, x_aegis_token, "read_artifacts", "artifacts")
     if role not in ("reviewer", "blue_participant", "red_participant") or run.state != "RELEASED":
         run.log("policy.denied", role, {"op": "read_artifacts", "reason": "sealed until release" if role != "observer"
                                         else "no identity"},
                 monitor={"summary": "Artifact access by %s rejected (%s)" % (role, run.state), "decision": "denied"})
         raise HTTPException(403, "attack artifacts are sealed until an authorised reviewer releases them")
     return gate(artifacts, run_id)
+
+
+def _role_or_denied(run, token, audit_op, cap_op=None):
+    """role_for() on the two result-gate endpoints. A capability token that is valid but does not grant the operation (or names
+    another run) is a refused access like any other: recorded as policy.denied, then 403."""
+    try:
+        return role_for(token, run.id, cap_op or audit_op)
+    except HTTPException as exc:
+        if exc.status_code == 403 and captoken.is_capability(token):
+            run.log("policy.denied", "capability", {"op": audit_op, "reason": str(exc.detail)},
+                    monitor={"summary": "Capability token refused for %s" % audit_op, "decision": "denied"})
+        raise
+
+
+class CapabilityReq(BaseModel):
+    role: str
+    ops: list[str]
+    ttl_s: int = 900
+
+
+@app.post("/api/runs/{run_id}/capabilities")
+def issue_capability(run_id: str, req: CapabilityReq, x_aegis_token: str | None = Header(None)):
+    """Finale P4: mint a signed, expiring capability token for one run, one role and a subset of that role's operations
+    (aegis/captoken.py). Needs a global role token: the operator issues operator and participant tokens, only the reviewer
+    issues reviewer tokens. The issuance is audited; the token itself is returned once and never stored."""
+    issuer = role_of(x_aegis_token)
+    run = get_run(run_id)
+    try:
+        token, claims = captoken.issue(issuer, run_id, req.role, req.ops, req.ttl_s)
+    except ValueError as exc:
+        raise HTTPException(403 if "may not issue" in str(exc) else 400, str(exc))
+    run.log("capability.issued", issuer, {k: claims[k] for k in ("role", "ops", "iat", "exp", "jti")} | {"key_id": captoken.signer().key_id},
+            monitor={"summary": "Capability token issued for %s (%d operations)" % (claims["role"], len(claims["ops"])), "decision": "allowed"})
+    return {"token": token, "claims": claims, "key_id": captoken.signer().key_id}
 
 
 @app.get("/api/runs/{run_id}/verify")
@@ -208,7 +263,7 @@ def do_verify(run_id: str):
 
 @app.post("/api/runs/{run_id}/tamper-test")
 def do_tamper(run_id: str, req: TamperReq, x_aegis_token: str | None = Header(None)):
-    need(x_aegis_token, "reviewer", "operator")
+    need_for(x_aegis_token, run_id, "tamper_test", "reviewer", "operator")
     run = get_run(run_id)
     if req.mode not in TAMPER_MODES:
         raise HTTPException(400, "unknown mode")
@@ -224,7 +279,7 @@ def do_tamper(run_id: str, req: TamperReq, x_aegis_token: str | None = Header(No
 @app.get("/api/runs/{run_id}/evidence")
 def get_evidence(run_id: str, x_aegis_token: str | None = Header(None)):
     run = get_run(run_id)
-    role = role_of(x_aegis_token)
+    role = role_for(x_aegis_token, run_id, "evidence")
     if not runs_mod.released(run.record) and role != "reviewer":
         raise HTTPException(403, "evidence report is available after release")
     return evidence.build(run_id)
