@@ -72,9 +72,10 @@ What you will see, and what kind of result each one is:
 | 3 | **Evidence verification.** The released bundle passes strict verification with the key and terminal hash pinned | `judge_demo.sh` step 4, `security_demo.sh` step 5 | **LIVE** |
 | 4 | **Tamper rejection.** A copy with entries removed or edited fails verification; the original stays byte-identical | `judge_demo.sh` step 5, `security_demo.sh` step 6 | **LIVE** (on copies) |
 | 5 | **Real-model evidence.** Cross-session leak tests on a real model, next to positive controls that are built to leak | `judge_demo.sh` step 6, `security_demo.sh` step 8 | **PRECOMPUTED REAL-MODEL** (saved runs, recomputed from raw files on screen; no model runs during the demo) |
+| 6 | **Real model, live.** The same isolation checks with Qwen2.5-0.5B answering live: stateless sessions, a positive control that must leak, the broker withholding that leak (with its audit entry), and strict verification of the bundle. The model server runs in rootless Podman with `--network none` and is reached over a UNIX socket | `scripts/real_model_demo.sh` (about 30 s), `scripts/start_real_model_console.sh` (console) | **LIVE REAL MODEL** (needs the model files, which are not in the repository; see below) |
 | — | The Phase 1 broker overwriting the audit log before the fix | `judge_demo.sh` step 3 | **HISTORICAL** (recorded 23 Oct, labelled as such) |
 
-The demos use a deterministic **stub** model by design: it makes leakage behaviour testable and keeps the demo offline. Step-by-step instructions and expected output: [`docs/JUDGE_GUIDE.md`](docs/JUDGE_GUIDE.md). A recorded transcript of a real successful run is in [`aegislab/evidence/phase4_2026-10-23/judge_demo_transcript.txt`](aegislab/evidence/phase4_2026-10-23/judge_demo_transcript.txt) (a recording, not a live run).
+`judge_demo.sh` and `security_demo.sh` use a deterministic **stub** model by design: it makes leakage behaviour testable and keeps the demo offline. Demonstration 6 is the exception; it needs `llama-server` (llama.cpp b11819, CPU) and `qwen2.5-0.5b-instruct-q4_k_m.gguf` outside the repository (default `../../../_models/` from `aegislab/`, or `AEGIS_MODELS_DIR`), and refuses to start if either file's sha256 differs from the one the evidence was recorded with. Step-by-step instructions and expected output: [`docs/JUDGE_GUIDE.md`](docs/JUDGE_GUIDE.md). A recorded transcript of a real successful run is in [`aegislab/evidence/phase4_2026-10-23/judge_demo_transcript.txt`](aegislab/evidence/phase4_2026-10-23/judge_demo_transcript.txt) (a recording, not a live run).
 
 ## Interactive prototype console
 
@@ -83,6 +84,15 @@ bash scripts/start_prototype.sh       # then open the launch link it prints (loo
 ```
 
 The console is a browser interface on the same control plane. The launch link starts a local operator session; the browser never holds a role token. It drives the run lifecycle step by step (create, defence, freeze, start, seal, release) in rootless containers, runs four allowlisted attack scenarios against them, shows the security events, and verifies (and tampers with copies of) the signed evidence through `aegis.verify_cli`. Without Podman it starts in a labelled degraded mode with a recorded replay. Guide: [`docs/prototype/PROTOTYPE_GUIDE.md`](docs/prototype/PROTOTYPE_GUIDE.md). Five-minute judge path: [`docs/prototype/JUDGE_WALKTHROUGH.md`](docs/prototype/JUDGE_WALKTHROUGH.md). Interactive walkthrough of the live lab: [`docs/prototype/JUDGE_INTERACTIVE_WALKTHROUGH.md`](docs/prototype/JUDGE_INTERACTIVE_WALKTHROUGH.md).
+
+**With the real model (finale P3, 10 Nov 2026).** The same console, with Qwen2.5-0.5B answering every lab run live:
+
+```bash
+bash scripts/start_real_model_console.sh                  # port 8410; model server in rootless Podman, --network none, UNIX socket
+bash scripts/start_real_model_console.sh --host-process   # model server as a host process on 127.0.0.1 instead
+```
+
+It labels each run "REAL MODEL · LIVE" with the model file, its sha256 prefix, "llama.cpp CPU" and "loopback". The label comes from the run's own frozen manifest. It never falls back to the stub: an unreachable model server makes the run `FAILED`, and errors reach red as the uniform refusal. Its state is separate (`var/console-real`). Ctrl-C stops the console and the model server and deletes the server's key. `scripts/start_prototype.sh` is unchanged and still starts the stub console.
 
 Console session rules (Phase R3 hardening, 26 Oct 2026):
 
@@ -112,8 +122,10 @@ From the evidence in `aegislab/evidence/` (one Fedora host, CPU only). Every fig
 - **Hostile mailbox attack** from a real rootless container (symlink and FIFO planted at guessed names): blocked; the audit log stays intact and the broker never blocks.
 - **Audit integrity:** a released run verifies strictly; tampered copies are rejected.
 - **Overhead:** 2.59–2.84 ms median per broker hop (idle host, stub model).
-- **Timing side channel:** a simple classifier reads the defence's decision from response time with 0.795–0.800 accuracy unpadded; 250 ms response padding lowers it to 0.495–0.555, at +198 to +201 ms per answered request. This weakens one classifier; it does **not** show the channel is gone.
-- **Real model — PRECOMPUTED from saved runs** (Qwen2.5-0.5B Q4_K_M, llama.cpp on CPU, loopback only): 0 / 104 sessions recovered another session's canary (1,040 trials); full pipeline 0 / 26 runs. The positive controls that are built to leak did leak (16 / 16 and 13 / 16 sessions), so the probes can detect a leak. Raw runs: `aegislab/evidence/phase3_2026-10-23/llm/`.
+- **Timing side channel (stub model, three executions):** a simple classifier reads the defence's decision from response time with 0.795–0.800 accuracy unpadded; 250 ms response padding lowers it to 0.495–0.555, at +198 to +201 ms per answered request. This weakens one classifier; it does **not** show the channel is gone.
+- **Timing side channel, real model (ONE execution, 10 Nov 2026):** 250 ms padding does **not** hide the decision: the real model's own latency (264–1956 ms answered) crosses the bucket, and accuracy stays 1.000 (p=0.001). A bucket sized from the measured p99 (1600 ms) gave 0.640 (p=0.055, majority baseline 0.700, not significant), at +651 ms per answered request. The default stays 250 ms. Raw files: `aegislab/evidence/finale_p3_2026-11-10/timing_real_model/`.
+- **Real model — re-measured 10 Nov 2026 on the current code** (Qwen2.5-0.5B Q4_K_M, llama.cpp b11819 on CPU, loopback only): 0 / 104 sessions recovered another session's canary (1,040 trials); full pipeline 0 / 26 runs. The positive controls that are built to leak did leak (16 / 16 and 13 / 16 sessions), so the probes can detect a leak. These are the same figures as the 23 Oct runs. Two secondary figures differ, and both dates are reported: the pipeline's context-sharing control leaked in 3 / 4 runs (23 Oct: 2 / 4), and the cache-off latency AUC was 0.41 / 0.47 (23 Oct: 0.52 / 0.42). Raw runs: `aegislab/evidence/finale_p3_2026-11-10/llm/`; the 23 Oct runs stay in `aegislab/evidence/phase3_2026-10-23/llm/` and are still checked.
+- **Real model — live.** `scripts/real_model_demo.sh` and the real-model console answer with the model in real time. The model server is hardened and sandboxed; what its flags close, and what they cannot close, is in `aegislab/THREAT_MODEL.md` section 9.
 
 ## Known limitations
 
@@ -124,9 +136,9 @@ Stated here because a security result is only as credible as its limits.
 - **One host.** Validated on a single Fedora machine. Containers share the host kernel; a kernel or runtime escape is out of scope.
 - **Small model, few prompts.** One 0.5B model on CPU and ten probe wordings; three probes stayed silent even when sharing was on purpose. Zero observed leaks is not proof of zero risk (one-sided 95% upper bound: 2.84% of sessions for this setup).
 - **Detector gaps.** The canary detector misses some re-encodings, for example **base64**.
-- **Timing.** Padding weakens one measured classifier; other side channels (cache, memory bandwidth, scheduling, power) remain shared.
+- **Timing.** Padding weakens one measured classifier on the stub model. With a real model, the 250 ms default does not hide it; the bucket must be sized from the model's measured latency. Other side channels (cache, memory bandwidth, scheduling, power) remain shared.
 - **GPU and accelerator KV-cache isolation were not tested.** Only CPU inference was exercised. The proposed GPU boundary is described in `aegislab/README.md` ("GPU inference boundary").
-- **Saved real-model results.** The judge and security demos show the real-model numbers from saved runs; they never run a model live. Re-running the experiments needs a local `llama-server` binary and a GGUF model file (not included, nothing is downloaded by the repo) and takes about 3.5 hours (`evaluation/llm_isolation.py`).
+- **Saved and live real-model results.** The judge and security demos show the real-model numbers from saved runs; they never run a model. `scripts/real_model_demo.sh` and `scripts/start_real_model_console.sh` do run it live. Both these scripts and the experiments need a local `llama-server` binary and a GGUF model file (not included; nothing is downloaded by the repo). Re-running E1–E5 took 32 minutes on 10 Nov (`evaluation/llm_isolation.py`).
 - An earlier CPU-contention measurement (+37–52% round-trip time) did not reproduce in later runs (−5% to +1%).
 
 ## Security and responsible use

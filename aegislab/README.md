@@ -2,7 +2,7 @@
 
 Secure infrastructure for adversarial AI evaluation. Team Tech Mavericks, Hack in Hills ’26, Track 04 (Bayora).
 
-**Status: implemented prototype.** It is a working single-host proof of concept with measured results. It is not a production security system. By default the model under test is a deterministic **stub**, not an LLM; an optional, opt-in OpenAI-compatible adapter exists (see "Optional real-model backend").
+**Status: implemented prototype.** It is a working single-host proof of concept with measured results. It is not a production security system. By default the model under test is a deterministic **stub**, not an LLM; an optional, opt-in OpenAI-compatible adapter exists (see "Optional real-model backend"). Since the finale P3 (10 Nov 2026) a real model can also run **live**: `scripts/real_model_demo.sh` and `scripts/start_real_model_console.sh` use Qwen2.5-0.5B on llama.cpp CPU, in a hardened, sandboxed server (see "Real model live").
 
 **Two result sets exist and are kept apart.** The 15 Oct 2026 submission numbers are in `evidence/results.json`, `evidence/RESULTS.md` and `evidence/DEMO-001/` and are unchanged. The 22 Oct 2026 hardening validation (terminal audit anchor, access matrix, real-model experiments, held-out timing analysis) is in `evidence/validation_2026-10-22/`, summarised in `../VALIDATION_ADDENDUM_2026-10-22.md`; the timing figures there were superseded by the Phase 1 closeout executions in `evidence/closeout_2026-10-22/`. The full threat table with measured results and residual risk is `THREAT_MODEL.md`.
 
@@ -95,6 +95,21 @@ export AEGIS_MODEL_API_KEY_FILE=/path/to/keyfile          # mode 0600; or AEGIS_
 
 The setting is recorded in the frozen manifest (never the key); changing it after freeze fails the run. Requests are stateless (one message, no history or session id), proxies and redirects are ignored, an unreachable server fails the run closed (no fallback to the stub), and three consecutive errors abort. AegisLab cannot clear state inside the inference server. `evaluation/model_experiments.py` measures what it can (needs a local llama.cpp `llama-server` binary and a GGUF file; nothing is downloaded by the repo). Details and limits: `THREAT_MODEL.md` rows 4 and 10.
 
+### Real model live (finale P3, 10 Nov 2026)
+
+Needs `llama-server` (llama.cpp b11819, CPU) and `qwen2.5-0.5b-instruct-q4_k_m.gguf` outside the repository: `AEGIS_MODELS_DIR`, default `../../../_models/` from here. Nothing is downloaded or built; both scripts work offline.
+
+```bash
+bash scripts/start_model_server.sh --sandbox        # prints the run directory; --stop <dir> stops it
+bash scripts/real_model_demo.sh                     # four live checks, one PASS/FAIL line each, about 30 s
+bash scripts/start_real_model_console.sh            # the console with the real model (port 8410)
+```
+
+- `scripts/start_model_server.sh` checks both files against the sha256 the evidence was recorded with. It writes the API key to a 0600 file passed with `--api-key-file`, so the key is on no command line. It turns off every cross-request state the build allows: `--no-cache-prompt --cache-ram 0 --no-cache-idle-slots --no-kv-unified --ctx-checkpoints 0 --cache-reuse 0 --no-context-shift --no-slots`, with no `--slot-save-path`, `--metrics` or `--props`.
+- `--sandbox` runs the server in rootless Podman with `--network none --read-only --cap-drop ALL --security-opt no-new-privileges`, pids, memory and CPU limits, and read-only mounts of the binary and model. It listens only on a UNIX socket in a 0700 directory under `$XDG_RUNTIME_DIR`. The adapter (`AEGIS_MODEL_UNIX_SOCKET`) refuses a socket or directory that another user owns or can open.
+- `--host-process` runs the same flags on `127.0.0.1`, random port.
+- What the flags cannot close: a client that sends `cache_prompt: true` still reuses the prompt cache in this build (`--no-cache-prompt` sets only the default). The broker is the only client and refuses to send it. `GET /props` cannot be turned off; it needs the key and shows no prompt text. Measurements: `THREAT_MODEL.md` section 9 and `evidence/finale_p3_2026-11-10/`.
+
 ## API (127.0.0.1:8400)
 
 | Method | Path | Who |
@@ -146,7 +161,7 @@ CPU tooling isolation (these containers) is separate from GPU inference isolatio
 
 ## Language-model backend (optional, Phase 3 evidence)
 
-The default model worker is a deterministic stub. `AEGIS_MODEL_BACKEND=openai_compatible` makes the broker call a loopback OpenAI-compatible endpoint instead (see `aegis/model_client.py`); nothing is enabled implicitly, there is no stub fallback, and the whole exchange is bounded by `AEGIS_MODEL_TIMEOUT_S`. The broker withholds model output that carries another run's canary or a control-plane secret, and marks a run incomplete when the model service returned an error. Experiments: `evaluation/llm_isolation.py` (E1 to E5, needs a local `llama-server` and a GGUF file), results and how to reproduce them in `evidence/phase3_2026-10-23/README.md`, claims recomputed by `evaluation/check_claims.py`.
+The default model worker is a deterministic stub. `AEGIS_MODEL_BACKEND=openai_compatible` makes the broker call a loopback OpenAI-compatible endpoint instead (see `aegis/model_client.py`); nothing is enabled implicitly, there is no stub fallback, and the whole exchange is bounded by `AEGIS_MODEL_TIMEOUT_S`. The broker withholds model output that carries another run's canary or a control-plane secret, and marks a run incomplete when the model service returned an error. Experiments: `evaluation/llm_isolation.py` (E1 to E5, needs a local `llama-server` and a GGUF file), results and how to reproduce them in `evidence/phase3_2026-10-23/README.md` (23 Oct) and `evidence/finale_p3_2026-11-10/README.md` (re-measured 10 Nov on the current code, same E1 figures), claims recomputed by `evaluation/check_claims.py` (the newest run of each experiment is the current one; the older ones stay checked).
 
 ## Design choices
 
