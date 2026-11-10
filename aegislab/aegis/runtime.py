@@ -28,7 +28,7 @@ from pathlib import Path
 from . import userns
 
 IMAGE = "localhost/aegislab-sandbox:0.1"
-BASE_IMAGE = "docker.io/library/python:3.12-slim"
+BASE_IMAGE = "docker.io/library/python@sha256:e8a38829209aea82774882e5157e1f7c3e8c8393ff53a697b3580896e57f345c"  # pinned by digest (finale P4)
 
 LIMITS = {
     "red": {"cpus": "1.0", "memory": "256m", "pids": "64", "cpuset": "2-3"},

@@ -30,7 +30,7 @@ Lifecycle: `CREATED → FROZEN → RUNNING → SEALED → RELEASED` (or `FAILED`
 
 ## Run it locally
 
-Requirements: Linux with rootless Podman (tested: Fedora, kernel 7.2, Podman 5.8.9, crun 1.28, cgroups v2, SELinux enforcing; the 15 Oct numbers were measured on kernel 6.19 / Podman 5.8.1), Python 3.11+ (tested 3.14), network access to PyPI and, the first time, to Docker Hub for `python:3.12-slim`.
+Requirements: Linux with rootless Podman (tested: Fedora, kernel 7.2, Podman 5.8.9, crun 1.28, cgroups v2, SELinux enforcing; the 15 Oct numbers were measured on kernel 6.19 / Podman 5.8.1), Python 3.12+ (`pyproject.toml`; CI 3.14, Vercel 3.12, tested 3.14 and 3.15), network access to PyPI and, the first time, to Docker Hub for `python:3.12-slim` (pulled by the digest pinned in `Containerfile`).
 
 **One command** (venv, dependencies, sandbox image, tests, DEMO-001, independent verification, with a PASS/FAIL line per stage; nonzero exit if any security test fails):
 
@@ -46,7 +46,7 @@ Step by step:
 ```bash
 python -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt
-podman pull docker.io/library/python:3.12-slim
+podman pull docker.io/library/python@sha256:e8a38829209aea82774882e5157e1f7c3e8c8393ff53a697b3580896e57f345c   # python:3.12-slim, pinned by digest
 
 pytest -q tests                                   # 551 tests (10 Nov 2026; 13 need Podman and are skipped without it); includes the security regression suites, the Phase 2 attack tests and the finale P2 tests
 AEGIS_VAR=var/mine python scripts/demo_run.py DEMO-001 --bundle-dir var/mine/bundles/DEMO-001

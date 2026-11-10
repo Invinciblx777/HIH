@@ -40,8 +40,8 @@ Full threat table, trust assumptions and residual risk: [`aegislab/THREAT_MODEL.
 ## Requirements
 
 - Linux with **rootless Podman** and cgroups v2. Tested only on **one Fedora host** (kernel 7.2, Podman 5.8.9, crun, SELinux enforcing).
-- Python 3.11 or newer (tested with 3.14).
-- Network access the first time: PyPI for the Python packages in `requirements.txt`, Docker Hub for `python:3.12-slim`.
+- Python 3.12 or newer (`pyproject.toml`; CI runs 3.14, the public demo on Vercel runs 3.12 from `.python-version`, tested locally with 3.14 and 3.15).
+- Network access the first time: PyPI for the Python packages in `requirements.txt`, Docker Hub for `python:3.12-slim`, pulled by digest (`docker.io/library/python@sha256:e8a38829209aea82774882e5157e1f7c3e8c8393ff53a697b3580896e57f345c`, as pinned in `aegislab/Containerfile`).
 - No GPU, no model download and no API key for the judge path.
 
 The scripts install nothing globally: they create a project-local `.venv/` and write runtime state under `var/` (both git-ignored).

@@ -35,8 +35,10 @@ def test_P4U01_every_role_runs_userns_auto_as_non_root_never_keep_id(role):
     assert 0 < userns.SANDBOX_UID < userns.USERNS_SIZE
 
 
-def test_P4U02_image_user_is_non_root():
+def test_P4U02_image_user_is_non_root_and_base_is_pinned_by_digest():
     cf = (ROOT / "Containerfile").read_text()
+    froms = [ln for ln in cf.splitlines() if ln.startswith("FROM ")]
+    assert froms == ["FROM " + runtime.BASE_IMAGE] and "@sha256:" in runtime.BASE_IMAGE and len(runtime.BASE_IMAGE.split("@sha256:")[1]) == 64
     assert "USER %d:%d" % (userns.SANDBOX_UID, userns.SANDBOX_UID) in cf.splitlines()
     sh = (ROOT / "scripts/start_model_server.sh").read_text()
     assert "--userns keep-id" not in sh and '--userns "auto:size=$USERNS_SIZE"' in sh and '--user "$SANDBOX_UID:$SANDBOX_UID"' in sh
