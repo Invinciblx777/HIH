@@ -1003,12 +1003,8 @@ def _s_containment(_run_id):
         marker = "AEGISLAB-PROBE-VICTIM-MUST-SURVIVE\n"
         victim = work / "run" / "audit.jsonl"
         victim.write_text(marker)
-        args = ["podman", "run", "--rm", "--name", name, "--label", "aegislab=1"] + runtime.hardening_flags("red")
-        for h, ctr, _m in runs.Broker._spool_mounts(base):
-            args += ["-v", "%s:%s:Z" % (h, ctr)]
-        args += [runtime.IMAGE, "python", "-c", PROBE_CODE]
-        try:
-            p = subprocess.run(args, capture_output=True, text=True, timeout=PROBE_TIMEOUT_S)
+        try:  # finale P4: run_attached grants the probe's own subordinate UID (--userns auto) its two mailbox directories
+            p = runtime.run_attached(name, "red", runs.Broker._spool_mounts(base), ["python", "-c", PROBE_CODE], timeout=PROBE_TIMEOUT_S)
             obs = json.loads(p.stdout)
         except subprocess.TimeoutExpired:
             subprocess.run(["podman", "rm", "-f", "-t", "0", name], capture_output=True)
@@ -1023,7 +1019,7 @@ def _s_containment(_run_id):
         outside = sorted(q.name for q in (work / "run").iterdir() if q.name not in ("spool", "audit.jsonl"))
         intact = victim.read_text() == marker and not outside
     finally:
-        shutil.rmtree(work, ignore_errors=True)
+        runtime.remove_tree(work)
     net_ok = all(v.startswith("refused") for v in obs["net"].values())
     proc = obs.get("proc", {})
     steps = [{"actor": "red sandbox (probe)", "action": k, "expected_status": "refused", "status": v, "decision": "denied" if v.startswith("refused") else "allowed",

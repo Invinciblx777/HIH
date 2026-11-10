@@ -87,8 +87,8 @@ class TcpToUnix:
     """Loopback TCP endpoint that relays to the model server's UNIX socket, so the demo-only gateway fixture can sit in front of
     the sandboxed server. It exists only while (b)/(c) run."""
 
-    def __init__(self, path):
-        self.path, self.srv = path, socket.socket()
+    def __init__(self, path, owner=-1):
+        self.path, self.owner, self.srv = path, owner, socket.socket()
         self.srv.bind(("127.0.0.1", 0))
         self.srv.listen(16)
         self.port = self.srv.getsockname()[1]
@@ -100,7 +100,7 @@ class TcpToUnix:
                 c, _ = self.srv.accept()
             except OSError:
                 return
-            mc.check_unix_socket(self.path)
+            mc.check_unix_socket(self.path, self.owner)  # finale P4: the socket belongs to the server's mapped UID
             u = socket.socket(socket.AF_UNIX)
             u.connect(self.path)
             for a, b in ((c, u), (u, c)):
@@ -173,7 +173,7 @@ def main():
 
         # (b) positive control: deliberately shared history
         step("(b) Positive control: a client deliberately shares session A's history with session B")
-        relay = TcpToUnix(cfg.unix_socket) if cfg.unix_socket else None
+        relay = TcpToUnix(cfg.unix_socket, cfg.unix_socket_owner) if cfg.unix_socket else None
         up_root = ("http://127.0.0.1:%d" % relay.port) if relay else cfg.base_url.rsplit("/v1", 1)[0]
         gw = Proxy(up_root, key, mode="share_history")
         try:

@@ -13,7 +13,14 @@
 #   key        the API key, mode 0600, passed with --api-key-file (never on a command line, never in the environment)
 #   model.env  AEGIS_MODEL_* settings for the console / broker (mode 0600; holds the key FILE path, not the key)
 #   launch.json  flags, sha256 of model, server binary and (sandbox) libgomp, container name or pid
-#   sock/llama.sock (sandbox only)  the server's only endpoint; the directory is 0700 and owned by this user
+#   sock/llama.sock (sandbox only)  the server's only endpoint; the directory is 0700 and owned by this user, with one ACL
+#              entry for the container's mapped UID; the socket itself belongs to that UID (AEGIS_MODEL_UNIX_SOCKET_OWNER_UID)
+#   srvkey (sandbox only)  the server's own copy of the key, owned by the container's mapped UID (podman unshare chown), 0400
+#
+# Finale P4 (F4): the sandboxed server runs with --userns auto --user 900:900, i.e. as a subordinate host UID of its own, never
+# as this user (who owns var/keys/broker_ed25519.pem and RUN/key). The launcher checks after start that the server process's
+# host UID differs from this user's. libgomp (the image has none) is a vendored, verified copy: _models/libgomp-16.2.1-3.fc45/
+# libgomp.so.1, sha256 pinned below (LIBGOMP_SHA256, override the file with AEGIS_LIBGOMP); a different file is refused.
 #
 # Cross-request state, as far as this llama.cpp build (b11819) lets a launcher close it (see THREAT_MODEL.md section 9):
 #   --no-cache-prompt       server DEFAULT for cache_prompt becomes false. NOT a lock: a request that sends cache_prompt=true
@@ -39,6 +46,8 @@ ROOT=$PWD
 MODE=""; STOP=""; THREADS=6; CTX=4096; MEMORY=3g; EXPECT_MODEL=""; EXPECT_SERVER=""
 MODELS="${AEGIS_MODELS_DIR:-$ROOT/../../../../_models}"   # <repo>/../../../_models, repo = aegislab/..
 MODEL=""; SERVER_DIR=""
+LIBGOMP_SHA256=2380ddc4427d9fde812406bfdbbf28f3cceecca77c4ad5fa88a7692b7cfade53   # Fedora libgomp-16.2.1-3.fc45, see PROVENANCE.txt
+SANDBOX_UID=900; USERNS_SIZE=1024   # = aegis/userns.py SANDBOX_UID / USERNS_SIZE and the Containerfile USER
 while [ $# -gt 0 ]; do
   case "$1" in
     --sandbox) MODE=sandbox ;;
@@ -51,7 +60,7 @@ while [ $# -gt 0 ]; do
     --memory) MEMORY="${2:?}"; shift ;;
     --expect-model-sha256) EXPECT_MODEL="${2:?}"; shift ;;
     --expect-server-sha256) EXPECT_SERVER="${2:?}"; shift ;;
-    -h|--help) sed -n '2,36p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,45p' "$0"; exit 0 ;;
     *) echo "unknown option: $1 (see --help)" >&2; exit 2 ;;
   esac
   shift
@@ -105,27 +114,42 @@ wait_health() {  # $1: curl transport args
 if [ "$MODE" = sandbox ]; then
   command -v podman >/dev/null || die "podman not found"
   podman image exists localhost/aegislab-sandbox:0.1 || die "sandbox image localhost/aegislab-sandbox:0.1 missing (scripts/start_prototype.sh builds it)"
-  GOMP=$(ldconfig -p 2>/dev/null | sed -n 's/.*libgomp\.so\.1 (libc6,x86-64) => \(.*\)$/\1/p' | head -1)
-  [ -n "$GOMP" ] && [ -f "$GOMP" ] || die "host libgomp.so.1 not found (llama-server needs it; the sandbox image has none)"
-  mkdir -m 700 "$RUN/lib" "$RUN/sock"
-  cp -L "$GOMP" "$RUN/lib/libgomp.so.1"
-  GSHA=$(sha256sum "$RUN/lib/libgomp.so.1" | cut -d' ' -f1)
+  GOMP="${AEGIS_LIBGOMP:-$MODELS/libgomp-16.2.1-3.fc45/libgomp.so.1}"
+  [ -f "$GOMP" ] || die "vendored libgomp not found: $GOMP (llama-server needs it; the sandbox image has none; see PROVENANCE.txt)"
+  GSHA=$(sha256sum "$GOMP" | cut -d' ' -f1)
+  [ "$GSHA" = "$LIBGOMP_SHA256" ] || die "libgomp sha256 $GSHA differs from the pinned $LIBGOMP_SHA256 (refusing a changed library)"
+  mkdir -m 700 "$RUN/sock"
+  cp "$RUN/key" "$RUN/srvkey"
   NAME="aegis-model-server-$(basename "$RUN" | cut -d. -f2 | tr 'A-Z' 'a-z')"
-  PODMAN=(podman run -d --rm --name "$NAME" --label aegislab=1 --label aegislab-model-server=1
-          --network none --read-only --tmpfs /tmp:rw,size=16m --cap-drop ALL --security-opt no-new-privileges --userns keep-id
+  USERNS=(python3 "$ROOT/aegis/userns.py")
+  PODMAN=(podman create --rm --name "$NAME" --label aegislab=1 --label aegislab-model-server=1
+          --network none --read-only --tmpfs /tmp:rw,size=16m --cap-drop ALL --security-opt no-new-privileges
+          --userns "auto:size=$USERNS_SIZE" --user "$SANDBOX_UID:$SANDBOX_UID" --umask 0000
           --pids-limit 64 --memory "$MEMORY" --memory-swap "$MEMORY" --cpus "$THREADS"
-          -v "$SERVER_DIR:/opt/llama:ro,Z" -v "$RUN/lib:/opt/hostlib:ro,Z" -v "$MODEL:/models/model.gguf:ro,Z"
-          -v "$RUN/key:/run/aegis-key/key:ro,Z" -v "$RUN/sock:/run/aegis-model:Z"
+          -v "$SERVER_DIR:/opt/llama:ro,Z" -v "$GOMP:/opt/hostlib/libgomp.so.1:ro,Z" -v "$MODEL:/models/model.gguf:ro,Z"
+          -v "$RUN/srvkey:/run/aegis-key/key:ro,Z" -v "$RUN/sock:/run/aegis-model:Z"
           -e LD_LIBRARY_PATH=/opt/llama:/opt/hostlib --entrypoint /opt/llama/llama-server localhost/aegislab-sandbox:0.1)
-  "${PODMAN[@]}" "${FLAGS[@]}" --host /run/aegis-model/llama.sock >/dev/null || die "podman run failed"
+  "${PODMAN[@]}" "${FLAGS[@]}" --host /run/aegis-model/llama.sock >/dev/null || die "podman create failed"
+  # The container's UID is known only now. The socket directory stays this user's (0700) with ONE ACL entry for that UID; the
+  # server's key copy is chowned to it inside the rootless namespace and made 0400. --umask 0000 makes the socket connectable by
+  # this user, who can reach it only through the private directory. Nothing else is granted.
+  SUB=$("${USERNS[@]}" host-uid "$NAME") && INNER=$("${USERNS[@]}" inner-uid "$NAME") \
+    && podman unshare chown "$INNER:$INNER" "$RUN/srvkey" && podman unshare chmod 0400 "$RUN/srvkey" \
+    && "${USERNS[@]}" grant "$RUN/sock" "$SUB" rwx \
+    || { podman rm -f -t 0 "$NAME" >/dev/null 2>&1; die "could not map the container UID or grant it its socket directory"; }
+  podman start "$NAME" >/dev/null || { podman rm -f -t 0 "$NAME" >/dev/null 2>&1; die "podman start failed"; }
   SOCK="$RUN/sock/llama.sock"
   wait_health --unix-socket "$SOCK" http://localhost/health || { podman logs "$NAME" 2>&1 | tail -20 >&2; podman rm -f -t 0 "$NAME" >/dev/null 2>&1; die "server did not become healthy"; }
   NET=$(podman inspect "$NAME" --format '{{.HostConfig.NetworkMode}}')
   [ "$NET" = none ] || { podman rm -f -t 0 "$NAME" >/dev/null; die "container network mode is $NET, not none"; }
+  PUID=$(awk '/^Uid:/ {print $2}' "/proc/$(podman inspect "$NAME" --format '{{.State.Pid}}')/status")
+  [ "$PUID" = "$SUB" ] && [ "$PUID" != "$(id -u)" ] \
+    || { podman rm -f -t 0 "$NAME" >/dev/null; die "server process runs as host UID $PUID (expected the mapped $SUB, never $(id -u))"; }
   cat > "$RUN/model.env" <<EOF
 AEGIS_MODEL_BACKEND='openai_compatible'
 AEGIS_MODEL_BASE_URL='http://localhost/v1'
 AEGIS_MODEL_UNIX_SOCKET='$SOCK'
+AEGIS_MODEL_UNIX_SOCKET_OWNER_UID='$SUB'
 AEGIS_MODEL_NAME='local'
 AEGIS_MODEL_API_KEY_FILE='$RUN/key'
 AEGIS_MODEL_FILE_NAME='$(basename "$MODEL")'
@@ -133,11 +157,12 @@ AEGIS_MODEL_FILE_SHA256='$MSHA'
 AEGIS_MODEL_SERVER='$SERVER_LABEL'
 AEGIS_MODEL_SERVER_ISOLATION='rootless-podman-network-none'
 EOF
-  python3 - "$RUN/launch.json" "$NAME" "$MODEL" "$MSHA" "$SSHA" "$GSHA" "$SERVER_LABEL" "${PODMAN[*]} ${FLAGS[*]} --host /run/aegis-model/llama.sock" <<'PY'
+  python3 - "$RUN/launch.json" "$NAME" "$MODEL" "$MSHA" "$SSHA" "$GSHA" "$SERVER_LABEL" "${PODMAN[*]} ${FLAGS[*]} --host /run/aegis-model/llama.sock" "$SUB" "$(id -u)" <<'PY'
 import json, sys
-f, name, model, msha, ssha, gsha, label, cmd = sys.argv[1:]
+f, name, model, msha, ssha, gsha, label, cmd, sub, me = sys.argv[1:]
 json.dump({"mode": "sandbox", "container": name, "model_file": model.rsplit("/", 1)[1], "model_sha256": msha, "server_binary_sha256": ssha,
            "libgomp_sha256": gsha, "inference_server": label, "transport": "unix_socket", "network": "none",
+           "userns": "auto", "server_process_host_uid": int(sub), "launcher_uid": int(me),
            "command": cmd.replace("/run/aegis-key/key", "<keyfile>")}, open(f, "w"), indent=2)
 PY
 else
