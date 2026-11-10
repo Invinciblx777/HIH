@@ -132,7 +132,9 @@ def free_port():
 
 
 class Server:
-    """A llama-server on 127.0.0.1 with a random port and a random API key. CPU build; nothing leaves loopback."""
+    """A llama-server on 127.0.0.1 with a random port and a random API key. CPU build; nothing leaves loopback.
+    Since finale P3 the key reaches the server through --api-key-file (a mode-0600 file removed at stop), never on the command
+    line, where every local user could read it from /proc/<pid>/cmdline (a Phase 3 residual)."""
 
     def __init__(self, server_dir, model, key, np=1, ctx=4096, extra_args=(), threads=6):
         self.dir, self.model, self.key, self.np = Path(server_dir), Path(model), key, np
@@ -151,12 +153,15 @@ class Server:
 
     def args(self):
         return [str(self.dir / "llama-server"), "-m", str(self.model), "--host", "127.0.0.1", "--port", str(self.port),
-                "-c", str(self.ctx), "-np", str(self.np), "-t", str(self.threads), "--no-webui", "--api-key", "<key>"] + self.extra_args
+                "-c", str(self.ctx), "-np", str(self.np), "-t", str(self.threads), "--no-webui", "--api-key-file", "<keyfile>"] + self.extra_args
 
     def start(self):
         env = dict(os.environ, LD_LIBRARY_PATH=str(self.dir))
         cmd = self.args()
-        cmd[cmd.index("<key>")] = self.key
+        fd, self.key_file = tempfile.mkstemp(prefix="llama-key-")  # mkstemp creates it with mode 0600
+        with os.fdopen(fd, "w") as fh:
+            fh.write(self.key + "\n")
+        cmd[cmd.index("<keyfile>")] = self.key_file
         self.proc = subprocess.Popen(cmd, stdout=self.log, stderr=subprocess.STDOUT, env=env)
         deadline = time.time() + 90
         while time.time() < deadline:
@@ -179,11 +184,21 @@ class Server:
             except subprocess.TimeoutExpired:
                 self.proc.kill()
         self.proc = None
+        self._drop_key_file()
+
+    def _drop_key_file(self):
+        kf, self.key_file = getattr(self, "key_file", None), None
+        if kf:
+            try:
+                os.unlink(kf)
+            except OSError:
+                pass
 
     def kill_hard(self):
         if self.proc and self.proc.poll() is None:
             self.proc.kill()
             self.proc.wait(10)
+        self._drop_key_file()
 
     def client(self, cache_prompt=False, timeout=60, max_tokens=48, key=None, base=None, extra=None):
         env = {"AEGIS_MODEL_BACKEND": "openai_compatible", "AEGIS_MODEL_BASE_URL": base or self.base, "AEGIS_MODEL_NAME": "local",
