@@ -259,3 +259,22 @@ The scripted red agent's forbidden probes fire `denial_burst` and `forbidden_swe
 - The thresholds are fixed and not tuned on adversarial traffic.
 - An attacker who stays under every threshold is not flagged.
 - Alerts raised by denials appear in the operator's live view only at the next padded attack or at the seal.
+
+### 10.6 Capability tokens (SHOULD 6)
+
+`aegis/captoken.py` and `POST /api/runs/{id}/capabilities` add signed, expiring tokens scoped to one run, one role and a subset of that role's operations. They are signed with a separate key, `var/keys/capability_ed25519.pem`, never with the evidence key.
+
+| Property | Test | Label |
+|---|---|---|
+| Valid only on its run, only for its listed operations; refused on endpoints that are not run-scoped | `tests/test_finale_p4_captoken.py` P4K01 | Verified |
+| Never wider than the role it names | P4K02 | Verified |
+| The operator cannot mint the right to release; only the reviewer issues reviewer tokens; issuing needs a global role token (no delegation chains) | P4K03 | Verified |
+| Expired, tampered, or signed with the evidence key: refused | P4K04 | Verified |
+| Key separate from the evidence key, 0600, never mountable into a container | P4K05 | Verified |
+| Issuance is audited (`capability.issued` with jti, role, ops, expiry), the token is not stored; a refused capability on the result gate is a `policy.denied` | P4K06 | Verified |
+| Lifetime ≤ 1 h | P4K07 | Verified |
+| Global role tokens keep working unchanged (the console and scripts use them) | P4K08 and the existing suites | Verified |
+
+**Limits.**
+- There is no revocation list. A token is valid until it expires, or until the capability key is replaced, which revokes every token at once (Future).
+- The API still has no TLS. A bearer token sent over a non-loopback link can be copied (Assumption: loopback only, section 5).
