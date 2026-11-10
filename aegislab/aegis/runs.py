@@ -78,7 +78,10 @@ def ensure_tenant_storage():
         dst = store.p("tenants", tenant, name)
         if not dst.exists():
             dst.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy(SAMPLES / name, dst)
+            # copy under a private name, then rename: a concurrent creator sees no file or the whole file, never half
+            tmp = dst.with_name(".tmp-%s-%d-%d" % (name, os.getpid(), threading.get_ident()))
+            shutil.copy(SAMPLES / name, tmp)
+            os.replace(tmp, dst)
 
 
 # ---------------------------------------------------------------- per-run lifecycle lock
@@ -596,10 +599,14 @@ class Broker:
 
         if self.model_client is not None:
             stats = {"cache_entries": None, "uptime_s": None}
+            unsafe = self.model_cfg.unsafe_shared_prompt_cache
             run.log("model.session_opened", "model-adapter",
                     {"cache_entries_at_start": None, "strategy": "stateless-http", "backend": self.model_cfg.describe(),
-                     "server_state_reset": "none: AegisLab sends stateless requests but cannot clear server-side cache"},
-                    monitor={"summary": "Real-model backend reachable (stateless requests; server cache not controlled)"})
+                     "server_state_reset": "none: AegisLab sends stateless requests but cannot clear server-side cache",
+                     "unsafe_shared_prompt_cache_experiment": unsafe},
+                    monitor={"summary": "UNSAFE EXPERIMENT: real-model backend with the shared prompt cache ON (cache_prompt=true)",
+                             "decision": "warning"} if unsafe else
+                    {"summary": "Real-model backend reachable (stateless requests; server cache not controlled)"})
         else:
             stats = self.call("model", {"op": "stats"}, timeout=30)
             run.log("model.session_opened", "model-worker",
@@ -846,7 +853,9 @@ class Broker:
             "verdict_in": v_in.get("verdict"), "verdict_out": v_out.get("verdict"), "outcome": outcome,
             "output_digest": sha256((final or "").encode()), "canary_leaks": len(leaked),
             "secrets_withheld": secrets_found},
-            monitor={"summary": "Attack %s evaluated through broker" % aid})
+            # attack_id is chosen by red: the monitoring stream carries the broker's own counter and a digest, never the id
+            monitor={"summary": "Attack %d evaluated through broker" % self.evaluated,
+                     "attack_digest": sha256(aid.encode())[:23]})
         if leaked:
             self.run.log("canary.leak", "broker", {"attack_id": aid, "count": len(leaked)},
                          monitor={"summary": "Cross-run canary observed in model output; withheld from red", "decision": "alert"})
@@ -919,6 +928,35 @@ class Broker:
         run.checkpoint("seal")
 
 
+# ---------------------------------------------------------------- monitoring views
+# Who sees what of monitor.jsonl. The file itself is the control plane's record; callers outside it get one of two views.
+#   trusted (operator, reviewer): every event, live, with its sequence number, digests and the per-attack alerts
+#     (canary.leak, model.secret_withheld, model.error), so observability is kept while the run executes.
+#   everyone else (no identity, red or blue participant), while the run is CREATED, FROZEN or RUNNING: run-level events
+#     only, with text fixed by the control plane, no sequence numbers (a gap would reveal a withheld alert), no digests (a
+#     digest of a red-chosen value is still a channel red can steer), timestamps truncated to whole seconds. Per-request
+#     denials, commitments, self-checks, checkpoints and every alert stay withheld: an alert after attack N tells red WHY
+#     attack N was refused, which the uniform refusal hides, while red can still act on it.
+#   once the run is SEALED, RELEASED or FAILED red can no longer act, and everyone gets the stored stream (which carries
+#     digests, never a tenant-chosen string).
+MONITOR_TRUSTED_ROLES = ("operator", "reviewer")
+CLOSED_STATES = ("SEALED", "RELEASED", "FAILED")
+PARTICIPANT_EVENTS = frozenset({"run.created", "run.frozen", "defence.attested", "model.session_opened", "runtime.applied",
+                                "attack.evaluated", "model.session_closed", "model.reset", "model.reset_skipped",
+                                "run.sealed", "run.failed"})
+PARTICIPANT_FIELDS = ("type", "actor", "summary", "decision")
+
+
+def monitor_view(run: Run, trusted: bool) -> list:
+    """The monitoring stream as `trusted` (operator / reviewer) or anyone else may see it; see the comment above."""
+    closed = run.state in CLOSED_STATES  # read before the events: every event read below was written in this state or earlier
+    events = read_jsonl(run.dir / "monitor.jsonl")
+    if trusted or closed:
+        return events
+    return [{**{k: e[k] for k in PARTICIPANT_FIELDS if k in e}, "ts": int(e["ts"]) if isinstance(e.get("ts"), (int, float)) else None}
+            for e in events if e.get("type") in PARTICIPANT_EVENTS and not e.get("post_terminal")]
+
+
 # ---------------------------------------------------------------- result gate
 def verify_run(run_id, tail_ok=False) -> dict:
     """Verify a run's log against the reviewer vault, using the broker's own public key (not the copy in the
@@ -986,18 +1024,32 @@ def _release_locked(run, run_id, actor) -> dict:
     run.update(state="RELEASED", released_at=time.time())
     run.terminal_checkpoint("RELEASED")
     final = verify_run(run_id)
-    if not final["ok"]:  # fail closed: a release that does not verify strictly never exposes artifacts
-        run.update(state="FAILED")
-        raise GateError("terminal verification failed after release; run marked FAILED")
+    if not final["ok"]:
+        # Fail closed: a release that does not verify strictly never exposes artifacts. The terminal checkpoint already says
+        # RELEASED and the chain is closed for good, so the record must not turn FAILED: that would contradict its own
+        # signature and every later verification would report a mismatch the control plane made itself instead of the
+        # genuine finding. The state stays RELEASED, the release is marked unverified (released() is then False, so every
+        # release-gated read refuses) and an unsigned post-terminal entry says why.
+        run.update(release_verified=False)
+        run.log("run.release_unverified", "control-plane", {"findings": [str(f)[:200] for f in final["findings"][:5]]},
+                monitor={"summary": "Release did not verify after signing: results withheld", "decision": "failed"})
+        raise GateError("terminal verification failed after release; results withheld")
     # The reviewer should write this value down: verify_cli --expect-terminal-hash detects any later complete rewrite,
     # including one made with a stolen signing key and every retained copy replaced.
     return {"state": "RELEASED", "verification": final, "commitments": c, "terminal_hash": final.get("terminal_hash")}
+
+
+def released(rec: dict) -> bool:
+    """True when a run's results may leave the result gate: RELEASED, and the release verified after its terminal checkpoint."""
+    return rec.get("state") == "RELEASED" and rec.get("release_verified") is not False
 
 
 def artifacts(run_id) -> list:
     run = Run(run_id)
     if run.state != "RELEASED":
         raise GateError("artifacts are sealed until release (current: %s)" % run.state)
+    if not released(run.record):
+        raise GateError("the release did not verify after its terminal checkpoint; artifacts stay sealed")
     return read_jsonl(run.dir / "sealed/artifacts.jsonl")
 
 

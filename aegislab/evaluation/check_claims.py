@@ -169,6 +169,65 @@ def timing_rows(full):
     return rows, claims
 
 
+# ----------------------------------------------------------------------------------------------- acknowledged source drift
+# A saved experiment records the sha256 of the security-relevant sources it ran on, and its row fails ("DRIFT") when one of
+# them changes. A change can be acknowledged, never silently: a dated file under evidence/ names, per file, the hash the runs
+# recorded (old_sha256), the hash the file has after the change (new_sha256), the commit, a one-line reason, and for every
+# experiment whether the change affects what it measured and why. A difference is accepted ONLY when the file's current hash
+# equals an acknowledged new_sha256 for the recorded old_sha256 AND that acknowledgement says, with a reason, that the change
+# does not affect that experiment. A further edit, an unacknowledged change, or one acknowledged as affecting the measurement
+# still fails. The list of acknowledgement files is fixed here (this file is pinned by MANIFEST.sha256), not discovered.
+SOURCE_DRIFT_FILES = (ROOT / "evidence" / "finale_rebaseline_2026-11-10" / "SOURCE_DRIFT.json",)
+
+
+def source_drift_acks(files=None):
+    """{path: [acknowledged change, ...]} from the acknowledgement files that exist."""
+    acks = {}
+    for f in SOURCE_DRIFT_FILES if files is None else files:
+        f = Path(f)
+        if f.exists():
+            for c in json.loads(f.read_text())["changes"]:
+                acks.setdefault(c["path"], []).append(dict(c, ack_file=f.name))
+    return acks
+
+
+def source_drift(recorded, experiment, acks=None):
+    """Compare the source hashes a run recorded with the tree now. Returns (unacknowledged, acknowledged) lists of paths."""
+    acks = source_drift_acks() if acks is None else acks
+    bad, ok = [], []
+    for k, h in sorted(recorded.items()):
+        p = ROOT / k
+        if not p.exists():
+            continue
+        cur = hashlib.sha256(p.read_bytes()).hexdigest()
+        if cur == h:
+            continue
+        hit = [a for a in acks.get(k, []) if a.get("old_sha256") == h and a.get("new_sha256") == cur
+               and (a.get("claims") or {}).get(experiment, {}).get("affects") is False
+               and str((a.get("claims") or {}).get(experiment, {}).get("why", "")).strip()]
+        (ok if hit else bad).append(k)
+    return bad, ok
+
+
+def phase3_provenance():
+    """For the demos and checkers: per saved Phase 3 experiment, the revision it was recorded on and which of its sources
+    changed since (acknowledged or not). Nothing here is re-measured."""
+    out = []
+    if not (P3 / "INDEX.json").exists():
+        return out
+    latest = {}
+    for e in json.loads((P3 / "INDEX.json").read_text()):
+        latest[e["experiment"]] = e
+    acks = source_drift_acks()
+    for exp, e in sorted(latest.items()):
+        res = json.loads((P3 / e["dir"] / "result.json").read_text())
+        bad, ok = source_drift(res["source_sha256"], exp, acks)
+        out.append({"experiment": exp, "dir": e["dir"], "recorded_utc": res["timestamp_utc"],
+                    "recorded_tree": res["code_revision"]["tree_sha256"], "acknowledged": ok, "unacknowledged": bad,
+                    "commits": sorted({a["commit"][:12] for k in ok for a in acks[k]})})
+    return out
+
+
 # ----------------------------------------------------------------------------------------------- Phase 3 (Part C)
 P3 = ROOT / "evidence" / "phase3_2026-10-23" / "llm"
 P3_REPORT = "PHASE3_LLM_SECURITY_REPORT.md"
@@ -190,17 +249,22 @@ def phase3_rows():
     for e in index:  # a later entry of the same experiment supersedes an earlier one; earlier runs stay on disk
         latest[e["experiment"]] = e
     runs_ = {}
+    acks = source_drift_acks()
     for exp, e in sorted(latest.items()):
         d = P3 / e["dir"]
         res = json.loads((d / "result.json").read_text())
         obs = _jsonl(d / "observations.jsonl")
         runs_[exp] = (res, obs)
-        drift = [k for k, h in res["source_sha256"].items() if (ROOT / k).exists() and sha256_file(ROOT / k) != h]
+        drift, acked = source_drift(res["source_sha256"], exp, acks)
+        found = ("DRIFT: " + ", ".join(drift) if drift else
+                 "recorded on %s (%s); acknowledged change, does not affect %s: %s" % (
+                     res["code_revision"]["tree_sha256"][:19], res["timestamp_utc"][:10], exp.split("_")[0], ", ".join(acked))
+                 if acked else "no drift")
         rows += [
             ("%s: result.json hash equals INDEX entry" % exp, e["dir"], e["result_sha256"][:12], sha256_file(d / "result.json") == e["result_sha256"]),
             ("%s: observations.jsonl hash and count recorded" % exp, e["dir"], "%d observations" % len(obs),
              sha256_file(d / "observations.jsonl") == res["observations_sha256"] and len(obs) == res["observation_count"]),
-            ("%s: security-relevant sources unchanged since the run" % exp, e["dir"], "no drift" if not drift else "DRIFT: " + ", ".join(drift), not drift),
+            ("%s: security-relevant sources unchanged since the run" % exp, e["dir"], found, not drift),
             ("%s: provenance fields present" % exp, e["dir"], res["run_id"],
              all(k in res for k in ("run_id", "timestamp_utc", "model_backend", "config", "seed", "fixture_version", "environment", "limitations", "classification"))
              and res["model_backend"].get("model_sha256") and res["classification"] in ("pass", "fail", "inconclusive", "not_run")),

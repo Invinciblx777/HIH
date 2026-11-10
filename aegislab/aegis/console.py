@@ -623,23 +623,38 @@ NEXT = {
 }
 
 
-def _run_view(run_id) -> dict:
+def _trusted_viewer(request: Request, token) -> bool:
+    """Whether a reader gets the operator / reviewer view of the monitoring stream (runs.monitor_view): an operator or reviewer
+    token, or the operator session. Read-only check: a bad token or no session just means the participant view."""
+    if token is not None:
+        try:
+            return api.role_of(token) in runs.MONITOR_TRUSTED_ROLES
+        except HTTPException:
+            return False
+    return bool(lab_session.get(request.cookies.get(lab_session.COOKIE)))
+
+
+def _run_view(run_id, trusted=True) -> dict:
+    """Lifecycle helpers for one run. Untrusted readers (see _trusted_viewer) get the participant monitoring view, and the
+    audit counters stay hidden until the run is sealed: a count that grows by two after one attack says an alert was written."""
     run = runs.Run(run_id)
     rec = run.record
-    mon = read_jsonl(run.dir / "monitor.jsonl")
+    mon = runs.monitor_view(run, trusted)
     last = mon[-1] if mon else None
-    return {"run": api.public_view(rec), "mode": "LIVE SANDBOX / STUB MODEL", "defence_profile": _lab_meta(run_id).get("defence_profile"),
-            "events": len(mon), "audit_entries": run.audit.seq, "signed_upto": _signed_upto(run_id),
+    counters = trusted or rec.get("state") in runs.CLOSED_STATES
+    return {"run": api.public_view(rec, trusted), "mode": "LIVE SANDBOX / STUB MODEL", "defence_profile": _lab_meta(run_id).get("defence_profile"),
+            "events": len(mon), "audit_entries": run.audit.seq if counters else None, "signed_upto": _signed_upto(run_id) if counters else None,
             "last_event": {k: last.get(k) for k in ("seq", "ts", "type", "actor", "summary", "decision")} if last else None,
             "bundle_exported": store.p("bundles", run_id).is_dir(),
             "next_actions": [{"id": a, "label": t} for a, t in NEXT.get(rec.get("state"), [])]}
 
 
 @app.get("/api/lab/runs/{run_id}")
-def lab_run_view(run_id: str):
-    """Public view of a lab run (same fields as GET /api/runs/{id} for an observer) plus lifecycle helpers."""
+def lab_run_view(run_id: str, request: Request, x_aegis_token: str | None = Header(None)):
+    """Public view of a lab run (same fields as GET /api/runs/{id} for an observer) plus lifecycle helpers. The operator
+    session or an operator / reviewer token sees the live monitoring detail."""
     _lab_run(run_id, None)
-    return _run_view(run_id)
+    return _run_view(run_id, _trusted_viewer(request, x_aegis_token))
 
 
 # ------------------------------------------------------------------------------------------------ interrupted runs
@@ -1280,19 +1295,20 @@ def session_end(request: Request):
 
 # ------------------------------------------------------------------------------------------------ timeline
 @app.get("/api/lab/timeline")
-def timeline(run_id: str | None = None, limit: int = 500):
-    """Merged redacted monitoring streams (the same public data as GET /api/runs/{id}/events), newest first, with the run id
-    and whether a signed checkpoint already covers each entry."""
+def timeline(request: Request, run_id: str | None = None, limit: int = 500, x_aegis_token: str | None = Header(None)):
+    """Merged redacted monitoring streams (the same data as GET /api/runs/{id}/events for the same reader: runs.monitor_view),
+    newest first, with the run id and whether a signed checkpoint already covers each entry."""
     limit = max(1, min(limit, 2000))
     ids = [r["id"] for r in runs.list_runs()]
     if run_id is not None:
         if run_id not in ids:
             raise HTTPException(404, "run not found")
         ids = [run_id]
+    trusted = _trusted_viewer(request, x_aegis_token)
     out = []
     for rid in ids:
         signed = _signed_upto(rid)
-        for e in read_jsonl(store.run_dir(rid) / "monitor.jsonl"):
+        for e in runs.monitor_view(runs.Run(rid), trusted):
             out.append({**e, "run_id": rid, "signed": e.get("seq") is not None and e["seq"] <= signed})
     out.sort(key=lambda e: e.get("ts", 0), reverse=True)
     return out[:limit]
