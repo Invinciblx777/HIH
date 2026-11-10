@@ -65,7 +65,9 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
-die() { echo "start_model_server: $*" >&2; exit 1; }
+# Every die after the run directory exists removes it (it holds the API key); before finale P4 a refusal there left it behind
+# (the ERR trap does not fire on an explicit exit). All such refusals happen before launch.json is written.
+die() { echo "start_model_server: $*" >&2; [ -n "${RUN:-}" ] && [ -d "$RUN" ] && rm -rf -- "$RUN"; exit 1; }
 
 if [ -n "$STOP" ]; then
   [ -f "$STOP/launch.json" ] || die "$STOP is not a model-server run directory"

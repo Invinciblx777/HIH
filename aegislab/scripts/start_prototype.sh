@@ -73,9 +73,10 @@ elif [ "$(timeout 20 podman info --format '{{.Host.Security.Rootless}}' 2>/dev/n
 else
   ok "podman $(podman --version | awk '{print $3}'), rootless"
   if ! podman image exists localhost/aegislab-sandbox:0.1 || [ "$CHECK" = 0 ]; then
-    if ! podman image exists docker.io/library/python:3.12-slim; then
-      echo "        pulling docker.io/library/python:3.12-slim (first run only)"
-      podman pull -q docker.io/library/python:3.12-slim >/dev/null || { LIVE=0; warn "could not pull the base image: degraded mode (check network, or 'podman load' it)"; }
+    BASE="docker.io/library/python@sha256:e8a38829209aea82774882e5157e1f7c3e8c8393ff53a697b3580896e57f345c"  # python:3.12-slim pinned by digest, as in Containerfile (finale P4)
+    if ! podman image exists "$BASE"; then
+      echo "        pulling python:3.12-slim by digest (first run only)"
+      podman pull -q "$BASE" >/dev/null || { LIVE=0; warn "could not pull the base image: degraded mode (check network, or 'podman load' it)"; }
     fi
     if [ "$LIVE" = 1 ] && [ "$CHECK" = 0 ]; then
       .venv/bin/python -c 'from aegis import runtime, store; runtime.build_image(store.ROOT)' >/dev/null \
