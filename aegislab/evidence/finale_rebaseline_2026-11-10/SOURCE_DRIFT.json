@@ -1,0 +1,172 @@
+{
+ "schema": "aegislab-source-drift/1",
+ "created": "2026-11-10",
+ "phase": "Grand Finale P2 re-baseline",
+ "what": "Acknowledged changes to security-relevant sources recorded (source_sha256) by the saved Phase 3 real-model runs in evidence/phase3_2026-10-23/llm/. Those runs were recorded on 23 Oct 2026 and are NOT re-run here (the real-model re-run is planned for finale P3). evaluation/check_claims.py accepts a difference only when the file's current sha256 equals new_sha256 for the recorded old_sha256 and the entry below says, for that experiment, affects=false with a reason. A further edit of any of these files fails the check again.",
+ "base_commit": "9932cfa202a64613064c04c3cfef993b1a58f331",
+ "change_commit": "c018c5238c106bab6e9f50442b09b4977ebeba7e",
+ "recorded_runs": {
+  "E1_canary_matrix": {
+   "dir": "P3-20261023T084629Z-E1_canary_matrix"
+  },
+  "E2_pipeline_canary": {
+   "dir": "P3-20261023T053717Z-E2_pipeline_canary"
+  },
+  "E3_kv_cache_oracle": {
+   "dir": "P3-20261023T054023Z-E3_kv_cache_oracle"
+  },
+  "E4_injection_output_isolation": {
+   "dir": "P3-20261023T054116Z-E4_injection_output_isolation"
+  },
+  "E5_failure_handling": {
+   "dir": "P3-20261023T054144Z-E5_failure_handling"
+  }
+ },
+ "changes": [
+  {
+   "path": "aegis/runs.py",
+   "old_sha256": "30805d932220057831adc152769c8d40377746234eea1d1faa3b297d2940cd6a",
+   "new_sha256": "8206266bd137269475f793fd1a55f42e5f5ac3d88af32f2f56fd89693b12c5af",
+   "commit": "c018c5238c106bab6e9f50442b09b4977ebeba7e",
+   "reason": "F3: the attack.evaluated monitor event carries the broker's counter and a digest instead of the red-chosen attack_id; new monitor_view() (read side) gives participants and unauthenticated readers run-level events only until SEALED. F7: ensure_tenant_storage copies to a private name and renames. Phase 3 residual: model.session_opened records the unsafe_shared_prompt_cache_experiment flag. Item 5: a release whose strict verification fails after the terminal checkpoint stays RELEASED and is marked unverified (released()) instead of turning FAILED.",
+   "claims": {
+    "E1_canary_matrix": {
+     "affects": false,
+     "why": "E1 calls the model adapter directly (llm_common Server.client); no code in aegis/runs.py runs in it."
+    },
+    "E2_pipeline_canary": {
+     "affects": false,
+     "why": "E2 measures foreign canaries in raw model output, in red-visible final output and in monitor/audit/manifest text. The broker's model call, canary detection, withholding and red reply are unchanged; the monitor event no longer holds the attack id (harness ids such as Q01, never a canary), which can only remove text from the side-channel scan, and the recorded scan found 0."
+    },
+    "E3_kv_cache_oracle": {
+     "affects": false,
+     "why": "E3 calls the model adapter directly to read cached-token counts and wall time; no code in aegis/runs.py runs in it."
+    },
+    "E4_injection_output_isolation": {
+     "affects": false,
+     "why": "E4 measures markers and foreign canaries in red-visible output (unchanged broker path) and in monitor/audit/manifest text (the monitor now holds less text: no attack id), and replays model text against the release gate; release, its refusals and the state check before signing are unchanged; the changed branch only runs when verification fails after signing, which no recorded run reached (every recorded release verified)."
+    },
+    "E5_failure_handling": {
+     "affects": false,
+     "why": "E5 records model-error handling, FAILED runs with a verified terminal checkpoint, refused releases and refused artifact reads. Those paths (model.error, run.failed, release of a non-SEALED run, artifacts of a non-RELEASED run) are unchanged; monitor_view and released() only add refusals for a state no recorded run had."
+    }
+   }
+  },
+  {
+   "path": "aegis/api.py",
+   "old_sha256": "44b13b067e58ba03c14e3f5eee456f49d9fc600c1785cf96f0a36e6468a9315c",
+   "new_sha256": "c5c4b4b4976df7420c3c89af20950eaf4e22f5cddbad14fb2af3c4a41eac718e",
+   "commit": "c018c5238c106bab6e9f50442b09b4977ebeba7e",
+   "reason": "F3: GET /api/runs/{id}/events returns runs.monitor_view (operator/reviewer: all events; anyone else: run-level events only until SEALED; an unknown token gets that view, not a 401); public_view hides commitments_root from untrusted readers until SEALED. Item 5: release-gated reads use runs.released().",
+   "claims": {
+    "E1_canary_matrix": {
+     "affects": false,
+     "why": "E1 does not use the control-plane API."
+    },
+    "E2_pipeline_canary": {
+     "affects": false,
+     "why": "E2 reads the run directory and the sealed store directly; the API changes only narrow what non-operators read."
+    },
+    "E3_kv_cache_oracle": {
+     "affects": false,
+     "why": "E3 does not use the control-plane API."
+    },
+    "E4_injection_output_isolation": {
+     "affects": false,
+     "why": "E4's gate replay POSTs /api/runs/{id}/release with replayed text as the token; that endpoint and role_of are unchanged."
+    },
+    "E5_failure_handling": {
+     "affects": false,
+     "why": "E5 reads /api/runs/{id}/artifacts and POSTs /release; both refuse exactly as before for the recorded states (FAILED, SEALED, RUNNING); released() differs from state == RELEASED only for an unverified release, which no recorded run had."
+    }
+   }
+  },
+  {
+   "path": "aegis/model_client.py",
+   "old_sha256": "3a0beaec5ab2816cb0fd0579581c7d8ca959d2f3ed7b6a3bca988f9b408ae2a1",
+   "new_sha256": "2acfdb59d2e44cd8e6e30e3815c4d5000241b7d71ac553867468ee06add4e607",
+   "commit": "c018c5238c106bab6e9f50442b09b4977ebeba7e",
+   "reason": "Phase 3 residual: cache_prompt=true is refused unless AEGIS_UNSAFE_EXPERIMENT_SHARED_PROMPT_CACHE=1; a missing or null cache_prompt becomes an explicit false; describe() adds unsafe_shared_prompt_cache_experiment only when opted in.",
+   "claims": {
+    "E1_canary_matrix": {
+     "affects": false,
+     "why": "Every E1 request set cache_prompt explicitly (true for the cache-on and positive-control cells, false otherwise); the harness now sets the opt-in for exactly the true cells, so the request bodies are byte-for-byte what was sent before."
+    },
+    "E2_pipeline_canary": {
+     "affects": false,
+     "why": "E2 pipeline runs set cache_prompt explicitly through set_model_env; with the opt-in set for cache-on runs the request bodies are unchanged. The frozen manifest of a cache-on run gains one boolean field; no canary or marker can be in it."
+    },
+    "E3_kv_cache_oracle": {
+     "affects": false,
+     "why": "The E3 cache-on cells now pass through the opt-in and send the same cache_prompt=true body as before; the cache-off cells send the same explicit false. Cached-token counts and wall time come from the server and are unaffected."
+    },
+    "E4_injection_output_isolation": {
+     "affects": false,
+     "why": "E4 runs send cache_prompt explicitly; request bodies are unchanged."
+    },
+    "E5_failure_handling": {
+     "affects": false,
+     "why": "E5 failure cases (killed, unreachable, flapping server) send the same bodies; error classification and timeouts are unchanged."
+    }
+   }
+  },
+  {
+   "path": "evaluation/llm_common.py",
+   "old_sha256": "fdcde117f8fb67a021849f7726b389e90853de8c04f720524674063894d246be",
+   "new_sha256": "ebc5d266a69a9a650ed49c11b97dd3e45b376b07b9522ce4604c348a40a41eac",
+   "commit": "c018c5238c106bab6e9f50442b09b4977ebeba7e",
+   "reason": "Server.client() sets the unsafe opt-in when cache_prompt (or extra['cache_prompt']) is true, so the cache-on controls still reach the guarded adapter.",
+   "claims": {
+    "E1_canary_matrix": {
+     "affects": false,
+     "why": "Only adds the opt-in to the adapter configuration for cache_prompt=true clients; requests are unchanged."
+    },
+    "E2_pipeline_canary": {
+     "affects": false,
+     "why": "Only adds the opt-in to the adapter configuration for cache_prompt=true clients; requests are unchanged."
+    },
+    "E3_kv_cache_oracle": {
+     "affects": false,
+     "why": "Only adds the opt-in to the adapter configuration for cache_prompt=true clients; requests are unchanged."
+    },
+    "E4_injection_output_isolation": {
+     "affects": false,
+     "why": "Only adds the opt-in to the adapter configuration for cache_prompt=true clients; requests are unchanged."
+    },
+    "E5_failure_handling": {
+     "affects": false,
+     "why": "Only adds the opt-in to the adapter configuration for cache_prompt=true clients; requests are unchanged."
+    }
+   }
+  },
+  {
+   "path": "evaluation/llm_isolation.py",
+   "old_sha256": "ca814207bbfa97a04ed4c0fc2b682b891d51e6b916ca4b17c20f3cb7e02c3021",
+   "new_sha256": "7e1753084621f45635437e318f44463b7ba6b444b727ef1bd564a17e39c8d5e7",
+   "commit": "c018c5238c106bab6e9f50442b09b4977ebeba7e",
+   "reason": "set_model_env() sets the unsafe opt-in for cache-on pipeline runs and removes it otherwise; clear_model_env() removes it.",
+   "claims": {
+    "E1_canary_matrix": {
+     "affects": false,
+     "why": "Environment helper for pipeline runs only; E1 uses the direct adapter. No measured value changes."
+    },
+    "E2_pipeline_canary": {
+     "affects": false,
+     "why": "Cache-on pipeline runs now carry the opt-in (and the manifest records it); the requests and the broker path are unchanged."
+    },
+    "E3_kv_cache_oracle": {
+     "affects": false,
+     "why": "Environment helper for pipeline runs only; E3 uses the direct adapter. No measured value changes."
+    },
+    "E4_injection_output_isolation": {
+     "affects": false,
+     "why": "Cache-on pipeline runs, if any, now carry the opt-in; requests and the broker path are unchanged."
+    },
+    "E5_failure_handling": {
+     "affects": false,
+     "why": "Environment helper; the failure cases send the same requests."
+    }
+   }
+  }
+ ]
+}

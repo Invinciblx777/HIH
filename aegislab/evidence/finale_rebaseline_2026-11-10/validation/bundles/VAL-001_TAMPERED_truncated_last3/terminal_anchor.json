@@ -1,0 +1,14 @@
+{
+  "cp_seq": 3,
+  "event_count": 25,
+  "head": "sha256:a8fbf4278b55a1ed2d8095bca03a3bae3cc8908987e0e7ba59572169dac204b7",
+  "key_id": "sha256:541533884d7e9de3",
+  "prev_cp": "sha256:b7145e89c63e9664ef1f159299fff2e88a95bc72c0d0cd0462830315bd8c6a2f",
+  "reason": "terminal",
+  "run_id": "VAL-001",
+  "seq": 25,
+  "sig": "P+v2ohqLDTQzaXw7Yq6QsGlBaOXsE7txHrDAtzCE5VYranV6RtIIL+TIf2WiLruFFthhsUHuOiIQJ39Fw105BA==",
+  "state": "RELEASED",
+  "ts": 1794282387.440327,
+  "v": 2
+}

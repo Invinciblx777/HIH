@@ -24,7 +24,7 @@ Lifecycle: `CREATED → FROZEN → RUNNING → SEALED → RELEASED` (or `FAILED`
 | Hash-chained audit log; chained Ed25519 checkpoints; signed **terminal checkpoint** (run id, final state, final seq/hash, event count, previous checkpoint) in the reviewer vault and a separate anchor store; fail-closed verifier | `aegis/audit.py`, `aegis/runs.py`, `aegis/store.py` |
 | Optional real-model adapter (stateless requests, loopback only, key never logged); stub stays default | `aegis/model_client.py` |
 | Result gate: SEALED, audit verifies, commitments verify, reviewer identity | `aegis/runs.py` (`release`) |
-| Redacted monitoring stream (no payloads, outputs or rules) | `monitor.jsonl`, `GET /api/runs/{id}/events` |
+| Redacted monitoring stream (no payloads, outputs, rules or tenant-chosen strings); operator and reviewer see it live with alerts, everyone else sees run-level events only until the run is sealed | `monitor.jsonl`, `GET /api/runs/{id}/events` |
 | Independent verifier (`--bundle`, `--anchor`, `--expect-state`, `--expect-events`) and 12 tamper modes | `aegis/verify_cli.py` |
 | Web console: overview, dashboard, run details, evidence report | `web/` |
 
@@ -48,7 +48,7 @@ python -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt
 podman pull docker.io/library/python:3.12-slim
 
-pytest -q tests                                   # 297 tests; includes the security regression suites, the Phase 2 attack tests and Podman-based tests (skipped without Podman)
+pytest -q tests                                   # 551 tests (10 Nov 2026; 13 need Podman and are skipped without it); includes the security regression suites, the Phase 2 attack tests and the finale P2 tests
 AEGIS_VAR=var/mine python scripts/demo_run.py DEMO-001 --bundle-dir var/mine/bundles/DEMO-001
 python -m aegis.verify_cli --bundle var/mine/bundles/DEMO-001
 scripts/security_demo.sh                          # judge-facing demonstration (a few seconds once the image is built), fresh temp state, exits 0 only if every check behaves
@@ -66,7 +66,7 @@ AEGIS_VAR=var/scratch python evaluation/timing_closeout.py --seed 1 --out-dir ev
 python evaluation/timing_aggregate.py --out evidence/closeout_<date>/timing/aggregate.json evidence/closeout_<date>/timing/exec*   # combine executions, held-out transfer, verdicts
 ```
 
-The console guide is `../docs/prototype/PROTOTYPE_GUIDE.md`. The API enforces the role identities (operator, reviewer, blue, red, observer). They are local demo tokens in `var/keys/tokens.json`; production would use SSO/OIDC. `AEGIS_DEMO_MODE=1` makes `GET /api/demo/identities` hand out every token to any local caller: demo only.
+The console guide is `../docs/prototype/PROTOTYPE_GUIDE.md`. A **read-only** public demo of the console runs at https://aegislab.vercel.app (`app.py` sets `AEGIS_PUBLIC_DEMO=1`): no operator session, no launch code, no containers, no model; only bundle verification and tampering with a disposable copy, rate-limited. The live console (`scripts/start_prototype.sh`) binds to 127.0.0.1 and must stay on loopback; `quickstart.sh --serve` starts it the same way. The API enforces the role identities (operator, reviewer, blue, red, observer). They are local demo tokens in `var/keys/tokens.json`; production would use SSO/OIDC. `AEGIS_DEMO_MODE=1` makes `GET /api/demo/identities` hand out every token to any local caller: demo only.
 
 ### Independent verification of a run (reviewer side)
 
@@ -99,7 +99,7 @@ The setting is recorded in the frozen manifest (never the key); changing it afte
 
 | Method | Path | Who |
 |---|---|---|
-| GET | `/api/runs`, `/api/runs/{id}`, `/api/runs/{id}/events` | anyone (redacted; blue-config and attack-pack digests only for operator/reviewer until release) |
+| GET | `/api/runs`, `/api/runs/{id}`, `/api/runs/{id}/events` | anyone (redacted; blue-config and attack-pack digests only for operator/reviewer until release; while a run is CREATED, FROZEN or RUNNING the events of anyone but operator/reviewer are run-level only: no sequence numbers, digests, denials or per-attack alerts) |
 | POST | `/api/runs`, `/api/runs/{id}/freeze`, `/api/runs/{id}/start` | operator |
 | POST | `/api/runs/{id}/defence-config` | blue participant / operator, CREATED only |
 | POST | `/api/runs/{id}/release` | reviewer, SEALED only |
