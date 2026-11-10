@@ -407,12 +407,26 @@ def _dir_fd(directory) -> int:
         raise MailboxError(exc.errno, "mailbox directory unusable") from None
 
 
+TRASH_PREFIX = ".aegis-trash-"
+
+
 def _unlink_at(dfd: int, name: str):
-    """Remove a tenant-created directory entry without following it (symlink, FIFO, socket, file or directory tree)."""
+    """Remove a tenant-created directory entry without following it (symlink, FIFO, socket, file or directory tree).
+    Finale P4: a tenant now runs as its own subordinate UID, so a directory tree it made can contain entries the broker may not
+    delete. Such a tree is renamed out of the way inside the same broker-owned directory (needs no permission on the tree
+    itself); the hidden name is never read as a message and is removed with the run (runtime.remove_tree)."""
     try:
         os.unlink(name, dir_fd=dfd)
     except IsADirectoryError:
         shutil.rmtree(name, ignore_errors=True, dir_fd=dfd)
+        try:
+            os.lstat(name, dir_fd=dfd)
+        except FileNotFoundError:
+            return
+        try:
+            os.rename(name, TRASH_PREFIX + secrets.token_hex(8), src_dir_fd=dfd, dst_dir_fd=dfd)
+        except OSError:
+            pass
     except OSError:
         pass
 
@@ -439,9 +453,10 @@ def _list_messages(directory) -> list:
 
 
 def _entries(directory) -> list:
+    """Directory entries, without the hidden names _unlink_at moved a tenant's undeletable tree to."""
     dfd = _dir_fd(directory)
     try:
-        return os.listdir(dfd)
+        return [n for n in os.listdir(dfd) if not n.startswith(TRASH_PREFIX)]
     finally:
         os.close(dfd)
 
@@ -493,6 +508,9 @@ def _write_msg(directory: Path, name: str, obj):
     try:
         fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600, dir_fd=dfd)
         try:
+            # Finale P4: the reader is the container's own subordinate UID, which is neither owner nor group of this file. The
+            # mailbox directory stays 0700 with one ACL entry for that UID (aegis/runtime.py), so nobody else can reach the file.
+            os.fchmod(fd, 0o644)
             with os.fdopen(fd, "wb") as fh:
                 fh.write(data)
             try:
@@ -677,7 +695,8 @@ class Broker:
                     monitor={"summary": "Model worker kept alive (control experiment)", "decision": "warning"})
         else:
             runtime.stop(self.names.get("model", ""))
-            shutil.rmtree(self.spool.get("model", "/nonexistent"), ignore_errors=True)
+            if "model" in self.spool:
+                runtime.remove_tree(self.spool["model"])
             run.log("model.reset", "control-plane", {"strategy": "fresh-container",
                                                       "action": "container removed; tmpfs and process memory discarded"},
                     monitor={"summary": "Model worker destroyed (fresh state for next run)"})

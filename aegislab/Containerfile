@@ -1,6 +1,9 @@
-# AegisLab sandbox image: one image for red sandbox, defence runner and model worker.
+# AegisLab sandbox image: one image for red sandbox, defence runner and model worker (and the sandboxed model server's root).
 # Standard library only. Pin the base by digest in production builds.
 FROM docker.io/library/python:3.12-slim
 COPY sandbox/ /app/
 WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+# Non-root by default (finale P4, F4). Every container also gets --user 900:900 and --userns auto (aegis/runtime.py), so UID 900
+# inside is a subordinate UID on the host, never the broker's UID that owns the signing key.
+USER 900:900

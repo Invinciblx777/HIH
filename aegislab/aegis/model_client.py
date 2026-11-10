@@ -14,6 +14,9 @@ Opt-in only, through environment variables read by the trusted control plane:
     AEGIS_MODEL_UNIX_SOCKET=/abs/path/llama.sock      optional (finale P3): connect over this UNIX socket instead of TCP, for a
                                               model server in a container with --network none; BASE_URL must then be
                                               http://localhost/... (its host only fills the Host header)
+    AEGIS_MODEL_UNIX_SOCKET_OWNER_UID=<uid>   optional (finale P4): the host UID the socket must be owned by. The sandboxed server
+                                              runs under --userns auto as a subordinate UID, not as the broker; the launcher
+                                              records that one mapped UID here. Unset: the socket must be the broker's own
     AEGIS_MODEL_FILE_NAME / AEGIS_MODEL_FILE_SHA256 / AEGIS_MODEL_SERVER / AEGIS_MODEL_SERVER_ISOLATION
                                               optional (finale P3): the model identity declared by the operator's launcher
                                               (scripts/start_model_server.sh hashes the file it serves); recorded in the frozen
@@ -30,8 +33,10 @@ Security properties (each is covered by tests/test_model_client.py):
     fixed, key-free messages
   * failures, timeouts and malformed replies raise ModelBackendError with a fixed message; the broker turns that into a
     uniform refusal for red and fails the run closed after repeated errors
-  * a UNIX socket is used only when it is a socket owned by this user inside a directory owned by this user that no one
-    else can write or enter (mode 0700); anything else is refused with ModelBackendError("config") before connecting
+  * a UNIX socket is used only when it is a socket (not a link) owned by the EXPECTED owner (this user, or the one mapped UID
+    in AEGIS_MODEL_UNIX_SOCKET_OWNER_UID; never "any owner") inside a directory owned by this user that no one else can
+    enter: no group or other bits, and no ACL entry except, at most, that same expected UID; anything else is refused with
+    ModelBackendError("config") before connecting
   * cache_prompt=true is refused: it turns the server's prompt (KV) cache back on, and experiment E3 measured a cross-session
     cached-token oracle with AUC 1.00 under it. Only AEGIS_UNSAFE_EXPERIMENT_SHARED_PROMPT_CACHE=1 lets it through, for the
     positive-control experiments; describe() then carries "unsafe_shared_prompt_cache_experiment": true, so the opt-in is in
@@ -52,6 +57,8 @@ import threading
 import urllib.parse
 from dataclasses import dataclass, field
 from pathlib import Path
+
+from . import userns
 
 MAX_RESPONSE_BYTES = 1 << 20
 MAX_TEXT = 8000
@@ -84,6 +91,7 @@ class ModelConfig:
     unsafe_shared_prompt_cache: bool = False
     unix_socket: str = ""
     identity: tuple = ()  # declared (name, value) pairs: model_file, model_sha256, inference_server, server_isolation
+    unix_socket_owner: int = -1  # finale P4: expected owner UID of the socket; -1 = this user (the P3 behaviour)
 
     def describe(self) -> dict:
         """Everything that may appear in manifests, audit entries and evidence. Never contains the key."""
@@ -99,6 +107,8 @@ class ModelConfig:
         if self.unix_socket:  # the following keys are only present when configured, so earlier manifests are unchanged
             out["transport"] = "unix_socket"
             out["unix_socket"] = self.unix_socket
+            if self.unix_socket_owner >= 0:
+                out["unix_socket_owner_uid"] = self.unix_socket_owner
         if self.identity:
             out["declared_identity"] = dict(self.identity)
         return out
@@ -157,6 +167,9 @@ def load_config(env=None) -> ModelConfig:
     if sock and (not sock.startswith("/") or "\x00" in sock or len(sock.encode()) > UNIX_PATH_MAX or allow_remote
                  or u.scheme != "http" or u.hostname != "localhost"):
         raise ModelBackendError("config")
+    owner = (env.get("AEGIS_MODEL_UNIX_SOCKET_OWNER_UID") or "").strip()
+    if owner and (not sock or not owner.isdigit() or int(owner) == os.geteuid() or not 0 < int(owner) < 2**32 - 1):
+        raise ModelBackendError("config")  # only with a socket, and a mapped UID is never the broker's own
     ident = []
     for var, key_, rx in (("AEGIS_MODEL_FILE_NAME", "model_file", _NAME_RE), ("AEGIS_MODEL_FILE_SHA256", "model_sha256", _SHA_RE),
                           ("AEGIS_MODEL_SERVER", "inference_server", _LABEL_RE)):
@@ -171,28 +184,39 @@ def load_config(env=None) -> ModelConfig:
             raise ModelBackendError("config")  # a server without network is only reachable over the socket, and vice versa
         ident.append(("server_isolation", iso))
     return ModelConfig("openai_compatible", base.rstrip("/"), model, key, timeout, max_tokens,
-                       tuple(sorted(extra.items())), allow_remote, unsafe and extra["cache_prompt"], sock, tuple(sorted(ident)))
+                       tuple(sorted(extra.items())), allow_remote, unsafe and extra["cache_prompt"], sock, tuple(sorted(ident)),
+                       int(owner) if owner else -1)
 
 
-def check_unix_socket(path: str):
-    """Refuse a socket that someone else could have placed or could also use: it must be a socket owned by this user, in a
-    directory owned by this user with no group or other permissions at all."""
+def check_unix_socket(path: str, owner: int = -1):
+    """Refuse a socket that someone else could have placed or could also use. The socket must be a socket (lstat: a symlink
+    is refused) owned by the EXPECTED owner: this user when ``owner`` is -1, else exactly ``owner`` (the sandboxed server's
+    mapped subordinate UID, finale P4). Its directory must be owned by this user, with no group or other permission bits;
+    a POSIX ACL on it may name at most that same expected owner (the launcher's grant), nothing else."""
     try:
         st, dst = os.lstat(path), os.lstat(os.path.dirname(path))
     except OSError:
         raise ModelBackendError("unavailable") from None
     uid = os.geteuid()
-    if not stat.S_ISSOCK(st.st_mode) or st.st_uid != uid or not stat.S_ISDIR(dst.st_mode) or dst.st_uid != uid or dst.st_mode & 0o077:
+    want = uid if owner is None or owner < 0 else owner
+    if not stat.S_ISSOCK(st.st_mode) or st.st_uid != want or not stat.S_ISDIR(dst.st_mode) or dst.st_uid != uid:
+        raise ModelBackendError("config")
+    try:
+        ok = userns.private_to(os.path.dirname(path), uid, () if want == uid else (want,))
+    except (OSError, ValueError):
+        ok = False
+    if not ok:
         raise ModelBackendError("config")
 
 
 class _UnixHTTPConnection(http.client.HTTPConnection):
-    def __init__(self, path, timeout):
+    def __init__(self, path, timeout, owner=-1):
         super().__init__("localhost", timeout=timeout)
         self._unix_path = path
+        self._owner = owner
 
     def connect(self):
-        check_unix_socket(self._unix_path)
+        check_unix_socket(self._unix_path, self._owner)
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         s.settimeout(self.timeout)
         try:
@@ -220,7 +244,7 @@ class OpenAICompatibleClient:
         data = json.dumps(body).encode() if body is not None else None
         u = urllib.parse.urlsplit(self.cfg.base_url + path)
         if self.cfg.unix_socket:
-            conn = _UnixHTTPConnection(self.cfg.unix_socket, budget)
+            conn = _UnixHTTPConnection(self.cfg.unix_socket, budget, self.cfg.unix_socket_owner)
         else:
             factory = http.client.HTTPSConnection if u.scheme == "https" else http.client.HTTPConnection
             conn = factory(u.hostname, u.port, timeout=budget)

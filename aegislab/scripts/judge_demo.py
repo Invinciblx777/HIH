@@ -102,11 +102,9 @@ attempt("rename_mailbox_dir", lambda: os.rename("/aegis/spool/in", "/aegis/spool
 attempt("remove_mailbox_dir", lambda: os.rmdir("/aegis/spool/in"))
 print(json.dumps(r))
 '''
-    args_ = ["podman", "run", "--rm", "--name", "aegis-judge-hostile", "--label", "aegislab=1"] + runtime.hardening_flags("red")
-    for h, c, m in runs.Broker._spool_mounts(base):
-        args_ += ["-v", "%s:%s:Z" % (h, c)]
-    args_ += [runtime.IMAGE, "python", "-c", code]
-    res = subprocess.run(args_, capture_output=True, text=True)
+    # finale P4: same flags and mounts as before, started through runtime.run_attached so the container's own subordinate UID
+    # (--userns auto) is granted its two mailbox directories, exactly as for a real run
+    res = runtime.run_attached("aegis-judge-hostile", "red", runs.Broker._spool_mounts(base), ["python", "-c", code])
     try:
         attempts = json.loads(res.stdout)
     except ValueError:

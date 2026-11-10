@@ -32,12 +32,10 @@ pytestmark = [pytest.mark.podman, pytest.mark.skipif(not _image_ready(), reason=
 
 def run_in_sandbox(role, code, mounts=(), timeout=60):
     name = "aegis-p2test-%d" % os.getpid()
-    args = ["podman", "run", "--rm", "--name", name, "--label", "aegislab=1"] + runtime.hardening_flags(role)
-    for host, ctr, mode in mounts:
-        args += ["-v", "%s:%s:%s" % (host, ctr, "ro,Z" if mode == "ro" else "Z")]
-    args += [runtime.IMAGE, "python", "-c", textwrap.dedent(code)]
+    # finale P4: same flags and mounts; runtime.run_attached creates the container, grants its own subordinate UID (--userns
+    # auto) exactly these mounts, then starts it attached, as runtime.launch does for a real run
     try:
-        return subprocess.run(args, capture_output=True, text=True, timeout=timeout)
+        return runtime.run_attached(name, role, list(mounts), ["python", "-c", textwrap.dedent(code)], timeout=timeout)
     finally:
         subprocess.run(["podman", "rm", "-f", "-t", "0", name], capture_output=True)
 
