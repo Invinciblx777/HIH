@@ -1098,10 +1098,11 @@ def results(scenario: str | None = None, limit: int = 20):
 AUDIT_SAFE = ("op", "reason", "tenant", "complete", "evaluated", "attack_count", "count", "commitments_verified", "audit_entries_verified",
               "matches_manifest", "network_modes", "strategy", "action", "attack_id", "commitment_verified", "canary_leaks", "policy",
               "aborted", "model_backend_errors", "manifest_digest", "sandbox_image_id", "error", "where",
-              "detector", "threshold", "occurrence")  # anomaly.alert (finale P4): the detector's name and fixed threshold
+              "detector", "threshold", "occurrence", "quota", "limit")  # anomaly.alert (finale P4): the detector's name and fixed threshold
 AUDIT_AFTER_RELEASE = ("outcome", "outcomes")
 AUDIT_DECISION = {"policy.denied": "denied", "mailbox.violation": "denied", "run.failed": "failed", "run.released": "allowed",
-                  "attack.evaluated": "allowed", "defence.attested": "ok", "anomaly.alert": "alert"}
+                  "attack.evaluated": "allowed", "defence.attested": "ok", "anomaly.alert": "alert",
+                  "mailbox.quota_exceeded": "denied"}
 
 
 def _audit_view(e, signed_upto, released):

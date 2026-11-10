@@ -292,3 +292,17 @@ When a release verifies, `aegis/countersign.py` countersigns the terminal checkp
 | Offline countersigning on the reviewer's own machine (`python -m aegis.countersign --bundle ... --key ...`); refuses a bundle that does not verify | P4S04, P4S05 | Verified |
 | Three distinct keys: evidence, capability, reviewer | P4S06 | Verified |
 | Second party against a host compromise | Only when the reviewer key is off the broker host. Countersigning on release, the prototype's default, keeps it on the same host. The security demo shows the remaining limit: a forger holding both keys still succeeds. | **Partial** |
+
+### 10.8 Mailbox quotas (SHOULD 8)
+
+`runs.MailboxQuota` limits each tenant's outbox. A tenant over any limit is no longer served. The broker records `mailbox.quota_exceeded` once, with the quota, the limit and the observed value. The run is sealed as incomplete, so it cannot pass the release gate's completeness check. This fails closed for that tenant; the control plane and other runs are unaffected.
+
+| Quota | Limit | Test | Label |
+|---|---|---|---|
+| Messages read per run | 4 × MAX_COMMITMENTS + 100 = 2,100 | `tests/test_finale_p4_quota.py` P4Q01, P4Q10 (message 21 of a 20-message limit is never processed) | Verified |
+| Rate | 400 messages per 10 s | P4Q01 | Verified |
+| Bytes read per run | 32 MiB, plus 64 KiB per message as before | P4Q01, P4Q12 | Verified |
+| Entries present in the outbox | 512 (files, directories, anything) | P4Q01, P4Q11 | Verified |
+| Normal runs unaffected | The scripted red agent sends about 10 messages plus one per attack | P4Q02, P4Q13, the podman suite | Verified |
+
+**Limit.** The quotas bound the broker's work per tenant. They do not bound the tenant's own CPU or disk inside its container; the container limits do that (pids, memory, CPU; section 2).
