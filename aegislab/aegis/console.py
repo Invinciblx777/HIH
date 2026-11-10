@@ -52,7 +52,7 @@ with warnings.catch_warnings():  # starlette's notice about httpx; the in-proces
     from fastapi.testclient import TestClient
 from pydantic import BaseModel, ConfigDict
 
-from . import api, evidence, lab_session, model_client, runs, runtime, store
+from . import anomaly, api, evidence, lab_session, model_client, runs, runtime, store
 from .audit import entry_hash, read_jsonl
 from .verify_cli import TAMPER_MODES
 
@@ -1097,10 +1097,11 @@ def results(scenario: str | None = None, limit: int = 20):
 # ------------------------------------------------------------------------------------------------ signed audit log (metadata)
 AUDIT_SAFE = ("op", "reason", "tenant", "complete", "evaluated", "attack_count", "count", "commitments_verified", "audit_entries_verified",
               "matches_manifest", "network_modes", "strategy", "action", "attack_id", "commitment_verified", "canary_leaks", "policy",
-              "aborted", "model_backend_errors", "manifest_digest", "sandbox_image_id", "error", "where")
+              "aborted", "model_backend_errors", "manifest_digest", "sandbox_image_id", "error", "where",
+              "detector", "threshold", "occurrence")  # anomaly.alert (finale P4): the detector's name and fixed threshold
 AUDIT_AFTER_RELEASE = ("outcome", "outcomes")
 AUDIT_DECISION = {"policy.denied": "denied", "mailbox.violation": "denied", "run.failed": "failed", "run.released": "allowed",
-                  "attack.evaluated": "allowed", "defence.attested": "ok"}
+                  "attack.evaluated": "allowed", "defence.attested": "ok", "anomaly.alert": "alert"}
 
 
 def _audit_view(e, signed_upto, released):
@@ -1137,6 +1138,30 @@ def run_audit(run_id: str, request: Request, x_aegis_token: str | None = Header(
             "facets": {"type": sorted({e["type"] for e in read_jsonl(run.dir / "audit.jsonl")}),
                        "actor": sorted({e["actor"] for e in read_jsonl(run.dir / "audit.jsonl")})},
             "entries": rows[offset:offset + limit], "after_close": _after_close(run)}
+
+
+@app.get("/api/lab/runs/{run_id}/anomalies")
+def run_anomalies(run_id: str, request: Request, x_aegis_token: str | None = Header(None)):
+    """Finale P4: the broker's anomaly detectors for one run, for the operator session (or an operator / reviewer token): each
+    detector's fixed threshold and rationale, and the alerts recorded in the audit chain so far (sequence, hash, signature
+    coverage). Participants never reach this endpoint; they see the alerts in the monitoring stream once the run is sealed."""
+    _authorize(request, x_aegis_token, "operator", "reviewer")
+    _lab_run(run_id, None)
+    run = runs.Run(run_id)
+    signed = _signed_upto(run_id)
+    entries = [e for e in read_jsonl(run.dir / "audit.jsonl") if e["type"] in ("anomaly.alert", "anomaly.summary")]
+    alerts = [{"seq": e["seq"], "ts": e["ts"], "detector": e["data"].get("detector"), "occurrence": e["data"].get("occurrence"),
+               "observed": e["data"].get("observed"), "hash": e["hash"], "signed": e["seq"] <= signed}
+              for e in entries if e["type"] == "anomaly.alert"]
+    fired = {}
+    for a in alerts:
+        fired[a["detector"]] = fired.get(a["detector"], 0) + 1
+    return {"run_id": run_id, "state": run.state, "sealed_summary": any(e["type"] == "anomaly.summary" for e in entries),
+            "detectors": [{"name": k, "threshold": v["threshold"], "rationale": v["rationale"], "fired": fired.get(k, 0)}
+                          for k, v in anomaly.DETECTORS.items()],
+            "alerts": alerts,
+            "note": "Alerts raised by a denial are written at the next padded attack release or at the seal, never on the denial's "
+                    "reply path; with timing padding off they are written at the seal (aegis/anomaly.py)."}
 
 
 def _post_terminal_view(e):

@@ -1453,6 +1453,7 @@ async function auditLog(q, persp) {
   A.run = q.run && lr.some((r) => r.id === q.run) ? q.run : (lr[0] || {}).id || null;
   render(`${persp}<div class="intro"><p>The run's hash-chained audit log, entry by entry: sequence, actor, operation, decision, the entry's hash and whether a signed checkpoint covers it. Metadata only: payloads, model outputs, defence rules and the digests of team inputs never leave the server; attack outcomes appear once the run is released.</p>${labelTag("live")}</div>
     ${canAct() ? "" : `<div class="note">${esc(noSession())} The signed log is readable only in the operator session; the monitoring stream stays public.</div>`}
+    <div id="l-anom"></div>
     <div class="row" id="l-filters"></div>
     <div class="meta-row"><span id="l-meta" role="status" aria-live="polite"></span><label class="switch"><input type="checkbox" id="l-live" ${A.live ? "checked" : ""}> Update every 2 s</label></div>
     <div id="l-table">${A.run ? loading("Reading the audit log…") : `<div class="empty"><strong>No lab run yet</strong><a href="#/lab">Create one in the lab</a>; its audit log appears here.</div>`}</div>`);
@@ -1476,15 +1477,30 @@ async function fetchLog(first) {
     const sig = [d.total, d.matched, d.signed_upto, A.off].join(":");
     const changed = !A.log || sig !== A.logSig;
     A.log = d; A.logSig = sig;
-    if (first || changed) drawLog();
+    if (first || changed) { drawLog(); fetchAnom(); }
     else $("#l-meta").textContent = $("#l-meta").textContent.replace(/updated .*/, "updated " + new Date().toLocaleTimeString());
   } catch (e) { const m = $("#l-meta"); if (m) m.innerHTML = `<span class="st fail">Could not read the audit log: ${esc(e.message)}</span> <span class="muted">(showing the last data received)</span>`; }
+}
+/* finale P4: the broker's anomaly detectors for the selected run (operator / reviewer only, like the signed log) */
+async function fetchAnom() {
+  const A = S.audit, el = $("#l-anom"); if (!el || !A.run) return;
+  try {
+    const d = await get(`/api/lab/runs/${encodeURIComponent(A.run)}/anomalies`);
+    const n = d.alerts.length;
+    el.innerHTML = `<details class="note mt" id="anom" ${n ? "open" : ""}><summary><b>Anomaly detectors</b> · ${n ? `<span class="st alert">${fmt(n)} alert${n === 1 ? "" : "s"}</span>` : `<span class="st ok">no alert</span>`} · ${d.sealed_summary ? "summary sealed" : "run open: live to operator and reviewer only"}</summary>
+      <div class="table-wrap"><table><thead><tr><th>Detector</th><th>Threshold</th><th>Fired</th><th>Rationale</th></tr></thead><tbody>
+      ${d.detectors.map((x) => `<tr><td class="nw">${esc(x.name)}</td><td>${esc(x.threshold)}</td><td>${x.fired ? `<span class="st alert">${x.fired}</span>` : "0"}</td><td class="small">${esc(x.rationale)}</td></tr>`).join("")}
+      </tbody></table></div>
+      ${n ? `<ul class="small">${d.alerts.map((a) => `<li>Audit entry <b>#${a.seq}</b> ${clock(a.ts)} · ${esc(a.detector)} · ${esc(JSON.stringify(a.observed))} · <span class="hash">${short(a.hash, 12)}</span> ${a.signed ? `<span class="st ok">signed</span>` : `<span class="muted">pending</span>`}</li>`).join("")}</ul>` : ""}
+      <p class="tiny">${esc(d.note)}</p></details>`;
+    wrapTables(el);
+  } catch (e) { el.innerHTML = `<p class="small st fail">Could not read the anomaly detectors: ${esc(e.message)}</p>`; }
 }
 function drawLog() {
   const A = S.audit, d = A.log, el = $("#l-table"); if (!el || !d) return;
   const sel = (key, label, vals) => `<label class="field">${label}<select data-lf="${key}"><option value="">all</option>${vals.map((v) => `<option ${A.lf[key] === v ? "selected" : ""}>${esc(v)}</option>`).join("")}</select></label>`;
   $("#l-filters").innerHTML = `<label class="field">Run<select id="l-run">${labRuns().map((r) => `<option ${r.id === A.run ? "selected" : ""}>${esc(r.id)}</option>`).join("")}</select></label>
-    ${sel("type", "Event type", d.facets.type)}${sel("actor", "Actor", d.facets.actor)}${sel("decision", "Decision", ["denied", "allowed", "failed", "ok", "info"])}`;
+    ${sel("type", "Event type", d.facets.type)}${sel("actor", "Actor", d.facets.actor)}${sel("decision", "Decision", ["denied", "allowed", "alert", "failed", "ok", "info"])}`;
   $("#l-run").addEventListener("change", (e) => { setQuery({ run: e.target.value, open: null }); A.run = e.target.value; A.off = 0; A.lf = { type: "", actor: "", decision: "" }; fetchLog(true); });
   $$("[data-lf]").forEach((x) => x.addEventListener("change", () => { A.lf[x.dataset.lf] = x.value; A.off = 0; fetchLog(true); }));
   $("#l-meta").textContent = `${d.run_id} · ${d.state} · ${fmt(d.matched)} of ${fmt(d.total)} entries · signed up to #${d.signed_upto} by ${d.checkpoints} checkpoints${d.terminal_anchor ? " · terminal anchor written" : ""} · updated ${new Date().toLocaleTimeString()}`;

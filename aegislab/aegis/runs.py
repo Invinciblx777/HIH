@@ -24,7 +24,7 @@ import threading
 import time
 from pathlib import Path
 
-from . import canary_scan, model_client, runtime, store
+from . import anomaly, canary_scan, model_client, runtime, store
 from .audit import TERMINAL_STATES, AuditLog, checkpoint_hash, read_jsonl, verify
 from .crypto import Signer, canonical, commitment, file_digest, sha256, verify_commitment
 
@@ -562,6 +562,7 @@ class Broker:
         self.bucket_s = rec["policy"]["timing_bucket_ms"] / 1000.0
         self.deadline_s = rec["policy"].get("timing_deadline_ms", 0) / 1000.0 if rec["policy"].get("timing_mode") == "deadline" else 0.0
         self.shadow = bool(rec["policy"].get("shadow_model_on_refusal")) and self.deadline_s > 0
+        self.anomaly = anomaly.Detectors()  # finale P4: in-memory observation; alerts written only at hidden release points
         self.release = {"mode": "deadline" if self.deadline_s else ("bucket" if self.bucket_s else "none"),
                         "cutoffs": 0, "overruns": 0, "max_late_ms": 0.0, "slips": 0, "shadow_calls": 0, "shadow_errors": 0}
         self.reuse = rec["policy"]["reset_strategy"] == "reuse-control"
@@ -601,6 +602,7 @@ class Broker:
             # problem, not a reason to fail the run for everyone: stop serving it after a few tries and seal the run
             # as incomplete, with the fact recorded.
             self.reply_failures += 1
+            self.anomaly.observe_mailbox_violation()
             if self.reply_failures == 1:
                 self.run.log("mailbox.violation", "broker", {"where": "red/in", "errno": exc.errno},
                              monitor={"summary": "Red mailbox unusable: reply could not be delivered",
@@ -780,6 +782,7 @@ class Broker:
     def deny(self, name, op, reason, extra=None):
         data = {"tenant": "red", "op": op, "reason": reason}
         data.update(extra or {})
+        self.anomaly.observe_denial(op)  # memory only; any alert is written at the next padded release or at seal
         self.run.log("policy.denied", "broker", data,
                      monitor={"summary": "Denied red → %s (%s)" % (op, reason), "decision": "denied"})
         self.reply_red(name, {"ok": False, "denied": True, "reason": reason})
@@ -897,7 +900,7 @@ class Broker:
                 v_out = self._verdict(self.call("blue", {"op": "inspect_output", "text": model_text}))
         elif self.shadow:
             shadow = self._shadow_call(payload, cutoff_at)
-        leaked, encodings, unscanned = [], [], None
+        leaked, encodings, unscanned, near = [], [], None, {}
         if model_text:
             own = store.read_json(self.run.dir / "sealed/canary.json")["canary"]
             foreign = self._foreign_canaries() - {own}
@@ -908,6 +911,7 @@ class Broker:
             encodings = sorted({e for c, es in sc["found"].items() for e in es if c not in plain})
             leaked = sorted(plain | set(sc["found"]))
             unscanned = None if sc["complete"] else sc["reason"]
+            near = {} if leaked or unscanned else canary_scan.near_misses(model_text, foreign)  # anomaly detector input only
         # Information-flow enforcement, independent of the defence configuration: output that carries another run's
         # canary or a control-plane secret is recorded (sealed store, audit) but never handed to the tenant.
         withheld = bool(leaked) or secrets_found > 0 or unscanned is not None
@@ -966,6 +970,11 @@ class Broker:
         if secrets_found:
             self.run.log("model.secret_withheld", "broker", {"attack_id": aid, "count": secrets_found},
                          monitor={"summary": "Control-plane secret observed in model output; withheld and redacted", "decision": "alert"})
+        # Anomaly detectors (finale P4): observed on every attack; queued alerts, including those raised by earlier denials,
+        # are written here, inside the padded window, never on an unpadded reply path (aegis/anomaly.py explains why).
+        self.anomaly.observe_attack(outcome, compute_ms, (t_out - t_model) * 1000 if t_model else None, near)
+        if planned_ms is not None:
+            anomaly.log_alerts(self.run, self.anomaly.drain())
 
         # Release. Nothing decision-dependent runs between here and the reply, nor after it.
         if release_at is not None:
@@ -1017,6 +1026,7 @@ class Broker:
                     empty = not _entries(red_out)
                 except OSError as exc:
                     self.aborted = "red mailbox unusable"
+                    self.anomaly.observe_mailbox_violation()
                     run.log("mailbox.violation", "broker", {"where": "red/out", "errno": exc.errno},
                             monitor={"summary": "Red mailbox unusable: run sealed as incomplete", "decision": "denied"})
                     break
@@ -1057,6 +1067,9 @@ class Broker:
         for a in arts:
             summary[a["outcome"]] = summary.get(a["outcome"], 0) + 1
         sealed_digest = file_digest(run.dir / "sealed/artifacts.jsonl") if arts else None
+        anomaly.log_alerts(run, self.anomaly.drain())
+        run.log("anomaly.summary", "broker", self.anomaly.summary(),
+                monitor={"summary": "Anomaly detectors: %d alerts" % sum(self.anomaly.fired.values()), "decision": "info"})
         run.log("run.sealed", "control-plane", {"complete": complete, "evaluated": len(arts),
                                                 "model_backend_errors": self.model_errors_total,
                                                 "outcomes": summary, "sealed_artifacts_digest": sealed_digest,
