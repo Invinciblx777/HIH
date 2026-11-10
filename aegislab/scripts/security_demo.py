@@ -71,22 +71,28 @@ def llm_section():
     stub); every figure is recomputed from the raw observation files by evaluation/check_claims.py, and each line names its artifact."""
     sys.path.insert(0, str(ROOT / "evaluation"))
     import check_claims
-    base = ROOT / "evidence" / "phase3_2026-10-23" / "llm"
+    base, provenance = check_claims.latest_real_model()   # finale P3: the newest runs (re-measured 10 Nov) when present
+    rel = base.relative_to(ROOT).as_posix()
     if not (base / "INDEX.json").exists():
         print("  [NOT RUN] no saved real-model experiment runs in this tree (evidence/phase3_2026-10-23/llm/INDEX.json missing)")
         return
-    rows, claims = check_claims.phase3_rows()
+    if base == check_claims.P3:
+        rows, claims = check_claims.phase3_rows()
+    else:
+        rows, fc, _ = check_claims.finale_p3_rows()
+        claims = {k[2:]: v for k, v in fc.items() if k.startswith("f_")}
     index = {}
     for e in json.loads((base / "INDEX.json").read_text()):
         index[e["experiment"]] = e
     first = json.loads((base / index[sorted(index)[0]]["dir"] / "result.json").read_text())
     mb = first["model_backend"]
     print("  this demo        : stub model worker (deterministic, not an LLM; it emulates a shared cache for the reuse control)")
-    print("  real-model runs  : %s (sha256 %s...), %s, %s" % (mb["model_class"], mb["model_sha256"][:12], mb["inference_server"], mb["bind"]))
+    print("  real-model runs  : %s (sha256 %s...), %s, %s; %s" % (mb["model_class"], mb["model_sha256"][:12], mb["inference_server"], mb["bind"], provenance))
+    print("  live real model  : scripts/real_model_demo.sh, scripts/start_real_model_console.sh (not run by this demo)")
     print("  gpu / accelerator: NOT used. Hardware, GPU-memory and CUDA-context isolation are UNTESTED.")
-    for pv in check_claims.phase3_provenance():  # which revision each saved run was recorded on, and what changed since
+    for pv in check_claims.phase3_provenance(base):  # which revision each saved run was recorded on, and what changed since
         print("  %s recorded on %s (%s)%s" % (pv["experiment"].split("_")[0], pv["recorded_tree"][:19], pv["recorded_utc"][:10],
-              "; sources changed since and acknowledged as not affecting it (finale P2, %s): %s" % (", ".join(pv["commits"]), ", ".join(pv["acknowledged"]))
+              "; sources changed since and acknowledged as not affecting it (%s): %s" % (", ".join(pv["commits"]), ", ".join(pv["acknowledged"]))
               if pv["acknowledged"] else "; sources unchanged since"))
     names = {"E1_canary_matrix": ("E1 cross-session canary matrix, direct adapter", "e1_trials", "e1_bound", "e1_neg", "e1_pos"),
              "E2_pipeline_canary": ("E2 same property through the full pipeline (broker + sandboxes + model)", "e2_iso", "e2_neg", "e2_pos"),
@@ -102,7 +108,7 @@ def llm_section():
         for k in keys:
             if k in claims:
                 print("      " + claims[k])
-        print("      artifact: evidence/phase3_2026-10-23/llm/%s/{result.json,observations.jsonl}" % e["dir"])
+        print("      artifact: %s/%s/{result.json,observations.jsonl}" % (rel, e["dir"]))
     shared = [c for c in claims if c.startswith("e3")]
     print("  shared-cache mechanism: %s" % ("exercised (llama.cpp CPU slot KV cache; see E3 lines above)" if shared else "not run"))
     print("  untested: GPU/KV memory on an accelerator, hardware side channels, other inference servers and models, adaptive or multi-turn attackers,")
@@ -232,6 +238,13 @@ def main():
                  "/".join("%.3f" % x for x in k0["heldout_accuracy"]), "/".join("%.3f" % x for x in k250["heldout_accuracy"]),
                  k250["pooled_heldout"]["accuracy"], k250["pooled_heldout"]["n"]))
         print("  reading: padding takes this classifier from ~0.80 to a level not distinguishable from chance at a cost of ~200 ms per answered request; a leak is not ruled out (verdict at 250 ms: %s; one weak classifier, constant-latency stub; see VALIDATION_ADDENDUM section 4)." % k250["verdict"])
+    trm = ROOT / "evidence" / "finale_p3_2026-11-10" / "timing_real_model" / "result.json"
+    if trm.exists():   # finale P3: the same classifier with the real model, one execution
+        r = json.loads(trm.read_text())
+        c = r.get("conditions", {})
+        print("  real model (ONE execution, %s, %s): held-out accuracy %s; 250 ms does NOT hide the decision with a real model"
+              % (r["started_utc"][:10], "evidence/finale_p3_2026-11-10/timing_real_model",
+                 ", ".join("%.3f at %s ms (p=%.3f)" % (c[k]["heldout_accuracy"], k, c[k]["permutation_p"]) for k in sorted(c, key=int))))
     print("  other documented limits: containers share the host kernel; local demo tokens, not SSO; JSON files, single host;")
     print("  the stub is not an LLM (see evidence/validation_2026-10-22/model_experiments.json for the optional real-model test).")
 
