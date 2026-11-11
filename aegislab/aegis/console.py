@@ -492,7 +492,7 @@ def _code_revision():
 # ------------------------------------------------------------------------------------------------ live evaluation run
 class PrepareReq(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    timing_bucket_ms: int = 250
+    timing_bucket_ms: int | None = None   # finale P4: omitted = runs.default_timing() (deadline release with a real model)
     defence_profile: str | None = None
     stop_after: Literal["created", "started"] = "started"
 
@@ -581,8 +581,8 @@ def prepare_run(req: PrepareReq, request: Request, x_aegis_token: str | None = H
         if not IDEMPOTENCY_RE.fullmatch(x_aegis_idempotency_key):
             raise HTTPException(422, "X-Aegis-Idempotency-Key must be 8-64 characters of A-Z a-z 0-9 _ -")
         key = (who["via"], x_aegis_token or request.cookies.get(lab_session.COOKIE), x_aegis_idempotency_key)
-    if req.timing_bucket_ms not in (0, 250):
-        raise HTTPException(422, "timing_bucket_ms must be 0 or 250")
+    if req.timing_bucket_ms not in (None, 0, 250):
+        raise HTTPException(422, "timing_bucket_ms must be 0 or 250, or omitted for the default policy")
     if req.defence_profile is not None and req.defence_profile not in DEFENCE_PROFILES:
         raise HTTPException(422, "unknown defence profile")
     _require_live()
@@ -599,7 +599,10 @@ def prepare_run(req: PrepareReq, request: Request, x_aegis_token: str | None = H
         if active:
             raise HTTPException(409, "run %s is still executing; wait for it to seal" % active[0])
         run_id = "LAB-%03d" % (max((int(r[4:]) for r in existing), default=0) + 1)
-        steps = [_api_step("operator", "POST", "/api/runs", {"run_id": run_id, "timing_bucket_ms": req.timing_bucket_ms, "tags": ["lab", "console"]})]
+        body = {"run_id": run_id, "tags": ["lab", "console"]}
+        if req.timing_bucket_ms is not None:
+            body["timing_bucket_ms"] = req.timing_bucket_ms
+        steps = [_api_step("operator", "POST", "/api/runs", body)]
         if req.defence_profile:
             steps.append(_apply_profile(run_id, req.defence_profile))
         if req.stop_after == "started":

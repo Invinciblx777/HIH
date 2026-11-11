@@ -50,6 +50,31 @@ MAX_CANARY_SCAN = 5000        # run directories read when collecting the canarie
 # happens before the release, so its duration is hidden by the deadline; after the reply nothing decision-dependent runs.
 DEADLINE_MIN_MS, DEADLINE_MAX_MS = 200, 30000
 DEADLINE_RESERVE_MS = 100     # output inspection, canary scan and the audit writes must fit in this after the model answered
+# Finale P4: the default policy for a run created WITHOUT a timing choice. With the stub model it stays 250 ms buckets (the
+# stub's latency is a constant sleep; 250 ms brought the classifier to chance there). With a real model, 250 ms buckets leaked in
+# all three executions (accuracy 0.945-0.960, p=0.001) and deadline release did not (0.495-0.575 against baselines 0.515-0.540),
+# evidence/finale_p4_2026-11-11/timing_deadline. REAL_MODEL_DEADLINE_MS is the largest D the three calibrations fixed on the test
+# host (1300, 1400, 1300 ms) for Qwen2.5-0.5B on llama.cpp CPU, max_tokens 96. Another host or model needs its own calibration
+# (evaluation/timing_deadline.py, phase 1) and AEGIS_TIMING_DEADLINE_MS; a request slower than D is cut off and red sees a refusal.
+STUB_DEFAULT_BUCKET_MS = 250
+REAL_MODEL_DEADLINE_MS = 1400
+
+
+def default_timing(env=None) -> dict:
+    """create_run's timing arguments when the caller chose none: stub, 250 ms buckets; a real-model backend, deadline release at
+    REAL_MODEL_DEADLINE_MS (or AEGIS_TIMING_DEADLINE_MS), shadow call off. An explicit timing_bucket_ms (0 or 250, as every
+    experiment and demo that measures passes) is always honoured."""
+    env = os.environ if env is None else env
+    try:
+        backend = model_client.load_config(env).backend
+    except model_client.ModelBackendError:
+        raise GateError("model backend configuration is invalid (see aegis/model_client.py)") from None
+    if backend == "stub":
+        return {"timing_bucket_ms": STUB_DEFAULT_BUCKET_MS}
+    raw = (env.get("AEGIS_TIMING_DEADLINE_MS") or "").strip()
+    if raw and not raw.isdigit():
+        raise GateError("AEGIS_TIMING_DEADLINE_MS must be an integer number of milliseconds")
+    return {"timing_bucket_ms": 0, "timing_deadline_ms": int(raw) if raw else REAL_MODEL_DEADLINE_MS}
 DEADLINE_LATE_TOLERANCE_MS = 5  # a release later than this past the deadline is counted as an overrun (run.sealed)
 
 _signer = None
@@ -260,13 +285,20 @@ def _int(v):
     return isinstance(v, int) and not isinstance(v, bool)
 
 
-def create_run(run_id, timing_bucket_ms=250, reset_strategy="fresh-container", forbidden_probes=True,
+def create_run(run_id, timing_bucket_ms=None, reset_strategy="fresh-container", forbidden_probes=True,
                tags=(), defence_config=None, attack_pack=None, timing_deadline_ms=None, shadow_model_on_refusal=False) -> Run:
     """timing_deadline_ms (finale P4): release every attack reply at exactly t0 + this many ms instead of on bucket boundaries
     (timing_bucket_ms is then recorded as 0). shadow_model_on_refusal: in deadline mode, a request refused by the input rules
-    still costs one model call, on a length-matched neutral decoy prompt (never the refused payload), output discarded."""
+    still costs one model call, on a length-matched neutral decoy prompt (never the refused payload), output discarded.
+    Neither timing argument given: default_timing() (finale P4: deadline release with a real model, 250 ms buckets with the stub)."""
     ensure_tenant_storage()
     run = Run(run_id)
+    if timing_bucket_ms is None:
+        if timing_deadline_ms is None:
+            d = default_timing()
+            timing_bucket_ms, timing_deadline_ms = d["timing_bucket_ms"], d.get("timing_deadline_ms")
+        else:
+            timing_bucket_ms = 0
     if not _int(timing_bucket_ms) or not 0 <= timing_bucket_ms <= 5000:
         raise GateError("timing_bucket_ms must be an integer between 0 and 5000")
     if timing_deadline_ms is not None and (not _int(timing_deadline_ms) or not DEADLINE_MIN_MS <= timing_deadline_ms <= DEADLINE_MAX_MS):
