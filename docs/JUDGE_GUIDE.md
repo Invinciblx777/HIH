@@ -27,7 +27,7 @@ The demos print a label wherever a result is not produced live on your machine.
 | Label | Meaning |
 |---|---|
 | `[PASS]` / `[FAIL]` | Checked **live**, now, on this machine (real rootless containers, deterministic stub model) |
-| `[PRECOMPUTED]` | From saved real-model runs: the newest set, `evidence/finale_p3_2026-11-10/llm/` (re-measured 10 Nov 2026 on the current code), or the 23 Oct set `evidence/phase3_2026-10-23/llm/` if the newer one is absent. The figures are recomputed from the raw observation files on screen, but **no model runs** during the demo |
+| `[PRECOMPUTED]` | From saved real-model runs: the newest set, `evidence/finale_p4_2026-11-11/llm_final/` (re-measured 11 Nov 2026 on the finale P4 code), else `evidence/finale_p3_2026-11-10/llm/` (10 Nov), else the 23 Oct set `evidence/phase3_2026-10-23/llm/`. The figures are recomputed from the raw observation files on screen, but **no model runs** during the demo |
 | `LIVE REAL MODEL` | `scripts/real_model_demo.sh` and the real-model console: the model answers now, on this machine (section 6) |
 | `[HISTORICAL]` | A recorded result of an older version (for example the Phase 1 broker before a fix); not re-run |
 | `[LIMIT]` (security demo) | A documented limitation, demonstrated on purpose |
@@ -74,7 +74,7 @@ A shipped tampered example must also fail: `evidence/validation_2026-10-22/bundl
 
 `judge_demo.sh` step 6. Model Qwen2.5-0.5B-Instruct Q4_K_M on CPU llama.cpp, loopback only. Expected lines include `0 of 1040 isolation trials leaked (0 of 104 sessions)`, positive controls `16 of 16` and `13 of 16` sessions, pipeline `0 of 26 isolation runs`, and `[PASS] saved LLM runs agree with their raw observations, hashes and source files: 89 checks` (48 before the 10 Nov re-measurement). That last check is live: it recomputes the figures from the raw files and compares source-file hashes. The model runs themselves are saved, not live.
 
-The step prints where and when the figures were recorded. Since 10 Nov 2026 that is the re-measurement on the current code (`evidence/finale_p3_2026-11-10/`), with the same E1 figures as 23 Oct. Re-running the experiments needs assets that are not in the repository: a local llama.cpp `llama-server` binary and the GGUF file, then `evaluation/llm_isolation.py` (32 minutes on 10 Nov). See `evidence/finale_p3_2026-11-10/README.md`.
+The step prints where and when the figures were recorded. Since 11 Nov 2026 that is the re-measurement on the finale P4 code (`evidence/finale_p4_2026-11-11/`), with the same E1 figures as 10 Nov and 23 Oct. Re-running the experiments needs assets that are not in the repository: a local llama.cpp `llama-server` binary and the GGUF file, then `evaluation/llm_isolation.py` (33 minutes on 11 Nov). See `evidence/finale_p4_2026-11-11/README.md`.
 
 ## 6. The real model, live (optional; needs the model files)
 
@@ -109,4 +109,4 @@ bash scripts/security_demo.sh            # 34 checks plus 1 documented [LIMIT]
 
 ## Where the guarantees stop
 
-`judge_demo.sh` step 7 and `THREAT_MODEL.md`: trusted broker and signing key, shared host kernel, global role tokens, one small CPU model and ten probe wordings, base64 re-encoding not detected, timing padding weakens one classifier only, GPU and accelerator KV-cache isolation untested.
+`judge_demo.sh` step 7 and `THREAT_MODEL.md`: trusted broker and signing key (a reviewer countersignature helps only with the reviewer key off the host), shared host kernel (containers no longer run as the key owner), one small CPU model and ten probe wordings, double-encoded or paraphrased canaries not detected, 250 ms padding leaks with a real model (deadline release is the real-model default), GPU and accelerator KV-cache isolation untested.
