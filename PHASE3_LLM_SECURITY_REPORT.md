@@ -1,5 +1,7 @@
 # AegisLab Phase 3: LLM-native security validation (23 Oct 2026)
 
+> **HISTORICAL:** rc4 package of 23 Oct 2026, kept unchanged as submitted and still checked against its own 23 Oct figures by aegislab/evaluation/check_presentation.py. Several figures here were superseded by the finale work (10-12 Nov 2026); for the Grand Finale use finale_package/ and see RC4_PACKAGE_HISTORICAL.md.
+
 Team Tech Mavericks · Hack in Hills '26 · Track 04. Scope: test the AI-specific isolation properties of the existing implementation with a real local model, repair what breaks, keep the raw data. Nothing was deployed, pushed or exposed beyond loopback; every prompt, canary, token and key is synthetic. Phase 4 was not started.
 
 Locations (relative to the folder that holds `phase3/`): working copy `phase3/work/dev/`, **candidate release `phase3/candidate/release_2026-10-23_rc3/`** (manifest in its root), logs `phase3/logs/`, raw experiment data in the candidate under `aegislab/evidence/phase3_2026-10-23/`. The Phase 2 candidate (`phase2/candidate/release_2026-10-23_rc2/`), the Phase 1 candidate, the shipped release, `submission/` and `_baseline/` were not modified; the candidate was not promoted.

@@ -1,0 +1,31 @@
+$ .venv-browser/bin/python scripts/real_model_console_check.py --shots /tmp/aegis-p5-rmc-shots
+PASS  launcher banner names the real model and the isolation  (ok    model server: llama.cpp CPU b11819, qwen2.5-0.5b-instruct-q4_k_m.gguf sha256 74a4da8c9fdb, rootless-podman-network-none)
+PASS  status: backend openai_compatible, label REAL MODEL · LIVE, reachable
+PASS  status badge: model file, sha256 prefix, llama.cpp CPU, loopback  (REAL MODEL · LIVE · qwen2.5-0.5b-instruct-q4_k_m.gguf · sha256 74a4da8c9fdb · llama.cpp CPU b11819 · loopback)
+PASS  status: live mode is LIVE SANDBOX / REAL MODEL
+PASS  status: model server isolation rootless-podman-network-none  (loopback (UNIX socket, model server in rootless Podman with --network none))
+PASS  header shows REAL MODEL · LIVE  (Live · Podman 6.1.3 rootless · REAL MODEL · LIVE)
+PASS  lab run LAB-001 reached SEALED with the real model  (16.4 s RUNNING)
+PASS  run Mode line: LIVE SANDBOX · REAL MODEL · LIVE + model file + sha256 prefix + llama.cpp CPU + loopback
+PASS  default policy with a real model: deadline release (finale P4), shown on the run card  (10 of 10 evaluated · deadline release at t0 + 1400 ms · complete)
+PASS  run: every attack evaluated, complete, 0 model backend errors  (10 of 10 evaluated, complete=True, errors=0)
+PASS  run view mode from its frozen manifest: LIVE SANDBOX / REAL MODEL
+PASS  scenario prohibited-access: PASS  (PASS
+3 refusals (HTTP 403), 3 new policy.denied audit entries, state still SEALE)
+PASS  scenario cross-role-isolation: PASS  (PASS
+blue read refused (403) and logged, digests hidden from blue but shown to t)
+PASS  scenario sandbox-containment: PASS  (PASS
+every connection and write refused, CapEff 0, NoNewPrivs 1, seccomp filter )
+PASS  scenario authorized-release: PASS (reviewer release, terminal checkpoint, bundle exported)  (RESULT OF THIS RUN LIVE SYSTEM TEST  Run LAB-001 · Nov 12, 01:15:35 AM · 0.03 s · started from the operator session; each step was sent server-side as the role )
+PASS  audit model.session_opened names the weights (file, sha256) and the server isolation  ({"inference_server": "llama.cpp CPU b11819", "model_file": "qwen2.5-0.5b-instruct-q4_k_m.gguf", "model_sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb)
+PASS  audit: requests stateless, cache_prompt false, no unsafe cache opt-in
+PASS  exported bundle: strict verification as expected  (VERIFICATION AS EXPECTED  Accepted. The log is complete and unmodified relative to the signed terminal checkpoint.  Hash chain true  Each entry stores the previ)
+PASS  tampered disposable copy rejected, original byte-identical
+PASS  no page errors
+PASS  model server container removed after Ctrl-C
+
+21/21 checks PASS (wall 25 s) — LIVE REAL MODEL console run
+$ echo "exit code: $?"
+exit code: 0
+$ exit
+exit

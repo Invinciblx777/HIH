@@ -1,5 +1,5 @@
 {
- "note": "Maps every main slide claim and spoken claim to its evidence. The checker (evaluation/check_presentation.py) verifies that each artifact exists, that the figures are recomputed from the raw files and quoted in every listed document, and that the qualifications are present next to the claim.",
+ "note": "Maps every main slide claim and spoken claim to its evidence. The checker (evaluation/check_presentation.py) verifies that each artifact exists, that the figures are recomputed from the raw files and quoted in every listed document, and that the qualifications are present next to the claim. HISTORICAL: rc4 package of 23 Oct 2026, kept unchanged as submitted and still checked against its own 23 Oct figures by aegislab/evaluation/check_presentation.py. Several figures here were superseded by the finale work (10-12 Nov 2026); for the Grand Finale use finale_package/ and see RC4_PACKAGE_HISTORICAL.md.",
  "claims": [
   {
    "id": "C01",

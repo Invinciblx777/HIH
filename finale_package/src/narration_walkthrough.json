@@ -1,0 +1,198 @@
+{
+ "note": "Walkthrough (about 3 to 4 min). Rendered by render_docs.py; 'say' is derived from 'caption'. Synthetic narration (Piper, en_US-lessac-medium).",
+ "segments": [
+  {
+   "key": "w01",
+   "visual": {
+    "kind": "title",
+    "cut": "walkthrough"
+   },
+   "caption": "AegisLab is secure infrastructure for adversarial AI safety testing. This walkthrough shows the presented code: what you see was recorded on it on the twelfth of November.",
+   "say": "Aegis Lab is secure infrastructure for adversarial AI safety testing. This walkthrough shows the presented code: what you see was recorded on it on the twelfth of November."
+  },
+  {
+   "key": "w02",
+   "visual": {
+    "kind": "slide",
+    "page": 1
+   },
+   "caption": "In a safety test, a red team attacks, a blue team defends, and the model answers, on one system. If red can read the defence, or one session can read another through the model, the score measures the leak, not the model.",
+   "say": "In a safety test, a red team attacks, a blue team defends, and the model answers, on one system. If red can read the defence, or one session can read another through the model, the score measures the leak, not the model."
+  },
+  {
+   "key": "w03",
+   "visual": {
+    "kind": "slide",
+    "page": 2
+   },
+   "caption": "Six flows are forbidden, and each is attacked in a test. The role matrix alone made 560 attempts with 419/419 denied (RE-MEASURED 11 Nov 2026).",
+   "say": "Six flows are forbidden, and each is attacked in a test. The role matrix alone made 560 attempts with 419 of 419 denied, re-measured on the eleventh of November."
+  },
+  {
+   "key": "w04",
+   "visual": {
+    "kind": "slide",
+    "page": 3
+   },
+   "caption": "Five layers enforce this. New for the finale: every container runs as container UID 900 (RE-MEASURED 11 Nov 2026) on its own host UID, never the broker's UID 1000, so a mounted key gives errno 13 (RE-MEASURED 11 Nov 2026).",
+   "say": "Five layers enforce this. New for the finale: every container runs as container U I D 900, re-measured on the eleventh of November, on its own host U I D, never the broker's U I D 1000, so a mounted key gives error number 13."
+  },
+  {
+   "key": "w05",
+   "visual": {
+    "kind": "term",
+    "rec": "t1_real_model_demo",
+    "what": "scripts/real_model_demo.sh, real model"
+   },
+   "caption": "The real model, Qwen2.5-0.5B on llama.cpp, runs in a rootless container with no network. Sessions are stateless, a leak through a broken gateway is withheld by the broker, even in base64, and the bundle verifies: 13/13 checks (LIVE).",
+   "say": "The real model, Kwen two point five, half a billion parameters on llama C P P, runs in a rootless container with no network. Sessions are stateless, a leak through a broken gateway is withheld by the broker, even in base64, and the bundle verifies: 13 of 13 checks, live."
+  },
+  {
+   "key": "w06",
+   "visual": {
+    "kind": "screen",
+    "files": [
+     "02_lab_desktop.png",
+     "02_lab_phone.png"
+    ],
+    "what": "Lab page, desktop and phone"
+   },
+   "caption": "The console is started with the real model. The header says REAL MODEL, LIVE; the launch link was opened off screen.",
+   "say": "The console is started with the real model. The header says REAL MODEL, LIVE; the launch link was opened off screen."
+  },
+  {
+   "key": "w07",
+   "visual": {
+    "kind": "screen",
+    "files": [
+     "02e_run_card_crop_desktop.png"
+    ],
+    "what": "run card of a real-model run"
+   },
+   "caption": "The run sealed and was released. With the real model the default policy is deadline release: every reply leaves at t0 + 1400 ms (LIVE).",
+   "say": "The run sealed and was released. With the real model the default policy is deadline release: every reply leaves at t zero plus 1400 milliseconds, live."
+  },
+  {
+   "key": "w08",
+   "visual": {
+    "kind": "screen",
+    "files": [
+     "04_audit_anomaly_desktop.png"
+    ],
+    "what": "Audit page, anomaly detectors"
+   },
+   "caption": "The audit page lists 6 detectors (LIVE). The scripted red agent's probes fired two of them, and both alerts are signed entries in the log.",
+   "say": "The audit page lists 6 detectors, live. The scripted red agent's probes fired two of them, and both alerts are signed entries in the log."
+  },
+  {
+   "key": "w09",
+   "visual": {
+    "kind": "screen",
+    "files": [
+     "05_evidence_verify_desktop.png",
+     "06_evidence_tamper_desktop.png"
+    ],
+    "what": "Evidence page, verify and tamper"
+   },
+   "caption": "On the evidence page, the independent verifier accepts the bundle. A tampered copy is rejected, and the original stays byte-identical.",
+   "say": "On the evidence page, the independent verifier accepts the bundle. A tampered copy is rejected, and the original stays byte-identical."
+  },
+  {
+   "key": "w10",
+   "visual": {
+    "kind": "term",
+    "rec": "t4_f4_proof",
+    "what": "evaluation/p4_userns_proof.py, F4 table"
+   },
+   "caption": "The user-namespace proof samples every running container: 13/13 F4 checks (LIVE), each container on its own host UID.",
+   "say": "The user-namespace proof samples every running container: 13 of 13 F four checks, live, each container on its own host U I D."
+  },
+  {
+   "key": "w11",
+   "visual": {
+    "kind": "slide",
+    "page": 5
+   },
+   "caption": "Leakage with the real model, re-measured on the finale code: 0 of 104 sessions (RE-MEASURED 11 Nov 2026) leaked. The controls built to leak did: 16 of 16 sessions and 13 of 16 sessions (RE-MEASURED 11 Nov 2026). The upper bound is 2.84% of sessions (RE-MEASURED 11 Nov 2026).",
+   "say": "Leakage with the real model, re-measured on the finale code: 0 of 104 sessions, re-measured on the eleventh of November, leaked. The controls built to leak did: 16 of 16 sessions and 13 of 16 sessions. The upper bound is 2.84 percent of sessions."
+  },
+  {
+   "key": "w12",
+   "visual": {
+    "kind": "slide",
+    "page": 6
+   },
+   "caption": "The result that changed. With the stub, 250 ms padding reached 0.435–0.540 at 250 ms (RE-MEASURED 11 Nov 2026). Against the real model it leaked: accuracy 0.945/0.960/0.950 (RE-MEASURED 11 Nov 2026). We found this ourselves.",
+   "say": "The result that changed. With the stub, 250 milliseconds padding reached 0.435 to 0.540 at 250 milliseconds, re-measured on the eleventh of November. Against the real model it leaked: accuracy 0.945, 0.960 and 0.950. We found this ourselves."
+  },
+  {
+   "key": "w13",
+   "visual": {
+    "kind": "slide",
+    "page": 6
+   },
+   "caption": "Deadline release fixed it: accuracy 0.495/0.545/0.575 (RE-MEASURED 11 Nov 2026), against baselines 0.515/0.540/0.515 (RE-MEASURED 11 Nov 2026). One execution gave p = 0.044 (RE-MEASURED 11 Nov 2026), below 0.05 but above the pre-declared 0.05/9 = 0.0056 (RE-MEASURED 11 Nov 2026), so the verdict is no leak detected. The cost is +519 to +621 ms (RE-MEASURED 11 Nov 2026).",
+   "say": "Deadline release fixed it: accuracy 0.495, 0.545 and 0.575, re-measured on the eleventh of November, against baselines 0.515, 0.540 and 0.515. One execution gave p equals 0.044, below 0.05 but above the pre-declared 0.05 divided by 9, which is 0.0056, so the verdict is no leak detected. The cost is plus 519 to plus 621 milliseconds."
+  },
+  {
+   "key": "w14",
+   "visual": {
+    "kind": "term",
+    "rec": "t5_verify_cli",
+    "what": "verify_cli, strict, then a tampered copy"
+   },
+   "caption": "Strict verification, with the key pinned and the reviewer countersignature required, gives exit code 0 (LIVE). One edited field in a copy gives exit code 1 (LIVE).",
+   "say": "Strict verification, with the key pinned and the reviewer countersignature required, gives exit code 0, live. One edited field in a copy gives exit code 1."
+  },
+  {
+   "key": "w15",
+   "visual": {
+    "kind": "image",
+    "file": "t3_step7.png",
+    "what": "security_demo.sh step 7"
+   },
+   "caption": "The countersignature refuses a forgery made with the broker key. A forger who holds both keys still succeeds, so we call it partial.",
+   "say": "The countersignature refuses a forgery made with the broker key. A forger who holds both keys still succeeds, so we call it partial."
+  },
+  {
+   "key": "w16",
+   "visual": {
+    "kind": "slide",
+    "page": 8
+   },
+   "caption": "For the finale we added user namespaces, re-encoded canary detection, anomaly detectors, run-scoped capability tokens and mailbox quotas.",
+   "say": "For the finale we added user namespaces, re-encoded canary detection, anomaly detectors, run-scoped capability tokens and mailbox quotas."
+  },
+  {
+   "key": "w17",
+   "visual": {
+    "kind": "screen",
+    "files": [
+     "09_public_overview_desktop.png",
+     "10_public_verify_phone.png"
+    ],
+    "what": "public read-only mode"
+   },
+   "caption": "The public demo is read-only by design: anyone can verify a bundle, nobody can run anything. The hosted site serves main until the finale branches are merged.",
+   "say": "The public demo is read-only by design: anyone can verify a bundle, nobody can run anything. The hosted site serves main until the finale branches are merged."
+  },
+  {
+   "key": "w18",
+   "visual": {
+    "kind": "slide",
+    "page": 10
+   },
+   "caption": "Residual risks: a host-user compromise still reaches the signing key; no leak detected is not absence; containers share the kernel; one host, CPU only, GPU untested.",
+   "say": "Residual risks: a host-user compromise still reaches the signing key; no leak detected is not absence; containers share the kernel; one host, C P U only, G P U untested."
+  },
+  {
+   "key": "w19",
+   "visual": {
+    "kind": "end"
+   },
+   "hold": 1.5,
+   "caption": "The code and every number are on GitHub.",
+   "say": "The code and every number are on GitHub."
+  }
+ ]
+}

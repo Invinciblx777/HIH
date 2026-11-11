@@ -7,7 +7,8 @@
 #   scripts/release_gates.sh --out DIR       logs and summary.txt go to DIR (default: a new temporary directory)
 #
 # Gates: Python syntax of every source file and import of the console; JavaScript syntax of the console UI (needs node);
-# the test suite without the tests marked podman; check_claims.py; check_presentation.py; sha256sum -c MANIFEST.sha256;
+# the test suite without the tests marked podman; check_claims.py; check_presentation.py; check_finale_presentation.py (when the
+# finale package is present); sha256sum -c MANIFEST.sha256;
 # tools/publication_scan.py on the git index. Each is reported PASS, FAIL or SKIPPED (with the reason); a skipped gate is
 # never reported as passed, and --strict turns any SKIPPED into a failure.
 #
@@ -68,6 +69,9 @@ gate pytest-container-free "$PY" -m pytest -q -p no:cacheprovider -m "not podman
   --deselect tests/test_phase4_presentation.py::test_P4D01_judge_demo_passes_and_labels_precomputed_evidence
 gate check-claims "$PY" evaluation/check_claims.py
 gate check-presentation "$PY" evaluation/check_presentation.py
+if [ -f ../finale_package/claims_used_for_finale.json ]; then   # finale P5: every figure of the finale package from the claims file, with its type label
+  gate check-finale-presentation "$PY" evaluation/check_finale_presentation.py
+fi
 gate manifest bash -c 'cd .. && sha256sum --quiet -c MANIFEST.sha256 && echo "MANIFEST.sha256: $(wc -l < MANIFEST.sha256) entries OK"'
 if git -C .. rev-parse --git-dir >/dev/null 2>&1; then
   gate publication-scan python3 ../tools/publication_scan.py --repo ..
