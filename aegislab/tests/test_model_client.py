@@ -255,6 +255,10 @@ def test_backend_change_after_freeze_is_rejected(broker, monkeypatch):
 def test_invalid_backend_config_blocks_freeze(monkeypatch, tmp_path):
     monkeypatch.setattr(store, "VAR", tmp_path / "v")
     monkeypatch.setenv("AEGIS_MODEL_BACKEND", "openai_compatible")  # no URL, no model
-    runs.create_run("T-BADCFG")
+    # finale P4: with no timing choice, create_run must read the backend to pick the default policy (runs.default_timing),
+    # so an invalid configuration is refused already at creation; with an explicit choice it is refused at freeze, as before
+    with pytest.raises(runs.GateError):
+        runs.create_run("T-BADCFG0")
+    runs.create_run("T-BADCFG", timing_bucket_ms=250)
     with pytest.raises(runs.GateError):
         runs.freeze("T-BADCFG")
