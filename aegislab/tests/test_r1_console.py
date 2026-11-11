@@ -350,6 +350,9 @@ def test_experiment_figures_come_from_check_claims(client):
     base, _ = check_claims.latest_real_model()   # finale P3: the console shows the newest real-model runs
     if base == check_claims.P3:
         rows, claims = check_claims.phase3_rows()
+    elif base == check_claims.P4F:  # finale P4: the 11 Nov set's figures come from Part F
+        rows, pclaims = check_claims.finale_p4_rows(False)
+        claims = {k[3:]: v for k, v in pclaims.items() if k.startswith("p4_")}
     else:
         rows, fclaims, _ = check_claims.finale_p3_rows(False)
         claims = {k[2:]: v for k, v in fclaims.items() if k.startswith("f_")}

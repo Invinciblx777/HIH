@@ -1645,7 +1645,12 @@ def _experiments() -> dict:
         import check_claims
         p3, provenance = check_claims.latest_real_model()   # finale P3: the newest set of runs, labelled with where and when
         current = p3 != check_claims.P3
-        if current:
+        p4 = p3 == getattr(check_claims, "P4F", None)
+        if p4:  # finale P4: the 11 Nov set is the newest; its figures come from Part F, not from the 10 Nov Part E
+            rows, claims = check_claims.finale_p4_rows(False)
+            claims = {k[3:]: v for k, v in claims.items() if k.startswith("p4_")}
+            comparison = []
+        elif current:
             rows, claims, comparison = check_claims.finale_p3_rows(False)
             claims = {k[2:]: v for k, v in claims.items() if k.startswith("f_")} | {k: v for k, v in claims.items() if not k.startswith("f_")}
         else:
@@ -1674,14 +1679,18 @@ def _experiments() -> dict:
                              "model": mb, "experiments": exps, "limitations": lim,
                              "recompute": {"label": "LIVE RECOMPUTATION", "checks": len(rows), "passed": sum(1 for r in rows if r[3]),
                                            "failed": [r[0] for r in rows if not r[3]][:10],
-                                           "what": ("evaluation/check_claims.py finale_p3_rows() (Part E): result hashes vs INDEX, observation counts, "
+                                           "what": ("evaluation/check_claims.py finale_p4_rows() (Part F): result hashes vs INDEX, observation counts, "
+                                                    "source-file hashes (no acknowledgement allowed), every figure recomputed from observations.jsonl, plus the "
+                                                    "hardened-server check, the F4 user-namespace proof, the container re-measurement and both three-execution "
+                                                    "timing sets" if p4 else
+                                                    "evaluation/check_claims.py finale_p3_rows() (Part E): result hashes vs INDEX, observation counts, "
                                                     "source-file hashes (no acknowledgement allowed), every figure recomputed from observations.jsonl, plus the "
                                                     "hardened-server check, the real-model timing execution and the live console bundle" if current else
                                                     "evaluation/check_claims.py phase3_rows(): result hashes vs INDEX, observation counts, source-file hashes, "
                                                     "every figure recomputed from observations.jsonl")},
                              "revalidation": [claims[k] for k in ("m_rc2", "m_p3", "m") if k in claims],
                              "history": [{"figure": k, "recorded_23_oct": o, "remeasured_10_nov": n, "same": o == n} for k, o, n in comparison],
-                             "finale_p3": {k: claims[k] for k in ("hardening", "timing") if k in claims} | (
+                             "finale_p3": {k: claims[k] for k in ("hardening", "userns", "timing", "timing_deadline", "timing_deadline_cost") if k in claims} | (
                                  {"second_model": [v for k, v in claims.items() if k.startswith("s_e1") or k.startswith("s_e3")]} if any(k.startswith("s_") for k in claims) else {}),
                              "live": {"label": "REAL MODEL · LIVE", "console": "scripts/start_real_model_console.sh", "demo": "scripts/real_model_demo.sh",
                                       "what": "both start the hardened model server (scripts/start_model_server.sh) and answer with the real model now"}}
