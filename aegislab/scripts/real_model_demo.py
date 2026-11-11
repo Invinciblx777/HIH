@@ -225,11 +225,14 @@ def main():
                 pack, dcfg = work / (rid + "_pack.json"), work / (rid + "_defence.json")
                 make_pack(pack, atk)
                 dcfg.write_text(json.dumps(PERMISSIVE_DEFENCE))
-                runs.create_run(rid, timing_bucket_ms=250, attack_pack=str(pack), defence_config=str(dcfg))
+                # no timing argument: the default policy for a real model (finale P4: deadline release, runs.default_timing)
+                runs.create_run(rid, attack_pack=str(pack), defence_config=str(dcfg))
                 runs.freeze(rid)
                 ts = time.time()
                 runs.start(rid, wait=True)
-                out("  %s: %d attacks through the broker in %.1f s, state %s" % (rid, len(atk), time.time() - ts, runs.Run(rid).state))
+                pol = runs.Run(rid).record["policy"]
+                out("  %s: %d attacks through the broker in %.1f s, state %s, timing %s" % (rid, len(atk), time.time() - ts, runs.Run(rid).state,
+                    "deadline release at t0 + %d ms" % pol["timing_deadline_ms"] if pol.get("timing_mode") == "deadline" else "%d ms buckets" % pol["timing_bucket_ms"]))
             ca = store.read_json(runs.Run("DEMO-A").dir / "sealed/canary.json")["canary"]
             cb = collect_run(runs, store, "DEMO-B", [ca])
             raw = [r for r in cb["rows"] if r["foreign_in_model_output"]]

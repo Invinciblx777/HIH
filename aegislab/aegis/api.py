@@ -92,7 +92,7 @@ def public_view(rec: dict, trusted: bool = False) -> dict:
 
 class CreateReq(BaseModel):
     run_id: str
-    timing_bucket_ms: int = 250
+    timing_bucket_ms: int | None = None        # finale P4: omitted = runs.default_timing() (250 ms stub, deadline real model)
     tags: list[str] = []
     timing_deadline_ms: int | None = None      # finale P4: decision-independent release; see runs.create_run
     shadow_model_on_refusal: bool = False

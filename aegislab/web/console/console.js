@@ -703,7 +703,7 @@ function drawRunBox() {
       <div class="row">${profileSel("prof2", v && v.defence_profile)}<button class="btn lg" type="button" data-step="defence" ${off}>Submit as blue</button></div>
       <p class="lbl">Step 3 · Freeze</p><div class="row"><button class="btn solid lg" type="button" data-step="freeze" ${off}>${icon("shield")} Freeze configuration</button></div>`;
   } else if (rec && rec.state === "FROZEN") {
-    ctl = `<p class="lbl">Step 4 · Start</p><p class="small muted">Launches three hardened rootless containers and the broker. About 5 s with no padding, about 10 s with 250 ms buckets.</p>
+    ctl = `<p class="lbl">Step 4 · Start</p><p class="small muted">Launches three hardened rootless containers and the broker. About 5 s with no padding, about 10 s with 250 ms buckets; with a real model and deadline release, about 1.4 s per attack.</p>
       <div class="row"><button class="btn solid lg" type="button" data-step="start" ${off || (running ? "disabled" : "")}>${icon("play")} Start the run</button></div>`;
   } else if (rec && rec.state === "RUNNING") {
     ctl = `<p class="lbl">Step 5 · Observe</p><div class="loading" role="status"><i aria-hidden="true"><b></b><b></b><b></b></i>${esc(rec.evaluated ?? 0)} of ${esc(rec.attack_count ?? "?")} attacks evaluated</div>
@@ -724,7 +724,7 @@ function drawRunBox() {
       <li><span class="k">State</span><span class="v"><b>${esc(rec.state)}</b> <span class="tiny">${esc(STEP_HELP[rec.state] || "")}</span></span></li>
       <li><span class="k">Mode</span><span class="v">${runModeTag(v)}</span></li>
       <li><span class="k">Defence</span><span class="v">${prof ? esc(prof.title) : v && v.defence_profile === undefined ? "—" : "sample (not changed)"}</span></li>
-      <li><span class="k">Attacks</span><span class="v">${rec.evaluated ?? 0} of ${rec.attack_count ?? "?"} evaluated · timing bucket ${esc(rec.policy && rec.policy.timing_bucket_ms)} ms${rec.complete === false ? ` · <span class="st warn">incomplete</span>` : rec.complete ? " · complete" : ""}</span></li>
+      <li><span class="k">Attacks</span><span class="v">${rec.evaluated ?? 0} of ${rec.attack_count ?? "?"} evaluated · ${rec.policy && rec.policy.timing_mode === "deadline" ? `deadline release at t0 + ${esc(rec.policy.timing_deadline_ms)} ms` : `timing bucket ${esc(rec.policy && rec.policy.timing_bucket_ms)} ms`}${rec.complete === false ? ` · <span class="st warn">incomplete</span>` : rec.complete ? " · complete" : ""}</span></li>
       ${v ? `<li><span class="k">Audit log</span><span class="v">${v.audit_entries} entries, signed up to #${v.signed_upto} · <a href="${href("audit", { src: "log", run: rec.id })}">open</a></span></li>` : ""}
       ${rec.state === "RELEASED" && rec.outcomes ? `<li><span class="k">Outcomes</span><span class="v">${Object.entries(rec.outcomes).map(([k, n]) => `${esc(k)} ${n}`).join(" · ")}</span></li>` : ""}
       ${v && v.next_actions.length ? `<li><span class="k">Next</span><span class="v">${v.next_actions.map((a) => esc(a.label)).join("<br>")}</span></li>` : ""}
@@ -737,7 +737,7 @@ function drawRunBox() {
       ${ctl}
       <p class="lbl">${rec ? "New run" : "Step 1 · Create a run"}</p>
       <div class="row">
-        <label class="field">Timing padding<select id="bucket"><option value="250">250 ms buckets (default policy)</option><option value="0">none (faster)</option></select></label>
+        <label class="field">Timing padding<select id="bucket"><option value="">default policy (stub: 250 ms buckets; real model: deadline release)</option><option value="250">250 ms buckets</option><option value="0">none (faster)</option></select></label>
         ${profileSel("prof1")}
         <button class="btn ${rec && rec.state !== "RELEASED" && rec.state !== "FAILED" ? "" : "solid"} lg" id="start-run" type="button" ${off || (running ? "disabled" : "")}>${icon("plus")} Create run</button>
       </div>
@@ -771,8 +771,10 @@ async function labPost(btn, path, body, ok, idem) {
 /* One key per click: a retried or duplicated create request returns the run it already created instead of a second one. */
 const idemKey = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), (x) => x.toString(16).padStart(2, "0")).join("");
 async function startRun(ev) {
-  const bucket = $("#bucket") ? Number($("#bucket").value) : 250, prof = $("#prof1") ? $("#prof1").value : "sample";
-  await labPost(ev.currentTarget, "/api/lab/runs", { timing_bucket_ms: bucket, defence_profile: prof, stop_after: "created" },
+  const bv = $("#bucket") ? $("#bucket").value : "", prof = $("#prof1") ? $("#prof1").value : "sample";
+  const body = { defence_profile: prof, stop_after: "created" };
+  if (bv !== "") body.timing_bucket_ms = Number(bv);  // omitted: the control plane's default policy (finale P4)
+  await labPost(ev.currentTarget, "/api/lab/runs", body,
     (b) => `${b.run_id} created by the operator; defence submitted by the blue participant`, idemKey());
 }
 async function runStep(step, btn) {
