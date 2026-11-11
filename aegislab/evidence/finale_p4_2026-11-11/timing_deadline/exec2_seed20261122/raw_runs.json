@@ -1,0 +1,2162 @@
+[
+ {
+  "order_index": 0,
+  "setting": "0",
+  "rep": 0,
+  "config": "X",
+  "run_id": "TD-U-01",
+  "started_utc": "2026-11-11T05:11:44.569153+00:00",
+  "loadavg_before": [
+   3.58984375,
+   2.10205078125,
+   2.154296875
+  ],
+  "wall_s": 5.329,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 19214433,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "none",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 1,
+  "setting": "deadline+shadow",
+  "rep": 0,
+  "config": "X",
+  "run_id": "TD-S-01",
+  "started_utc": "2026-11-11T05:11:50.386149+00:00",
+  "loadavg_before": [
+   3.38232421875,
+   2.08349609375,
+   2.14794921875
+  ],
+  "wall_s": 16.0098,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 23417478,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.776,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 5,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 2,
+  "setting": "deadline",
+  "rep": 0,
+  "config": "X",
+  "run_id": "TD-D-01",
+  "started_utc": "2026-11-11T05:12:06.893765+00:00",
+  "loadavg_before": [
+   2.890625,
+   2.06005859375,
+   2.13916015625
+  ],
+  "wall_s": 16.0198,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 21544453,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.854,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 3,
+  "setting": "250",
+  "rep": 0,
+  "config": "X",
+  "run_id": "TD-B-01",
+  "started_utc": "2026-11-11T05:12:23.398333+00:00",
+  "loadavg_before": [
+   2.2490234375,
+   1.95849609375,
+   2.10400390625
+  ],
+  "wall_s": 7.7595,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 22612607,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "bucket",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 4,
+  "setting": "deadline",
+  "rep": 1,
+  "config": "Y",
+  "run_id": "TD-D-02",
+  "started_utc": "2026-11-11T05:12:31.648784+00:00",
+  "loadavg_before": [
+   2.056640625,
+   1.92626953125,
+   2.09130859375
+  ],
+  "wall_s": 16.0125,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 20724192,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.785,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 5,
+  "setting": "250",
+  "rep": 1,
+  "config": "Y",
+  "run_id": "TD-B-02",
+  "started_utc": "2026-11-11T05:12:48.155387+00:00",
+  "loadavg_before": [
+   2.00732421875,
+   1.92822265625,
+   2.0888671875
+  ],
+  "wall_s": 7.5269,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 20604193,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "bucket",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 6,
+  "setting": "deadline+shadow",
+  "rep": 1,
+  "config": "Y",
+  "run_id": "TD-S-02",
+  "started_utc": "2026-11-11T05:12:56.174941+00:00",
+  "loadavg_before": [
+   2.4072265625,
+   2.0126953125,
+   2.11572265625
+  ],
+  "wall_s": 16.0274,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 24844720,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 1.169,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 5,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 7,
+  "setting": "0",
+  "rep": 1,
+  "config": "Y",
+  "run_id": "TD-U-02",
+  "started_utc": "2026-11-11T05:13:12.690534+00:00",
+  "loadavg_before": [
+   1.78515625,
+   1.8974609375,
+   2.07470703125
+  ],
+  "wall_s": 5.5402,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 20602216,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "none",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 8,
+  "setting": "deadline",
+  "rep": 2,
+  "config": "X",
+  "run_id": "TD-D-03",
+  "started_utc": "2026-11-11T05:13:18.727350+00:00",
+  "loadavg_before": [
+   2.123046875,
+   1.9658203125,
+   2.09619140625
+  ],
+  "wall_s": 16.0171,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 19059069,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.364,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 9,
+  "setting": "250",
+  "rep": 2,
+  "config": "X",
+  "run_id": "TD-B-03",
+  "started_utc": "2026-11-11T05:13:35.231333+00:00",
+  "loadavg_before": [
+   2.3544921875,
+   2.01806640625,
+   2.11083984375
+  ],
+  "wall_s": 7.771,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 22941346,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "bucket",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 10,
+  "setting": "deadline+shadow",
+  "rep": 2,
+  "config": "X",
+  "run_id": "TD-S-03",
+  "started_utc": "2026-11-11T05:13:43.496010+00:00",
+  "loadavg_before": [
+   2.54638671875,
+   2.0673828125,
+   2.12548828125
+  ],
+  "wall_s": 16.0447,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 25925378,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.774,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 5,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 11,
+  "setting": "0",
+  "rep": 2,
+  "config": "X",
+  "run_id": "TD-U-03",
+  "started_utc": "2026-11-11T05:14:00.035212+00:00",
+  "loadavg_before": [
+   2.12939453125,
+   1.998046875,
+   2.10107421875
+  ],
+  "wall_s": 5.2892,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 19093726,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "none",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 12,
+  "setting": "0",
+  "rep": 3,
+  "config": "Y",
+  "run_id": "TD-U-04",
+  "started_utc": "2026-11-11T05:14:05.814960+00:00",
+  "loadavg_before": [
+   2.03857421875,
+   1.9814453125,
+   2.0947265625
+  ],
+  "wall_s": 5.6948,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 21191883,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "none",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 13,
+  "setting": "250",
+  "rep": 3,
+  "config": "Y",
+  "run_id": "TD-B-04",
+  "started_utc": "2026-11-11T05:14:11.997447+00:00",
+  "loadavg_before": [
+   1.87841796875,
+   1.94873046875,
+   2.08251953125
+  ],
+  "wall_s": 7.5281,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 20617276,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "bucket",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 14,
+  "setting": "deadline",
+  "rep": 3,
+  "config": "Y",
+  "run_id": "TD-D-04",
+  "started_utc": "2026-11-11T05:14:20.017695+00:00",
+  "loadavg_before": [
+   1.7275390625,
+   1.916015625,
+   2.0712890625
+  ],
+  "wall_s": 16.0209,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 20588543,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.903,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 15,
+  "setting": "deadline+shadow",
+  "rep": 3,
+  "config": "Y",
+  "run_id": "TD-S-04",
+  "started_utc": "2026-11-11T05:14:36.531725+00:00",
+  "loadavg_before": [
+   1.53955078125,
+   1.85693359375,
+   2.04833984375
+  ],
+  "wall_s": 16.0365,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 24851669,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 1.066,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 5,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 16,
+  "setting": "0",
+  "rep": 4,
+  "config": "X",
+  "run_id": "TD-U-05",
+  "started_utc": "2026-11-11T05:14:53.055340+00:00",
+  "loadavg_before": [
+   1.19775390625,
+   1.7646484375,
+   2.0146484375
+  ],
+  "wall_s": 5.3151,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 19153915,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "none",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 17,
+  "setting": "deadline+shadow",
+  "rep": 4,
+  "config": "X",
+  "run_id": "TD-S-05",
+  "started_utc": "2026-11-11T05:14:58.857970+00:00",
+  "loadavg_before": [
+   1.66259765625,
+   1.85205078125,
+   2.04150390625
+  ],
+  "wall_s": 16.0269,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 26729769,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.996,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 5,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 18,
+  "setting": "deadline",
+  "rep": 4,
+  "config": "X",
+  "run_id": "TD-D-05",
+  "started_utc": "2026-11-11T05:15:15.369568+00:00",
+  "loadavg_before": [
+   1.91064453125,
+   1.89306640625,
+   2.05126953125
+  ],
+  "wall_s": 16.0605,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 19276043,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.408,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 19,
+  "setting": "250",
+  "rep": 4,
+  "config": "X",
+  "run_id": "TD-B-05",
+  "started_utc": "2026-11-11T05:15:31.922235+00:00",
+  "loadavg_before": [
+   1.4921875,
+   1.80126953125,
+   2.01708984375
+  ],
+  "wall_s": 7.2777,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 19952003,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "bucket",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 20,
+  "setting": "0",
+  "rep": 5,
+  "config": "Y",
+  "run_id": "TD-U-06",
+  "started_utc": "2026-11-11T05:15:39.692254+00:00",
+  "loadavg_before": [
+   1.93359375,
+   1.8876953125,
+   2.0439453125
+  ],
+  "wall_s": 5.6682,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 21289879,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "none",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 21,
+  "setting": "deadline+shadow",
+  "rep": 5,
+  "config": "Y",
+  "run_id": "TD-S-06",
+  "started_utc": "2026-11-11T05:15:45.854001+00:00",
+  "loadavg_before": [
+   2.25927734375,
+   1.9560546875,
+   2.0654296875
+  ],
+  "wall_s": 16.4678,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 32570042,
+  "release_timing": {
+   "cutoffs": 1,
+   "max_late_ms": 0.621,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 5,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 22,
+  "setting": "250",
+  "rep": 5,
+  "config": "Y",
+  "run_id": "TD-B-06",
+  "started_utc": "2026-11-11T05:16:02.928406+00:00",
+  "loadavg_before": [
+   3.48828125,
+   2.2392578125,
+   2.1552734375
+  ],
+  "wall_s": 11.4265,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 35748461,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "bucket",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 23,
+  "setting": "deadline",
+  "rep": 5,
+  "config": "Y",
+  "run_id": "TD-D-06",
+  "started_utc": "2026-11-11T05:16:15.020196+00:00",
+  "loadavg_before": [
+   6.17431640625,
+   2.85693359375,
+   2.35791015625
+  ],
+  "wall_s": 16.1699,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 25321279,
+  "release_timing": {
+   "cutoffs": 1,
+   "max_late_ms": 0.362,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 24,
+  "setting": "0",
+  "rep": 6,
+  "config": "X",
+  "run_id": "TD-U-07",
+  "started_utc": "2026-11-11T05:16:31.707288+00:00",
+  "loadavg_before": [
+   5.61181640625,
+   2.94677734375,
+   2.3994140625
+  ],
+  "wall_s": 7.0902,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 28383882,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "none",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 25,
+  "setting": "deadline",
+  "rep": 6,
+  "config": "X",
+  "run_id": "TD-D-07",
+  "started_utc": "2026-11-11T05:16:39.345734+00:00",
+  "loadavg_before": [
+   5.96337890625,
+   3.06396484375,
+   2.4404296875
+  ],
+  "wall_s": 16.279,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 22563527,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.328,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 26,
+  "setting": "250",
+  "rep": 6,
+  "config": "X",
+  "run_id": "TD-B-07",
+  "started_utc": "2026-11-11T05:16:56.170737+00:00",
+  "loadavg_before": [
+   5.87353515625,
+   3.1767578125,
+   2.48779296875
+  ],
+  "wall_s": 9.91,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 30727618,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "bucket",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 27,
+  "setting": "deadline+shadow",
+  "rep": 6,
+  "config": "X",
+  "run_id": "TD-S-07",
+  "started_utc": "2026-11-11T05:17:06.669162+00:00",
+  "loadavg_before": [
+   6.20166015625,
+   3.380859375,
+   2.56591796875
+  ],
+  "wall_s": 16.3286,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 27706835,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.548,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 5,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 28,
+  "setting": "0",
+  "rep": 7,
+  "config": "Y",
+  "run_id": "TD-U-08",
+  "started_utc": "2026-11-11T05:17:23.555670+00:00",
+  "loadavg_before": [
+   5.93505859375,
+   3.4736328125,
+   2.6103515625
+  ],
+  "wall_s": 6.6966,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 26327929,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "none",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 29,
+  "setting": "deadline",
+  "rep": 7,
+  "config": "Y",
+  "run_id": "TD-D-08",
+  "started_utc": "2026-11-11T05:17:30.760785+00:00",
+  "loadavg_before": [
+   6.5009765625,
+   3.6318359375,
+   2.66650390625
+  ],
+  "wall_s": 16.186,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 26292045,
+  "release_timing": {
+   "cutoffs": 1,
+   "max_late_ms": 0.453,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 30,
+  "setting": "deadline+shadow",
+  "rep": 7,
+  "config": "Y",
+  "run_id": "TD-S-08",
+  "started_utc": "2026-11-11T05:17:47.476476+00:00",
+  "loadavg_before": [
+   5.8583984375,
+   3.67236328125,
+   2.701171875
+  ],
+  "wall_s": 16.3279,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 33535338,
+  "release_timing": {
+   "cutoffs": 2,
+   "max_late_ms": 0.487,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 5,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 31,
+  "setting": "250",
+  "rep": 7,
+  "config": "Y",
+  "run_id": "TD-B-08",
+  "started_utc": "2026-11-11T05:18:04.372992+00:00",
+  "loadavg_before": [
+   6.50439453125,
+   3.93115234375,
+   2.802734375
+  ],
+  "wall_s": 9.4587,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 30760818,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "bucket",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 32,
+  "setting": "250",
+  "rep": 8,
+  "config": "X",
+  "run_id": "TD-B-09",
+  "started_utc": "2026-11-11T05:18:14.360940+00:00",
+  "loadavg_before": [
+   7.0615234375,
+   4.13232421875,
+   2.88037109375
+  ],
+  "wall_s": 9.5185,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 29813857,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "bucket",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 33,
+  "setting": "0",
+  "rep": 8,
+  "config": "X",
+  "run_id": "TD-U-09",
+  "started_utc": "2026-11-11T05:18:24.425118+00:00",
+  "loadavg_before": [
+   7.9013671875,
+   4.40869140625,
+   2.98388671875
+  ],
+  "wall_s": 7.0183,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 28092191,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "none",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 34,
+  "setting": "deadline",
+  "rep": 8,
+  "config": "X",
+  "run_id": "TD-D-09",
+  "started_utc": "2026-11-11T05:18:31.971949+00:00",
+  "loadavg_before": [
+   7.4072265625,
+   4.4130859375,
+   3.00048828125
+  ],
+  "wall_s": 16.2178,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 22966573,
+  "release_timing": {
+   "cutoffs": 1,
+   "max_late_ms": 0.658,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 35,
+  "setting": "deadline+shadow",
+  "rep": 8,
+  "config": "X",
+  "run_id": "TD-S-09",
+  "started_utc": "2026-11-11T05:18:48.712246+00:00",
+  "loadavg_before": [
+   6.05517578125,
+   4.26123046875,
+   2.97314453125
+  ],
+  "wall_s": 16.1862,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 32737235,
+  "release_timing": {
+   "cutoffs": 1,
+   "max_late_ms": 0.423,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 5,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 36,
+  "setting": "250",
+  "rep": 9,
+  "config": "Y",
+  "run_id": "TD-B-10",
+  "started_utc": "2026-11-11T05:19:05.428162+00:00",
+  "loadavg_before": [
+   5.7236328125,
+   4.26708984375,
+   2.9951171875
+  ],
+  "wall_s": 7.8949,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 24398499,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "bucket",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 37,
+  "setting": "0",
+  "rep": 9,
+  "config": "Y",
+  "run_id": "TD-U-10",
+  "started_utc": "2026-11-11T05:19:13.841739+00:00",
+  "loadavg_before": [
+   5.8525390625,
+   4.34130859375,
+   3.033203125
+  ],
+  "wall_s": 6.192,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 23676486,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "none",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 38,
+  "setting": "deadline+shadow",
+  "rep": 9,
+  "config": "Y",
+  "run_id": "TD-S-10",
+  "started_utc": "2026-11-11T05:19:20.540224+00:00",
+  "loadavg_before": [
+   5.94482421875,
+   4.3857421875,
+   3.0546875
+  ],
+  "wall_s": 16.1232,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 28712250,
+  "release_timing": {
+   "cutoffs": 1,
+   "max_late_ms": 0.493,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 5,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 39,
+  "setting": "deadline",
+  "rep": 9,
+  "config": "Y",
+  "run_id": "TD-D-10",
+  "started_utc": "2026-11-11T05:19:37.174554+00:00",
+  "loadavg_before": [
+   4.380859375,
+   4.13232421875,
+   2.9990234375
+  ],
+  "wall_s": 16.1499,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 24890626,
+  "release_timing": {
+   "cutoffs": 1,
+   "max_late_ms": 0.516,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 40,
+  "setting": "deadline",
+  "rep": 10,
+  "config": "X",
+  "run_id": "TD-D-11",
+  "started_utc": "2026-11-11T05:19:53.840117+00:00",
+  "loadavg_before": [
+   3.791015625,
+   4.01123046875,
+   2.97802734375
+  ],
+  "wall_s": 16.2949,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 26287010,
+  "release_timing": {
+   "cutoffs": 2,
+   "max_late_ms": 1.177,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 41,
+  "setting": "250",
+  "rep": 10,
+  "config": "X",
+  "run_id": "TD-B-11",
+  "started_utc": "2026-11-11T05:20:10.679356+00:00",
+  "loadavg_before": [
+   3.8623046875,
+   4.01171875,
+   2.9951171875
+  ],
+  "wall_s": 7.9012,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 23220900,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "bucket",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 42,
+  "setting": "0",
+  "rep": 10,
+  "config": "X",
+  "run_id": "TD-U-11",
+  "started_utc": "2026-11-11T05:20:19.142516+00:00",
+  "loadavg_before": [
+   4.06298828125,
+   4.04541015625,
+   3.01708984375
+  ],
+  "wall_s": 7.036,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 28371878,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "none",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 43,
+  "setting": "deadline+shadow",
+  "rep": 10,
+  "config": "X",
+  "run_id": "TD-S-11",
+  "started_utc": "2026-11-11T05:20:26.692572+00:00",
+  "loadavg_before": [
+   4.2744140625,
+   4.0927734375,
+   3.0439453125
+  ],
+  "wall_s": 16.2081,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 30563437,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.32,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 5,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 44,
+  "setting": "250",
+  "rep": 11,
+  "config": "Y",
+  "run_id": "TD-B-12",
+  "started_utc": "2026-11-11T05:20:43.417458+00:00",
+  "loadavg_before": [
+   3.48681640625,
+   3.9248046875,
+   3.0048828125
+  ],
+  "wall_s": 8.1487,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 25178520,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "bucket",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 45,
+  "setting": "0",
+  "rep": 11,
+  "config": "Y",
+  "run_id": "TD-U-12",
+  "started_utc": "2026-11-11T05:20:52.091141+00:00",
+  "loadavg_before": [
+   3.09765625,
+   3.82763671875,
+   2.98291015625
+  ],
+  "wall_s": 6.4819,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 25305157,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "none",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 46,
+  "setting": "deadline+shadow",
+  "rep": 11,
+  "config": "Y",
+  "run_id": "TD-S-12",
+  "started_utc": "2026-11-11T05:20:59.085751+00:00",
+  "loadavg_before": [
+   3.41015625,
+   3.88037109375,
+   3.0048828125
+  ],
+  "wall_s": 16.1576,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 29875181,
+  "release_timing": {
+   "cutoffs": 1,
+   "max_late_ms": 0.745,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 5,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 47,
+  "setting": "deadline",
+  "rep": 11,
+  "config": "Y",
+  "run_id": "TD-D-12",
+  "started_utc": "2026-11-11T05:21:15.766077+00:00",
+  "loadavg_before": [
+   3.74462890625,
+   3.947265625,
+   3.04150390625
+  ],
+  "wall_s": 16.1128,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 23760409,
+  "release_timing": {
+   "cutoffs": 1,
+   "max_late_ms": 0.327,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 48,
+  "setting": "deadline+shadow",
+  "rep": 12,
+  "config": "X",
+  "run_id": "TD-S-13",
+  "started_utc": "2026-11-11T05:21:32.409064+00:00",
+  "loadavg_before": [
+   3.02783203125,
+   3.77099609375,
+   3.001953125
+  ],
+  "wall_s": 16.1226,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 31624126,
+  "release_timing": {
+   "cutoffs": 1,
+   "max_late_ms": 0.43,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 5,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 49,
+  "setting": "deadline",
+  "rep": 12,
+  "config": "X",
+  "run_id": "TD-D-13",
+  "started_utc": "2026-11-11T05:21:49.050771+00:00",
+  "loadavg_before": [
+   2.87890625,
+   3.7001953125,
+   2.99072265625
+  ],
+  "wall_s": 16.1463,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 22249065,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.416,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 50,
+  "setting": "250",
+  "rep": 12,
+  "config": "X",
+  "run_id": "TD-B-13",
+  "started_utc": "2026-11-11T05:22:05.714671+00:00",
+  "loadavg_before": [
+   2.955078125,
+   3.66796875,
+   2.9912109375
+  ],
+  "wall_s": 7.3859,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 21085980,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "bucket",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 51,
+  "setting": "0",
+  "rep": 12,
+  "config": "X",
+  "run_id": "TD-U-13",
+  "started_utc": "2026-11-11T05:22:13.616119+00:00",
+  "loadavg_before": [
+   3.12841796875,
+   3.6796875,
+   3.00244140625
+  ],
+  "wall_s": 6.6025,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 25928198,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "none",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 52,
+  "setting": "250",
+  "rep": 13,
+  "config": "Y",
+  "run_id": "TD-B-14",
+  "started_utc": "2026-11-11T05:22:20.784735+00:00",
+  "loadavg_before": [
+   3.3583984375,
+   3.71826171875,
+   3.0185546875
+  ],
+  "wall_s": 8.5426,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 25684841,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "bucket",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 53,
+  "setting": "deadline",
+  "rep": 13,
+  "config": "Y",
+  "run_id": "TD-D-14",
+  "started_utc": "2026-11-11T05:22:29.979951+00:00",
+  "loadavg_before": [
+   3.85791015625,
+   3.81103515625,
+   3.05615234375
+  ],
+  "wall_s": 16.2092,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 23341121,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.387,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 54,
+  "setting": "0",
+  "rep": 13,
+  "config": "Y",
+  "run_id": "TD-U-14",
+  "started_utc": "2026-11-11T05:22:46.705331+00:00",
+  "loadavg_before": [
+   3.11962890625,
+   3.64453125,
+   3.0166015625
+  ],
+  "wall_s": 5.6214,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 20710577,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "none",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 55,
+  "setting": "deadline+shadow",
+  "rep": 13,
+  "config": "Y",
+  "run_id": "TD-S-14",
+  "started_utc": "2026-11-11T05:22:52.825765+00:00",
+  "loadavg_before": [
+   3.3505859375,
+   3.68408203125,
+   3.03271484375
+  ],
+  "wall_s": 16.0607,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 25519327,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.968,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 5,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 56,
+  "setting": "0",
+  "rep": 14,
+  "config": "X",
+  "run_id": "TD-U-15",
+  "started_utc": "2026-11-11T05:23:09.407953+00:00",
+  "loadavg_before": [
+   3.16259765625,
+   3.6318359375,
+   3.0263671875
+  ],
+  "wall_s": 5.7419,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 20973562,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "none",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 57,
+  "setting": "250",
+  "rep": 14,
+  "config": "X",
+  "run_id": "TD-B-15",
+  "started_utc": "2026-11-11T05:23:15.669188+00:00",
+  "loadavg_before": [
+   3.55029296875,
+   3.70458984375,
+   3.05322265625
+  ],
+  "wall_s": 8.103,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 24087957,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "bucket",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 58,
+  "setting": "deadline+shadow",
+  "rep": 14,
+  "config": "X",
+  "run_id": "TD-S-15",
+  "started_utc": "2026-11-11T05:23:24.299159+00:00",
+  "loadavg_before": [
+   3.55859375,
+   3.69873046875,
+   3.05810546875
+  ],
+  "wall_s": 16.0755,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 28130246,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.888,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 5,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 59,
+  "setting": "deadline",
+  "rep": 14,
+  "config": "X",
+  "run_id": "TD-D-15",
+  "started_utc": "2026-11-11T05:23:40.874259+00:00",
+  "loadavg_before": [
+   3.48486328125,
+   3.66650390625,
+   3.05712890625
+  ],
+  "wall_s": 16.0666,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 18975147,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 1.345,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 60,
+  "setting": "250",
+  "rep": 15,
+  "config": "Y",
+  "run_id": "TD-B-16",
+  "started_utc": "2026-11-11T05:23:57.426423+00:00",
+  "loadavg_before": [
+   3.7353515625,
+   3.70654296875,
+   3.08349609375
+  ],
+  "wall_s": 7.5396,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 20559670,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "bucket",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 61,
+  "setting": "deadline+shadow",
+  "rep": 15,
+  "config": "Y",
+  "run_id": "TD-S-16",
+  "started_utc": "2026-11-11T05:24:05.457578+00:00",
+  "loadavg_before": [
+   3.9169921875,
+   3.74462890625,
+   3.099609375
+  ],
+  "wall_s": 16.0317,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 24793139,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 1.305,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 5,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 62,
+  "setting": "0",
+  "rep": 15,
+  "config": "Y",
+  "run_id": "TD-U-16",
+  "started_utc": "2026-11-11T05:24:21.978519+00:00",
+  "loadavg_before": [
+   3.3984375,
+   3.64501953125,
+   3.080078125
+  ],
+  "wall_s": 5.6298,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 20927405,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "none",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 63,
+  "setting": "deadline",
+  "rep": 15,
+  "config": "Y",
+  "run_id": "TD-D-16",
+  "started_utc": "2026-11-11T05:24:28.109658+00:00",
+  "loadavg_before": [
+   4.00732421875,
+   3.767578125,
+   3.123046875
+  ],
+  "wall_s": 16.0552,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 20904662,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.509,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 64,
+  "setting": "250",
+  "rep": 16,
+  "config": "X",
+  "run_id": "TD-B-17",
+  "started_utc": "2026-11-11T05:24:44.657853+00:00",
+  "loadavg_before": [
+   3.52587890625,
+   3.6787109375,
+   3.1044921875
+  ],
+  "wall_s": 7.3093,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 19814944,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "bucket",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 65,
+  "setting": "0",
+  "rep": 16,
+  "config": "X",
+  "run_id": "TD-U-17",
+  "started_utc": "2026-11-11T05:24:52.460364+00:00",
+  "loadavg_before": [
+   3.611328125,
+   3.689453125,
+   3.11376953125
+  ],
+  "wall_s": 5.3654,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 19312328,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "none",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 66,
+  "setting": "deadline",
+  "rep": 16,
+  "config": "X",
+  "run_id": "TD-D-17",
+  "started_utc": "2026-11-11T05:24:58.322953+00:00",
+  "loadavg_before": [
+   3.802734375,
+   3.72802734375,
+   3.12939453125
+  ],
+  "wall_s": 16.071,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 19235292,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.942,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 67,
+  "setting": "deadline+shadow",
+  "rep": 16,
+  "config": "X",
+  "run_id": "TD-S-17",
+  "started_utc": "2026-11-11T05:25:14.884384+00:00",
+  "loadavg_before": [
+   3.095703125,
+   3.5771484375,
+   3.0888671875
+  ],
+  "wall_s": 16.0516,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 26183172,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.735,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 5,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 68,
+  "setting": "deadline",
+  "rep": 17,
+  "config": "Y",
+  "run_id": "TD-D-18",
+  "started_utc": "2026-11-11T05:25:31.431258+00:00",
+  "loadavg_before": [
+   2.81640625,
+   3.498046875,
+   3.0712890625
+  ],
+  "wall_s": 16.0246,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 20607269,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.825,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 69,
+  "setting": "250",
+  "rep": 17,
+  "config": "Y",
+  "run_id": "TD-B-18",
+  "started_utc": "2026-11-11T05:25:47.947443+00:00",
+  "loadavg_before": [
+   2.15869140625,
+   3.30322265625,
+   3.015625
+  ],
+  "wall_s": 7.5387,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 20576812,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "bucket",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 70,
+  "setting": "0",
+  "rep": 17,
+  "config": "Y",
+  "run_id": "TD-U-18",
+  "started_utc": "2026-11-11T05:25:55.982189+00:00",
+  "loadavg_before": [
+   2.46630859375,
+   3.34814453125,
+   3.03173828125
+  ],
+  "wall_s": 5.6184,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 20783882,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "none",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 71,
+  "setting": "deadline+shadow",
+  "rep": 17,
+  "config": "Y",
+  "run_id": "TD-S-18",
+  "started_utc": "2026-11-11T05:26:02.093376+00:00",
+  "loadavg_before": [
+   2.16015625,
+   3.25390625,
+   3.00390625
+  ],
+  "wall_s": 16.0503,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 25828492,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.938,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 5,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 72,
+  "setting": "deadline+shadow",
+  "rep": 18,
+  "config": "X",
+  "run_id": "TD-S-19",
+  "started_utc": "2026-11-11T05:26:18.638726+00:00",
+  "loadavg_before": [
+   1.7490234375,
+   3.10986328125,
+   2.96044921875
+  ],
+  "wall_s": 16.0432,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 28554105,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.872,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 5,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 73,
+  "setting": "0",
+  "rep": 18,
+  "config": "X",
+  "run_id": "TD-U-19",
+  "started_utc": "2026-11-11T05:26:35.183396+00:00",
+  "loadavg_before": [
+   1.44140625,
+   2.9736328125,
+   2.91748046875
+  ],
+  "wall_s": 6.2435,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 24421227,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "none",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 74,
+  "setting": "250",
+  "rep": 18,
+  "config": "X",
+  "run_id": "TD-B-19",
+  "started_utc": "2026-11-11T05:26:41.928765+00:00",
+  "loadavg_before": [
+   1.373046875,
+   2.908203125,
+   2.896484375
+  ],
+  "wall_s": 7.3051,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 19277080,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "bucket",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 75,
+  "setting": "deadline",
+  "rep": 18,
+  "config": "X",
+  "run_id": "TD-D-19",
+  "started_utc": "2026-11-11T05:26:49.726997+00:00",
+  "loadavg_before": [
+   1.74365234375,
+   2.9599609375,
+   2.91357421875
+  ],
+  "wall_s": 16.0701,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 24349474,
+  "release_timing": {
+   "cutoffs": 1,
+   "max_late_ms": 0.587,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 76,
+  "setting": "0",
+  "rep": 19,
+  "config": "Y",
+  "run_id": "TD-U-20",
+  "started_utc": "2026-11-11T05:27:06.288154+00:00",
+  "loadavg_before": [
+   1.837890625,
+   2.91455078125,
+   2.89892578125
+  ],
+  "wall_s": 5.5805,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 20556945,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "none",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 77,
+  "setting": "250",
+  "rep": 19,
+  "config": "Y",
+  "run_id": "TD-B-20",
+  "started_utc": "2026-11-11T05:27:12.356670+00:00",
+  "loadavg_before": [
+   2.109375,
+   2.9345703125,
+   2.90576171875
+  ],
+  "wall_s": 7.5287,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 20686914,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.0,
+   "mode": "bucket",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 78,
+  "setting": "deadline",
+  "rep": 19,
+  "config": "Y",
+  "run_id": "TD-D-20",
+  "started_utc": "2026-11-11T05:27:20.384836+00:00",
+  "loadavg_before": [
+   2.42138671875,
+   2.98583984375,
+   2.9228515625
+  ],
+  "wall_s": 16.0428,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 20623280,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.868,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 0,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ },
+ {
+  "order_index": 79,
+  "setting": "deadline+shadow",
+  "rep": 19,
+  "config": "Y",
+  "run_id": "TD-S-20",
+  "started_utc": "2026-11-11T05:27:36.920455+00:00",
+  "loadavg_before": [
+   2.5107421875,
+   2.970703125,
+   2.91845703125
+  ],
+  "wall_s": 16.0324,
+  "state": "SEALED",
+  "complete": true,
+  "n_obs": 10,
+  "model_server_cpu_usec": 24869154,
+  "release_timing": {
+   "cutoffs": 0,
+   "max_late_ms": 0.772,
+   "mode": "deadline",
+   "overruns": 0,
+   "shadow_calls": 5,
+   "shadow_errors": 0,
+   "slips": 0
+  }
+ }
+]
