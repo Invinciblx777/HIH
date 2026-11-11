@@ -1,0 +1,27 @@
+# AegisLab
+
+**Secure infrastructure for adversarial AI safety testing** · Team Tech Mavericks · Hack in Hills '26 · Track 04 (Bayora) · Grand Finale, Manali
+
+## What it is
+
+A single-host lab where a red team, a blue team and the model under test run side by side without seeing each other's protected state. Each workload runs in a rootless Podman container with no network and its own user namespace; one trusted broker is the only channel; the real model (llama.cpp on CPU) runs in its own sandbox behind a UNIX socket. Every decision lands in a hash-chained, signed audit log that a reviewer verifies offline with a separate program.
+
+## Three headline results
+
+- **No cross-session leak detected with a real model, and the controls show the test can see one.** Qwen2.5-0.5B: {{e1_isolation.sessions}} ({{e1_isolation.trials}}) recovered another session's canary; controls built to leak: {{e1_positive.history}} and {{e1_positive.gateway}}. {{e1_isolation.label}}.
+- **A timing leak we found ourselves, and fixed.** 250 ms response padding leaked against the real model ({{timing_250_real.acc}}, {{timing_250_real.label}}); deadline release: {{timing_deadline_real.acc}} against {{timing_deadline_real.base}}, no leak detected ({{timing_deadline_real.label}}), at {{timing_deadline_cost.cost}} per answer ({{timing_deadline_cost.label}}).
+- **Evidence that cannot be edited unnoticed.** {{tamper.categories}} detected in {{tamper.trials}} ({{tamper.label}}); strict verification {{verify_cli_live.ok}}, a one-field edit of a copy {{verify_cli_live.bad}} (LIVE).
+
+Labels: LIVE = produced by the presented code when it runs · RE-MEASURED = measured again on the finale code · RECORDED = measured earlier, not re-run.
+
+## Residual risk, stated
+
+A host-user compromise still reaches the signing key (the reviewer countersignature is Partial: it helps only off-host); "no leak detected" is not absence; containers share the kernel (gVisor not tried); one host, CPU only, GPU untested; the canary detector misses double encodings and paraphrase.
+
+## Try it
+
+- Code and evidence: **https://github.com/Invinciblx777/HIH**
+- Read-only public demo (verify a real bundle, watch a tampered copy fail): **https://aegislab.vercel.app**. It serves `main`; the finale code (branch `finale/p4-hardening`, commit `9145592`) reaches it when merged.
+- `cd aegislab && bash scripts/quickstart.sh && bash scripts/judge_demo.sh`
+
+Abdul Munaf Z (solution architect & integration engineer) · Likhith Sai N (sandbox security & infrastructure engineer) · Sreeram Rajesh (product interface & evaluation engineer)

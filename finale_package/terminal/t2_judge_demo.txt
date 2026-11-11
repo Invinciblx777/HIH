@@ -1,0 +1,119 @@
+$ bash scripts/judge_demo.sh
+AegisLab judge demo (PRESENTATION MODE)  state dir /tmp/aegis-judge-fb2nm5uv
+deterministic stub model, no network, no model download. Original demo path: scripts/security_demo.sh (unchanged).
+
+== 1. Threat model: who must not see what ==
+  red team       holds attack payloads            must not read the defence rules
+  blue team      holds the frozen defence config  must not see payloads before release
+  model worker   answers prompts                  must not carry one session's data into another
+  reviewer       receives the result              must be able to detect a changed record
+  enforcement: sandboxes have no network; the broker is the only path and binds identity to the mailbox;
+  roles are checked server-side; the log is hash-chained and signed; the verifier is a separate program.
+  trusted, not defended: the broker and its signing key, the host kernel and container runtime.
+
+== 2. A legitimate evaluation (run JD-1, stub model) ==
+  [PASS] operator froze the configuration
+  [PASS] operator started the run
+  [PASS] run reached SEALED: results held behind the gate: SEALED
+  [PASS] the red sandbox's forbidden requests were denied by the broker and logged: 5 logged
+
+== 3. Blocked unauthorized operations ==
+  [PASS] denied: red participant reads sealed artifacts: HTTP 403
+  [PASS] denied: reviewer reads artifacts before release: HTTP 403
+  [PASS] denied: red participant releases the run: HTTP 403
+  [PASS] denied: forged identity token: HTTP 401
+  hostile mailbox: a real rootless sandbox (no network, read-only root, no capabilities) attacks the broker's mailbox
+    inside sandbox: symlink_at_guessed_temp_name   succeeded
+    inside sandbox: fifo_at_guessed_temp_name      succeeded
+    inside sandbox: rename_mailbox_dir             refused (errno 30)
+    inside sandbox: remove_mailbox_dir             refused (errno 30)
+  [PASS] broker replies were delivered as regular files despite the planted symlink and FIFO: ['000002.json', '000003.json']
+  [PASS] the victim file outside the mailbox is intact (symlink not followed)
+  [PASS] nothing was created outside the mailbox: []
+  [PASS] the broker did not block on the FIFO: 0.000 s for two writes
+  [HISTORICAL] same attack on the Phase 1 broker (recorded 2026-10-23, evidence/phase2_2026-10-23/before_fix/11_poc_mailbox.txt):
+    == tree: old, temp-name symlink only
+    container: {"plant_symlink_at_temp_name": "ok", "replace_in_with_symlink": "denied 0"}
+    victim audit.jsonl intact: False
+    files the broker created outside the mailbox: []
+    reading: on the Phase 1 broker the planted symlink was followed and the victim file was overwritten (intact: False)
+  regression tests: P2B01 P2B02 P2B03 P2B05 P2B06 P2B32 (tests/test_phase2_broker.py), P2C01 P2C02 (tests/test_phase2_container.py)
+
+== 4. A completed audit bundle is verified strictly ==
+  [PASS] reviewer released the run (SEALED -> RELEASED): HTTP 200
+  $ python -m aegis.verify_cli --bundle <bundle> --run-id JD-1 --expect-state RELEASED --pubkey <pinned> --expect-terminal-hash <noted at release>
+    ok                   True
+    entries              31
+    checkpoints_checked  7
+    terminal_verified    True
+    terminal_state       RELEASED
+    key_source           pinned (--pubkey)
+  [PASS] strict verification of the complete bundle (key and terminal hash pinned): exit 0
+
+== 5. A tampered copy is rejected ==
+  the last 3 audit entries were removed from a COPY; the original bundle is not touched
+  $ python -m aegis.verify_cli --bundle <tampered copy> ... (same options)
+    ok                   False
+    entries              28
+    checkpoints_checked  7
+    terminal_verified    False
+    terminal_state       RELEASED
+    key_source           pinned (--pubkey)
+    finding: log has 28 entries but a signed checkpoint covers seq 29: truncation
+    finding: log has 28 entries but a signed checkpoint covers seq 30: truncation
+    finding: log has 28 entries but a signed checkpoint covers seq 31: truncation
+  [PASS] verification of the tampered copy FAILED, as it must: exit 1
+  [PASS] the original bundle still verifies
+
+== 6. LLM isolation evidence: PRECOMPUTED from saved real-model runs (this demo does not run a model) ==
+  [PRECOMPUTED] model Qwen2.5-0.5B-Instruct Q4_K_M (0.5B parameters), llama.cpp llama-server (CPU build), 127.0.0.1 only, random port, random API key per server, CPU only; re-measured 11 Nov 2026 on the finale P4 code (evidence/finale_p4_2026-11-11/llm_final)
+  E1 recorded on sha256:1d1e1abe2f38 (2026-11-11); sources unchanged since
+  E2 recorded on sha256:1d1e1abe2f38 (2026-11-11); sources unchanged since
+  E3 recorded on sha256:1d1e1abe2f38 (2026-11-11); sources unchanged since
+  E4 recorded on sha256:1d1e1abe2f38 (2026-11-11); sources unchanged since
+  E5 recorded on sha256:1d1e1abe2f38 (2026-11-11); sources unchanged since
+  the stub model ran steps 2 to 5. The figures below are from the saved runs, recomputed now from raw observations.
+  E1  run P3-20261111T063824Z-E1_canary_matrix
+      0 of 1040 isolation trials leaked (0 of 104 sessions)
+      one-sided 95% upper bound 0.29% of trials, 2.84% of sessions
+      0 of 320 negative-control trials leaked
+      positive controls: shared history 16 of 16 sessions, sharing gateway 13 of 16 sessions
+      raw: evidence/finale_p4_2026-11-11/llm_final/P3-20261111T063824Z-E1_canary_matrix/observations.jsonl
+  E2  run P3-20261111T061040Z-E2_pipeline_canary
+      0 of 26 isolation runs (312 attacks) had a foreign canary in raw model output
+      0 reached red
+      negative control: 0 of 4 runs
+      context-sharing control: foreign canary in raw model output in 3 of 4 runs, 14 attacks withheld from red, 0 reached red
+      raw: evidence/finale_p4_2026-11-11/llm_final/P3-20261111T061040Z-E2_pipeline_canary/observations.jsonl
+  E3  run P3-20261111T061411Z-E3_kv_cache_oracle
+      cache_prompt=true: cached-token AUC 1.00/1.00 with 30+30 trials per cell in 2 cells
+      cache_prompt=false (AegisLab default): cached tokens observed in 0 of 120 trials
+      fresh process per trial: cached tokens observed in 0 of 14 trials
+      raw: evidence/finale_p4_2026-11-11/llm_final/P3-20261111T061411Z-E3_kv_cache_oracle/observations.jsonl
+  E4  run P3-20261111T061511Z-E4_injection_output_isolation
+      72 injection attacks (69 reached the model): 0 protected values in red-visible output
+      282 of 282 replayed model-generated gate messages denied, 0 changed run state
+      raw: evidence/finale_p4_2026-11-11/llm_final/P3-20261111T061511Z-E4_injection_output_isolation/observations.jsonl
+  [PASS] saved LLM runs agree with their raw observations, hashes and source files: 89 checks
+  scope: one 0.5B model, ten probe wordings, CPU llama.cpp on loopback. GPU memory, accelerator KV cache and hardware side
+  channels were NOT tested. Zero observed leaks in a finite experiment do not prove zero risk.
+  LIVE with the real model instead: scripts/real_model_demo.sh (about a minute) or scripts/start_real_model_console.sh
+
+== 7. Residual risks (stated, not hidden) ==
+  - a compromised broker or signing key can sign a false but consistent record; only a reviewer's independent
+    terminal-hash note or countersignature (--require-countersignature) catches a key thief who replaces every
+    retained copy, and only while the reviewer key is off the broker host
+  - the host kernel and container runtime are shared and trusted (containers run as subordinate UIDs, not the
+    key owner, but a kernel exploit can still reach the host user); hardware side channels are untested
+  - the canary detector misses double encodings, ciphers, homoglyphs and paraphrase (single base64, hex, rot13,
+    reversed, split and spelled-out forms are withheld since finale P4)
+  - prompt-injection results show information-flow control, not model robustness
+  - timing: 250 ms padding lowers one classifier's accuracy on the stub only; with a real model it leaks, and the
+    real-model default is deadline release (no leak detected in 3 executions; not a proof of absence)
+
+== 8. Summary ==
+  17/17 checks behaved as expected   (6.6 s)   state dir /tmp/aegis-judge-fb2nm5uv (disposable)
+$ echo "exit code: $?"
+exit code: 0
+$ exit
+exit

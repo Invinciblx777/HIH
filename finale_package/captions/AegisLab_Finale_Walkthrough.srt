@@ -1,0 +1,300 @@
+1
+00:00:00,350 --> 00:00:03,726
+AegisLab is secure infrastructure for adversarial AI safety
+
+2
+00:00:03,726 --> 00:00:04,184
+testing.
+
+3
+00:00:04,184 --> 00:00:07,560
+This walkthrough shows the presented code: what you see was
+
+4
+00:00:07,560 --> 00:00:09,963
+recorded on it on the twelfth of November.
+
+5
+00:00:10,863 --> 00:00:14,255
+In a safety test, a red team attacks, a blue team defends,
+
+6
+00:00:14,255 --> 00:00:16,419
+and the model answers, on one system.
+
+7
+00:00:16,419 --> 00:00:19,927
+If red can read the defence, or one session can read another
+
+8
+00:00:19,927 --> 00:00:23,144
+through the model, the score measures the leak, not the
+
+9
+00:00:23,144 --> 00:00:23,495
+model.
+
+10
+00:00:24,395 --> 00:00:28,628
+Six flows are forbidden, and each is attacked in a test.
+
+11
+00:00:28,628 --> 00:00:33,087
+The role matrix alone made 560 attempts with 419/419 denied
+
+12
+00:00:33,087 --> 00:00:35,053
+(RE-MEASURED 11 Nov 2026).
+
+13
+00:00:35,953 --> 00:00:37,666
+Five layers enforce this.
+
+14
+00:00:37,666 --> 00:00:40,613
+New for the finale: every container runs as
+
+15
+00:00:40,613 --> 00:00:44,657
+container UID 900 (RE-MEASURED 11 Nov 2026) on its own host
+
+16
+00:00:44,657 --> 00:00:48,496
+UID, never the broker's UID 1000, so a mounted key gives
+
+17
+00:00:48,496 --> 00:00:50,895
+errno 13 (RE-MEASURED 11 Nov 2026).
+
+18
+00:00:51,795 --> 00:00:55,747
+The real model, Qwen2.5-0.5B on llama.cpp, runs in a
+
+19
+00:00:55,747 --> 00:00:58,406
+rootless container with no network.
+
+20
+00:00:58,406 --> 00:01:02,814
+Sessions are stateless, a leak through a broken gateway is
+
+21
+00:01:02,814 --> 00:01:06,918
+withheld by the broker, even in base64, and the bundle
+
+22
+00:01:06,918 --> 00:01:09,198
+verifies: 13/13 checks (LIVE).
+
+23
+00:01:10,098 --> 00:01:12,441
+The console is started with the real model.
+
+24
+00:01:12,441 --> 00:01:15,710
+The header says REAL MODEL, LIVE; the launch link was opened
+
+25
+00:01:15,710 --> 00:01:16,309
+off screen.
+
+26
+00:01:17,209 --> 00:01:19,628
+The run sealed and was released.
+
+27
+00:01:19,628 --> 00:01:24,089
+With the real model the default policy is deadline release:
+
+28
+00:01:24,089 --> 00:01:27,264
+every reply leaves at t0 + 1400 ms (LIVE).
+
+29
+00:01:28,164 --> 00:01:30,472
+The audit page lists 6 detectors (LIVE).
+
+30
+00:01:30,472 --> 00:01:33,877
+The scripted red agent's probes fired two of them, and both
+
+31
+00:01:33,877 --> 00:01:36,012
+alerts are signed entries in the log.
+
+32
+00:01:36,912 --> 00:01:40,531
+On the evidence page, the independent verifier accepts the
+
+33
+00:01:40,531 --> 00:01:40,968
+bundle.
+
+34
+00:01:40,968 --> 00:01:44,150
+A tampered copy is rejected, and the original stays
+
+35
+00:01:44,150 --> 00:01:45,085
+byte-identical.
+
+36
+00:01:45,985 --> 00:01:49,933
+The user-namespace proof samples every running container:
+
+37
+00:01:49,933 --> 00:01:54,020
+13/13 F4 checks (LIVE), each container on its own host UID.
+
+38
+00:01:54,920 --> 00:01:58,578
+Leakage with the real model, re-measured on the finale code:
+
+39
+00:01:58,578 --> 00:02:01,688
+0 of 104 sessions (RE-MEASURED 11 Nov 2026) leaked.
+
+40
+00:02:01,688 --> 00:02:04,919
+The controls built to leak did: 16 of 16 sessions and
+
+41
+00:02:04,919 --> 00:02:07,602
+13 of 16 sessions (RE-MEASURED 11 Nov 2026).
+
+42
+00:02:07,602 --> 00:02:09,797
+The upper bound is 2.84% of sessions
+
+43
+00:02:09,797 --> 00:02:11,382
+(RE-MEASURED 11 Nov 2026).
+
+44
+00:02:12,282 --> 00:02:14,650
+The result that changed.
+
+45
+00:02:14,650 --> 00:02:20,471
+With the stub, 250 ms padding reached 0.435–0.540 at 250 ms
+
+46
+00:02:20,471 --> 00:02:23,036
+(RE-MEASURED 11 Nov 2026).
+
+47
+00:02:23,036 --> 00:02:28,956
+Against the real model it leaked: accuracy 0.945/0.960/0.950
+
+48
+00:02:28,956 --> 00:02:31,521
+(RE-MEASURED 11 Nov 2026).
+
+49
+00:02:31,521 --> 00:02:33,889
+We found this ourselves.
+
+50
+00:02:34,789 --> 00:02:39,706
+Deadline release fixed it: accuracy 0.495/0.545/0.575
+
+51
+00:02:39,706 --> 00:02:42,861
+(RE-MEASURED 11 Nov 2026), against
+
+52
+00:02:42,861 --> 00:02:47,871
+baselines 0.515/0.540/0.515 (RE-MEASURED 11 Nov 2026).
+
+53
+00:02:47,871 --> 00:02:52,974
+One execution gave p = 0.044 (RE-MEASURED 11 Nov 2026),
+
+54
+00:02:52,974 --> 00:02:57,892
+below 0.05 but above the pre-declared 0.05/9 = 0.0056
+
+55
+00:02:57,892 --> 00:03:02,717
+(RE-MEASURED 11 Nov 2026), so the verdict is no leak
+
+56
+00:03:02,717 --> 00:03:03,552
+detected.
+
+57
+00:03:03,552 --> 00:03:08,562
+The cost is +519 to +621 ms (RE-MEASURED 11 Nov 2026).
+
+58
+00:03:09,462 --> 00:03:12,935
+Strict verification, with the key pinned and the reviewer
+
+59
+00:03:12,935 --> 00:03:16,104
+countersignature required, gives exit code 0 (LIVE).
+
+60
+00:03:16,104 --> 00:03:19,272
+One edited field in a copy gives exit code 1 (LIVE).
+
+61
+00:03:20,172 --> 00:03:23,497
+The countersignature refuses a forgery made with the broker
+
+62
+00:03:23,497 --> 00:03:23,722
+key.
+
+63
+00:03:23,722 --> 00:03:26,990
+A forger who holds both keys still succeeds, so we call it
+
+64
+00:03:26,990 --> 00:03:27,440
+partial.
+
+65
+00:03:28,340 --> 00:03:32,301
+For the finale we added user namespaces, re-encoded canary
+
+66
+00:03:32,301 --> 00:03:36,261
+detection, anomaly detectors, run-scoped capability tokens
+
+67
+00:03:36,261 --> 00:03:37,559
+and mailbox quotas.
+
+68
+00:03:38,459 --> 00:03:42,105
+The public demo is read-only by design: anyone can verify a
+
+69
+00:03:42,105 --> 00:03:44,082
+bundle, nobody can run anything.
+
+70
+00:03:44,082 --> 00:03:47,604
+The hosted site serves main until the finale branches are
+
+71
+00:03:47,604 --> 00:03:48,037
+merged.
+
+72
+00:03:48,937 --> 00:03:53,009
+Residual risks: a host-user compromise still reaches the
+
+73
+00:03:53,009 --> 00:03:57,082
+signing key; no leak detected is not absence; containers
+
+74
+00:03:57,082 --> 00:04:00,791
+share the kernel; one host, CPU only, GPU untested.
+
+75
+00:04:01,691 --> 00:04:03,711
+The code and every number are on GitHub.
+

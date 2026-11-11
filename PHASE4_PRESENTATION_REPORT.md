@@ -1,5 +1,7 @@
 # AegisLab Phase 4: competitive presentation, video and live demonstration (23 Oct 2026)
 
+> **HISTORICAL:** rc4 package of 23 Oct 2026, kept unchanged as submitted and still checked against its own 23 Oct figures by aegislab/evaluation/check_presentation.py. Several figures here were superseded by the finale work (10-12 Nov 2026); for the Grand Finale use finale_package/ and see RC4_PACKAGE_HISTORICAL.md.
+
 Team Tech Mavericks · Hack in Hills ’26 · Track 04. Scope: turn the verified Phase 1–3 evidence into a judge-ready deck, video, demo and Q&A without overstating any result. Nothing was deployed, pushed or published; no URL exists. Phase 5 was not started.
 
 Locations (relative to the folder that holds `phase4/`): working copy `phase4/work/dev/`, **candidate `phase4/candidate/release_2026-10-23_rc4/`** (manifest in its root), logs `phase4/logs/`, tools `phase4/tools/`. The source candidate `phase3/candidate/release_2026-10-23_rc3/` (422-file manifest, sha256 of `MANIFEST.sha256` `d86a8a13…883353e`, recorded before editing in `phase4/logs/00_source_rc3_MANIFEST.sha256`) and every earlier release, `submission/` and `_baseline/` were not modified. The candidate was not promoted.
