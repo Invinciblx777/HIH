@@ -31,13 +31,13 @@ def real(monkeypatch, **extra):
         monkeypatch.setenv(k, v)
 
 
-def test_P4T01_stub_default_is_unchanged_250_ms_buckets():
+def test_P4TD01_stub_default_is_unchanged_250_ms_buckets():
     assert runs.default_timing() == {"timing_bucket_ms": 250}
     pol = runs.create_run("T-T01").record["policy"]
     assert pol["timing_bucket_ms"] == 250 and "timing_mode" not in pol
 
 
-def test_P4T02_real_model_default_is_deadline_release_without_shadow(monkeypatch):
+def test_P4TD02_real_model_default_is_deadline_release_without_shadow(monkeypatch):
     real(monkeypatch)
     assert runs.default_timing() == {"timing_bucket_ms": 0, "timing_deadline_ms": runs.REAL_MODEL_DEADLINE_MS}
     pol = runs.create_run("T-T02").record["policy"]
@@ -45,7 +45,7 @@ def test_P4T02_real_model_default_is_deadline_release_without_shadow(monkeypatch
     assert pol["shadow_model_on_refusal"] is False
 
 
-def test_P4T03_an_explicit_choice_is_always_honoured(monkeypatch):
+def test_P4TD03_an_explicit_choice_is_always_honoured(monkeypatch):
     real(monkeypatch)
     assert runs.create_run("T-T03A", timing_bucket_ms=250).record["policy"] == {
         "timing_bucket_ms": 250, "reset_strategy": "fresh-container", "forbidden_probes": True}
@@ -53,7 +53,7 @@ def test_P4T03_an_explicit_choice_is_always_honoured(monkeypatch):
     assert runs.create_run("T-T03C", timing_deadline_ms=900).record["policy"]["timing_deadline_ms"] == 900
 
 
-def test_P4T04_deadline_override_and_invalid_values(monkeypatch):
+def test_P4TD04_deadline_override_and_invalid_values(monkeypatch):
     real(monkeypatch, AEGIS_TIMING_DEADLINE_MS="2000")
     assert runs.create_run("T-T04").record["policy"]["timing_deadline_ms"] == 2000
     monkeypatch.setenv("AEGIS_TIMING_DEADLINE_MS", "fast")
@@ -67,7 +67,7 @@ def test_P4T04_deadline_override_and_invalid_values(monkeypatch):
         runs.default_timing()
 
 
-def test_P4T05_the_api_applies_the_default_only_when_the_field_is_omitted(monkeypatch):
+def test_P4TD05_the_api_applies_the_default_only_when_the_field_is_omitted(monkeypatch):
     c = TestClient(api.app)
     h = {"X-Aegis-Token": store.tokens()["operator"]}
     assert c.post("/api/runs", json={"run_id": "T-T05A"}, headers=h).json()["policy"]["timing_bucket_ms"] == 250
