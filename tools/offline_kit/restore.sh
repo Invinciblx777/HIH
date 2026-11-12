@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Restore AegisLab from the offline kit, with no network. See OFFLINE_KIT.md.
-#   bash restore.sh KIT_DIR DEST_DIR [--ref main|finale/p6-kit] [--load-images] [--no-podman]
+#   bash restore.sh KIT_DIR DEST_DIR [--ref main|aegislab-finale|finale/p6-kit] [--load-images] [--no-podman]
 # 1. sha256sum -c the kit; 2. git clone from the bundle into DEST/HIH; 3. podman load the two images (always with
 # --load-images; otherwise only if missing); 4. both venvs from the wheelhouse (--no-index); 5. DEST/kit.env with
 # AEGIS_MODELS_DIR and PLAYWRIGHT_BROWSERS_PATH pointing into the kit. Nothing is downloaded; pip runs with --no-index.
@@ -12,8 +12,10 @@ step() { echo "== $(date +%H:%M:%S) $*"; }
 step "1. kit integrity"; (cd "$KIT" && sha256sum --quiet -c SHA256SUMS) && echo "   SHA256SUMS OK ($(wc -l < "$KIT/SHA256SUMS") files)"
 step "2. repository from the bundle ($REF)"
 mkdir -p "$DEST"; DEST=$(cd "$DEST" && pwd)
-B="$KIT/repo/HIH-p6-kit.bundle"; [ "$REF" = main ] && B="$KIT/repo/HIH-main.bundle"
-git clone -q -b "$REF" "$B" "$DEST/HIH"
+# HIH-main.bundle holds main and the release tag; any other ref comes from HIH-p6-kit.bundle
+B="$KIT/repo/HIH-p6-kit.bundle"
+HEADS=$(git bundle list-heads "$KIT/repo/HIH-main.bundle"); grep -qE " refs/(heads|tags)/$REF\$" <<< "$HEADS" && B="$KIT/repo/HIH-main.bundle"
+git -c advice.detachedHead=false clone -q -b "$REF" "$B" "$DEST/HIH"
 echo "   HEAD $(git -C "$DEST/HIH" rev-parse HEAD)  (kit: $(grep "^$REF=" "$KIT/repo/COMMIT.txt"))"
 (cd "$DEST/HIH" && sha256sum --quiet -c MANIFEST.sha256) && echo "   MANIFEST.sha256 OK"
 step "3. container images"
