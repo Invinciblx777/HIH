@@ -9,16 +9,18 @@ HERE=$(cd "$(dirname "$0")" && pwd); REPO=$(cd "$HERE/../.." && pwd); APP="$REPO
 KIT=${1:?KIT_DIR}; mkdir -p "$KIT"; KIT=$(cd "$KIT" && pwd)
 MODELS="${AEGIS_MODELS_DIR:-$H/_models}"; MEDIA="$H/finale"
 CLEAN="${KIT_SOURCE_CLONE:-$H/round2/work/finale_clean}"      # the clean clone of origin/main (task 1)
+KIT_TAG="${KIT_TAG:-aegislab-finale}"                         # the release tag, bundled with main (finale P8)
 . "$REPO/tools/venue/expected.conf"
 log() { echo "== $(date +%H:%M:%S) $*"; }
 rm -rf "$KIT"/{repo,images,models,wheelhouse,playwright,media}; mkdir -p "$KIT"/{repo,images,models,wheelhouse,playwright,media}
 
-log "repo: git bundle of main (the clean clone's main) and of finale/p6-kit (this checkout: the venue tools)"
+log "repo: git bundle of main and the tag $KIT_TAG (the clean clone) and of finale/p6-kit (this checkout: the venue tools)"
 MAIN=$(git -C "$CLEAN" rev-parse main)
-git -C "$CLEAN" bundle create "$KIT/repo/HIH-main.bundle" main
+TAGC=$(git -C "$CLEAN" rev-parse --verify "refs/tags/$KIT_TAG^{commit}")
+git -C "$CLEAN" bundle create "$KIT/repo/HIH-main.bundle" main "refs/tags/$KIT_TAG"
 git -C "$REPO" bundle create "$KIT/repo/HIH-p6-kit.bundle" finale/p6-kit
 P6=$(git -C "$REPO" rev-parse finale/p6-kit)
-{ echo "main=$MAIN"; echo "finale/p6-kit=$P6"; echo "built=$(date -Is)"; } > "$KIT/repo/COMMIT.txt"
+{ echo "main=$MAIN"; echo "$KIT_TAG=$TAGC"; echo "finale/p6-kit=$P6"; echo "built=$(date -Is)"; } > "$KIT/repo/COMMIT.txt"
 git bundle verify "$KIT/repo/HIH-main.bundle" >/dev/null && git bundle verify "$KIT/repo/HIH-p6-kit.bundle" >/dev/null
 
 log "images: the sandbox image and the digest-pinned base"

@@ -48,7 +48,8 @@ bash ~/aegis-restore/HIH/tools/venue/preflight.sh --offline --models "KIT/models
 cd ~/aegis-restore/HIH/aegislab && bash scripts/real_model_demo.sh
 ```
 
-`restore.sh --ref main` checks out `main` instead of `finale/p6-kit`. `--load-images` loads both images even when they
+`restore.sh --ref aegislab-finale` checks out the release tag and `--ref main` the bundled `main`, both from
+`repo/HIH-main.bundle`; the default is `finale/p6-kit`. `--load-images` loads both images even when they
 already exist.
 
 ## Restore on a fresh Linux machine
