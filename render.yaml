@@ -13,7 +13,7 @@ services:
     region: singapore            # closest Render region to the venue and judges; cannot be changed after creation
 
     # PLAN: a deliberate choice, pick one before creating the service.
-    #   free        - $0. Spins down after 15 min without inbound traffic; the next request wakes it in about 1 min.
+    #   free        - $0. Spins down after 15 min without inbound traffic; the next request wakes it in up to 1 min (23.6 s measured, 12 Nov 2026).
     #                 The filesystem is reset on spin-down (harmless: the demo keeps no state worth keeping, AEGIS_VAR=/tmp).
     #                 If you choose free, open the URL a few minutes before the judges do.
     #   0.5c-512mb  - Render's smallest paid instance (the default when plan is omitted). Never sleeps.

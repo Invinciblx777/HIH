@@ -23,7 +23,7 @@ This folder is a **candidate**, not promoted. Earlier candidates (`release_2026-
 | 8 | Prototype, evidence and tests | `aegislab/` (start with `aegislab/README.md`, `aegislab/THREAT_MODEL.md`) |
 | 9 | Deck and video build sources | `presentation_src/` |
 | — | Earlier reports | `PHASE2_SECURITY_REPORT.md`, `PHASE3_LLM_SECURITY_REPORT.md`, `VALIDATION_ADDENDUM_2026-10-22.md`, `RELEASE_READINESS_REPORT.md`, `PROTOTYPE_REPORT.md` (historical; figures in them are those of their date) |
-| — | Hosted website URL | https://aegislab.vercel.app: a **read-only** public demo of the console. It has no login, no operator session, no containers and no model. A visitor can verify the shipped evidence bundles and tamper with a disposable copy, and nothing else (rate-limited). The live console runs only on your own machine, on loopback (`aegislab/scripts/start_prototype.sh`). |
+| — | Hosted website URL | https://aegislab-demo.onrender.com (Render): a **read-only** public demo of the console. It has no login, no operator session, no containers and no model. A visitor can verify the shipped evidence bundles and tamper with a disposable copy, and nothing else (rate-limited). The live console runs only on your own machine, on loopback (`aegislab/scripts/start_prototype.sh`). The older copy at `aegislab.vercel.app` serves outdated code: do not use it. |
 
 ## Live demonstration (judge-ready path) and fallback
 

@@ -2,7 +2,7 @@
 
 Everything here is generated from `claims_used_for_finale.json`, which `aegislab/evaluation/check_finale_presentation.py --write-claims` derives from `aegislab/evaluation/check_claims.py` (all parts must pass), the finale evidence files, the recorded terminal transcripts in `terminal/` and the gate counts in `evidence/p5_gate_counts.txt`. No figure is typed by hand. Each claim carries its type: LIVE, RE-MEASURED <date> or RECORDED <date>.
 
-Presented code: branch `finale/p4-hardening`, commit `9145592`, plus this package (branch `finale/p5-media`). P1–P4 are not merged into `main` yet.
+Presented code: `main`, with finale P1–P5 merged on 12 Nov 2026. The screenshots and terminal recordings were made on commit `9145592`. Finale P6 changed the public demo host to Render and rebuilt the URL in this package.
 
 | File | What |
 |---|---|

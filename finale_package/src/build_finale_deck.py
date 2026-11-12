@@ -22,8 +22,8 @@ from PIL import Image  # noqa: E402
 
 TEMPLATE = REPO / "presentation_src" / "official_template.pptx"
 GH = "github.com/Invinciblx777/HIH"
-DEMO_URL = "aegislab.vercel.app"
-CODE = "finale/p4-hardening 9145592 (not yet merged into main)"
+DEMO_URL = "aegislab-demo.onrender.com"
+CODE = "main (finale P1-P5 merged 12 Nov 2026); media recorded on 9145592"
 C = {}
 MEDIA = Path(".")
 
@@ -133,7 +133,7 @@ AegisLab does three things: it isolates (rootless sandboxes with no network, one
 
 Every figure in this deck carries a label. LIVE means the presented code produces it when it runs; you will see some of those runs today. RE-MEASURED means measured again on the finale code on the date shown. RECORDED means measured earlier and not re-run.
 
-Code shown: branch finale/p4-hardening, commit 9145592. It is not merged into main yet, so the public read-only demo serves the older main until the merge.
+Code shown: main, with finale P1 to P5 merged on 12 Nov 2026. The screenshots and terminal recordings were made on commit 9145592, the finale P4 code. The public read-only demo runs on Render and serves main.
 """)
 
 
@@ -473,7 +473,7 @@ DEPLOYABILITY, slide 9 (about 25 seconds)
 Everything runs on one ordinary laptop: rootless Podman (no root, no daemon), a sandbox image pinned by digest, llama.cpp on CPU, and model files checked by sha256, so nothing has to be downloaded at the venue.
 Checked, not trusted: the release gates run in CI on every push. On this branch: %s (%s); check_claims.py recomputes every quoted figure from the raw files, %s (%s).
 The public demo at %s is read-only by design: anyone can browse the evidence, verify a bundle with the independent verifier, and tamper with a disposable copy to see it rejected. It has no operator session, cannot create runs, has no containers, and is rate-limited. A live operator console on a public URL would expose run control, so the live console stays on loopback.
-Honest status: the hosted site still serves origin/main, which has the old verify bug; the fix is in the P1 branch and goes live when P1 to P4 are merged and Vercel redeploys. The screenshots are of the presented code run locally in the same public mode.
+The public demo runs on Render from main, so the verify fix from P1 is live there. The screenshots are of the presented code run locally in the same public mode.
 """ % (F("tests", "passed"), L("tests"), F("check_claims", "total"), L("check_claims"), DEMO_URL))
 
 
@@ -544,7 +544,7 @@ def s12(sl):
 CLOSE, slide 12 (about 15 seconds)
 AegisLab isolates the parties of an AI safety test, measures every boundary with controls that must leak, and proves the result with evidence a reviewer verifies offline. We showed what holds, what changed when we tested against a real model, and what would still fail.
 Abdul Munaf Z, solution architect and integration engineer; Likhith Sai N, sandbox security and infrastructure engineer; Sreeram Rajesh, product interface and evaluation engineer.
-Code and evidence: github.com/Invinciblx777/HIH. Read-only demo: aegislab.vercel.app (serving main until the finale branches are merged). Thank you; we are happy to take questions.
+Code and evidence: github.com/Invinciblx777/HIH. Read-only demo: aegislab-demo.onrender.com. Thank you; we are happy to take questions.
 """)
 
 
