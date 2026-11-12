@@ -42,6 +42,9 @@ date it was measured. Nothing here is new evidence.
 - `.github/workflows/live-gates.yml` and `tools/ci/live_gates.sh`: Podman, browser and real-model gates on a CI runner.
 - Console CSS: scenario and experiment card titles are no longer cut off; the badge sits above the title (found by the
   projector check at 1280×720 to 1920×1080, 100–150 % zoom).
+- `scripts/start_real_model_console.sh` keeps `AEGIS_MODELS_DIR` (it removed it with the other model settings, so the console
+  only found models at the default path; found by restoring the offline kit elsewhere). Test: `tests/test_finale_p6_launcher_env.py`.
+- `tools/venue/expected.conf` (the venue settings; `*.env` is gitignored, so the first name was never committed).
 - Deck: layout fixes on slides 2, 3, 7, 8, 10 and 11 (P5_REPORT section 3); the videos were re-rendered with them.
 - `aegislab/THREAT_MODEL.md` section 10.7: one new row for the off-host reviewer key procedure. The countersignature row
   stays **Partial**.
@@ -72,6 +75,7 @@ it would break every merge commit since; the finding is accepted and stays visib
 | Shared kernel | Containers share the host kernel. gVisor and Kata were not tried (`runsc` not installed). |
 | Coverage | One host; one model at full scale (0.5B) plus a reduced 1.5B run; CPU only. GPU and accelerator KV-cache isolation untested. |
 | Hosted demo | Render free plan: a cold start of about 24 s after idle, and the site needs venue internet. The offline fallback is the local public demo (`AEGIS_PUBLIC_DEMO=1`, `app.py` on 127.0.0.1). The hosted demo is read-only and cannot run live sandboxes (no Podman on Render). |
+| Intermittent race test | `tests/test_phase2_lifecycle.py::test_P2L11_denied_reads_racing_release_stress` failed once on 12 Nov (`GateError('audit or commitment verification failed')` in `release` while 5 threads log denied reads). It passed in the next full run (743 passed) and 30 of 30 runs alone. Not investigated yet; the code is in the pinned `aegis/` tree. |
 | Retired Vercel copy | Still online with the 28 Oct code until its owner deletes or redeploys it. |
 | Narration | Synthetic Piper voice. A person must still listen to both videos (FINALE_HUMAN_CHECKLIST). |
 
