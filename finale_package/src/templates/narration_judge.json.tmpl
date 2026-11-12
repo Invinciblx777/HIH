@@ -1,0 +1,19 @@
+{"note": "Judge cut (about 90 s). Rendered by render_docs.py; 'say' is derived from 'caption'. Synthetic narration (Piper, en_US-lessac-medium).",
+ "segments": [
+  {"key": "j1", "visual": {"kind": "title", "cut": "judge cut"},
+   "caption": "AegisLab keeps a red team, a blue team and the model under test apart on one machine, and proves it with evidence anyone can verify."},
+  {"key": "j2", "visual": {"kind": "term", "rec": "t1_real_model_demo", "what": "scripts/real_model_demo.sh, real model"},
+   "caption": "The real model, Qwen2.5-0.5B, runs in a rootless container with no network. A leak it makes through a broken gateway is withheld, even in base64: {{real_model_demo.checks+}}."},
+  {"key": "j3", "visual": {"kind": "screen", "files": ["02e_run_card_crop_desktop.png"], "what": "run card of a real-model run"},
+   "caption": "In the console, the run card says REAL MODEL, LIVE, and every reply leaves at {{deadline_default.D+}}."},
+  {"key": "j4", "visual": {"kind": "slide", "page": 5},
+   "caption": "Re-measured on the finale code, {{e1_isolation.sessions+}} leaked across sessions, while the controls built to leak did."},
+  {"key": "j5", "visual": {"kind": "slide", "page": 6},
+   "caption": "Our own test found that 250 ms padding leaks against the real model: {{timing_250_real.acc+}}. Deadline release brings it to {{timing_deadline_real.acc+}}, at {{timing_deadline_cost.cost+}}. One p-value, {{timing_deadline_real.p3+}}, is below 0.05 but above our pre-declared threshold: no leak detected, not no leak."},
+  {"key": "j6", "visual": {"kind": "term", "rec": "t5_verify_cli", "what": "verify_cli, strict, then a tampered copy"},
+   "caption": "The independent verifier accepts the signed bundle with {{verify_cli_live.ok+}}. One edited field in a copy gives {{verify_cli_live.bad+}}."},
+  {"key": "j7", "visual": {"kind": "slide", "page": 10},
+   "caption": "Still open: a host-user compromise reaches the signing key, and no leak detected is not proof of absence."},
+  {"key": "j8", "visual": {"kind": "end"}, "hold": 1.5,
+   "caption": "The code and every number are on GitHub."}
+ ]}

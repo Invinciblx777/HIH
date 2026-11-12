@@ -1,0 +1,110 @@
+$ bash scripts/security_demo.sh
+AegisLab security demonstration  (state dir /tmp/aegis-demo-gco0a1_h, deterministic stub model, no network)
+
+== 1. Roles and boundaries ==
+  red sandbox     : reads only its own attack pack (ro), talks only to the broker mailbox, no network
+  blue defence    : reads only the FROZEN defence config (ro), sees payloads only through the broker
+  model worker    : fresh container per run, own mailbox only
+  broker (host)   : the single path between them; identity = which mailbox the message arrived in
+  reviewer/operator/observer : API roles with different rights over the same run
+
+== 2. A legitimate operation completes (run DEMO-S1: create, freeze, start) ==
+  [PASS] operator froze the configuration
+  [PASS] blue participant cannot change the config after freeze - HTTP 409
+  [PASS] operator started the run
+  [PASS] run reached SEALED (results held behind the gate) - SEALED
+
+== 3. Unauthorized cross-boundary operations are denied ==
+  [PASS] denied: observer reads sealed artifacts - HTTP 403
+  [PASS] denied: red participant reads sealed artifacts - HTTP 403
+  [PASS] denied: blue participant reads sealed artifacts - HTTP 403
+  [PASS] denied: reviewer reads artifacts before release - HTTP 403
+  [PASS] denied: red participant releases the run - HTTP 403
+  [PASS] denied: observer reads the evidence report - HTTP 403
+  [PASS] denied: forged identity token - HTTP 401
+  [PASS] denied: path traversal in run id - HTTP 404
+  [PASS] denied: signing key via the static file server - HTTP 404
+  [PASS] no attack payload text in anything an observer/red/blue can fetch
+  [PASS] sandbox red agent's 5 forbidden requests were denied by the broker and logged - 5 logged
+  [PASS] network connections from the red sandbox all failed - 3 attempts
+
+== 4. Lifecycle: reviewer verifies and releases (SEALED -> RELEASED) ==
+  [PASS] reviewer released the run - HTTP 200
+  [PASS] participants may read artifacts only after release
+
+== 5. Signed audit evidence verified independently (fresh bundle, pinned key) ==
+  [PASS] hash chain, chained checkpoints and terminal checkpoint verify - 34 entries, 9 checkpoints, terminal state RELEASED
+     verify offline: python -m aegis.verify_cli --bundle /tmp/aegis-demo-gco0a1_h/bundles/DEMO-S1
+
+== 6. Tampering on COPIES of the evidence is detected (the original is never modified) ==
+  [PASS] tamper 'modify' -> verification FAILED - entry content does not match its hash
+  [PASS] tamper 'delete' -> verification FAILED - sequence gap, duplicate or reorder (expected 19)
+  [PASS] tamper 'reorder' -> verification FAILED - sequence gap, duplicate or reorder (expected 19)
+  [PASS] tamper 'duplicate_seq' -> verification FAILED - sequence gap, duplicate or reorder (expected 20)
+  [PASS] tamper 'truncate' -> verification FAILED - log has 31 entries but a signed checkpoint covers seq 32: truncation
+  [PASS] tamper 'truncate_unprotected' -> verification FAILED - no signed terminal checkpoint: completeness of the log cannot be established
+  [PASS] tamper 'truncate_vs_anchor' -> verification FAILED - log has 31 entries but the terminal checkpoint binds 34: truncation
+  [PASS] tamper 'rehash' -> verification FAILED - chain head differs from signed checkpoint
+  [PASS] tamper 'drop_checkpoint' -> verification FAILED - checkpoint index gap or reorder (expected cp_seq 5, got 6)
+  [PASS] tamper 'reorder_checkpoints' -> verification FAILED - checkpoint index gap or reorder (expected cp_seq 1, got 2)
+  [PASS] tamper 'drop_terminal' -> verification FAILED - no signed terminal checkpoint: completeness of the log cannot be established
+  [PASS] tamper 'forge_signature' -> verification FAILED - checkpoint signature invalid
+  [PASS] original bundle byte-identical after all tamper tests
+  [PASS] CLI-level: copy with the last 3 events removed is rejected - log has 31 entries but a signed checkpoint covers seq 32: truncation
+  Verification of the tampered copy: FAILED (as it must)
+
+== 7. Residual risk: where the guarantee stops ==
+  [LIMIT] a forger who holds the signing key AND replaces every retained copy produces history that verifies as consistent - NOT a success of the control; the signing key and the reviewer's retained copy must stay out of reach of whoever can edit the run directory
+  [PASS] with the reviewer's countersignature required, the broker-key forgery is REJECTED - countersignature does not match the terminal checkpoint (re-signed or different history)
+  [LIMIT] a forger who holds BOTH the broker key and the reviewer key (here on the same host) still produces history that verifies - the countersignature adds a second party only when the reviewer key lives off the broker host (python -m aegis.countersign --bundle ... on the reviewer's machine)
+  timing channel (stub model, held-out, n=200 per setting per execution, 3 complete executions; chance = 0.50): no padding accuracy 0.795/0.795/0.800; 250 ms buckets 0.530/0.555/0.495 (pooled 0.527 over n=600)
+  reading: padding takes this classifier from ~0.80 to a level not distinguishable from chance at a cost of ~200 ms per answered request; a leak is not ruled out (verdict at 250 ms: no leak detected (inconclusive as to absence); one weak classifier, constant-latency stub; see VALIDATION_ADDENDUM section 4).
+  real model (ONE execution, 2026-11-10, evidence/finale_p3_2026-11-10/timing_real_model): held-out accuracy 1.000 at 0 ms (p=0.001), 1.000 at 250 ms (p=0.001), 0.640 at 1600 ms (p=0.055); 250 ms does NOT hide the decision with a real model
+  other documented limits: containers share the host kernel; local demo tokens, not SSO; JSON files, single host;
+  the stub is not an LLM (see evidence/validation_2026-10-22/model_experiments.json for the optional real-model test).
+
+== 8. LLM-specific evidence (saved real-model runs; the demo itself ran the stub) ==
+  this demo        : stub model worker (deterministic, not an LLM; it emulates a shared cache for the reuse control)
+  real-model runs  : Qwen2.5-0.5B-Instruct Q4_K_M (0.5B parameters) (sha256 74a4da8c9fdb...), llama.cpp llama-server (CPU build), 127.0.0.1 only, random port, random API key per server; re-measured 11 Nov 2026 on the finale P4 code
+  live real model  : scripts/real_model_demo.sh, scripts/start_real_model_console.sh (not run by this demo)
+  gpu / accelerator: NOT used. Hardware, GPU-memory and CUDA-context isolation are UNTESTED.
+  E1 recorded on sha256:1d1e1abe2f38 (2026-11-11); sources unchanged since
+  E2 recorded on sha256:1d1e1abe2f38 (2026-11-11); sources unchanged since
+  E3 recorded on sha256:1d1e1abe2f38 (2026-11-11); sources unchanged since
+  E4 recorded on sha256:1d1e1abe2f38 (2026-11-11); sources unchanged since
+  E5 recorded on sha256:1d1e1abe2f38 (2026-11-11); sources unchanged since
+  E1 cross-session canary matrix, direct adapter  [PASS]
+      0 of 1040 isolation trials leaked (0 of 104 sessions)
+      one-sided 95% upper bound 0.29% of trials, 2.84% of sessions
+      0 of 320 negative-control trials leaked
+      positive controls: shared history 16 of 16 sessions, sharing gateway 13 of 16 sessions
+      artifact: evidence/finale_p4_2026-11-11/llm_final/P3-20261111T063824Z-E1_canary_matrix/{result.json,observations.jsonl}
+  E2 same property through the full pipeline (broker + sandboxes + model)  [PASS]
+      0 of 26 isolation runs (312 attacks) had a foreign canary in raw model output; 0 reached red
+      negative control: 0 of 4 runs
+      context-sharing control: foreign canary in raw model output in 3 of 4 runs, 14 attacks withheld from red, 0 reached red
+      artifact: evidence/finale_p4_2026-11-11/llm_final/P3-20261111T061040Z-E2_pipeline_canary/{result.json,observations.jsonl}
+  E3 KV / prompt-cache state  [PASS]
+      cache_prompt=true: cached-token AUC 1.00/1.00 with 30+30 trials per cell in 2 cells
+      cache_prompt=false (AegisLab default): cached tokens observed in 0 of 120 trials
+      fresh process per trial: cached tokens observed in 0 of 14 trials
+      artifact: evidence/finale_p4_2026-11-11/llm_final/P3-20261111T061411Z-E3_kv_cache_oracle/{result.json,observations.jsonl}
+  E4 prompt injection and output isolation  [PASS]
+      72 injection attacks (69 reached the model): 0 protected values in red-visible output; 282 of 282 replayed model-generated gate messages denied, 0 changed run state
+      artifact: evidence/finale_p4_2026-11-11/llm_final/P3-20261111T061511Z-E4_injection_output_isolation/{result.json,observations.jsonl}
+  E5 model-server failure handling  [PASS]
+      failure handling: 9 of 9 checks hold
+      artifact: evidence/finale_p4_2026-11-11/llm_final/P3-20261111T061543Z-E5_failure_handling/{result.json,observations.jsonl}
+  shared-cache mechanism: exercised (llama.cpp CPU slot KV cache; see E3 lines above)
+  untested: GPU/KV memory on an accelerator, hardware side channels, other inference servers and models, adaptive or multi-turn attackers,
+            a model that follows injections reliably (the 0.5B model rarely does), production-scale concurrency.
+  [PASS] saved LLM experiment runs agree with their raw observations, hashes and source files (89 checks)
+
+== 9. Summary ==
+  35/35 checks behaved as expected   run id DEMO-S1   state dir /tmp/aegis-demo-gco0a1_h
+  2 documented limit(s) demonstrated (not counted as passes): a forger who holds the signing key AND replaces every retain...; a forger who holds BOTH the broker key and the reviewer key ...
+  (the state dir is disposable: delete it any time)
+$ echo "exit code: $?"
+exit code: 0
+$ exit
+exit

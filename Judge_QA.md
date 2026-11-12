@@ -1,5 +1,7 @@
 # AegisLab: judge Q&A (Phase 4 candidate)
 
+> **HISTORICAL:** rc4 package of 23 Oct 2026, kept unchanged as submitted and still checked against its own 23 Oct figures by aegislab/evaluation/check_presentation.py. Several figures here were superseded by the finale work (10-12 Nov 2026); for the Grand Finale use finale_package/ and see RC4_PACKAGE_HISTORICAL.md.
+
 Team Tech Mavericks · Hack in Hills ’26 · Track 04 (Bayora). Every figure below is recomputed from raw files by `aegislab/evaluation/check_claims.py` and `aegislab/evaluation/check_presentation.py`; `PHASE4_CLAIM_MATRIX.md` maps each claim to its artifact, run ID and limitation. Results from the real-model experiments are **precomputed** (recorded 23 Oct 2026, saved under `aegislab/evidence/phase3_2026-10-23/llm/`); nothing in the demo runs a model.
 
 ## The five questions most likely to challenge the story
