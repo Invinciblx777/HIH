@@ -11,11 +11,13 @@ Cue legend: **[SLIDE n]** change slide · **[DEMO]** switch to the terminal or b
 
 ## Before going on stage (offline, about 10 minutes before)
 
+0. `cd HIH && bash tools/venue/reset.sh && bash tools/venue/preflight.sh`: every line must say PASS (the two Render lines may say SKIP without network). Fix each FAIL with the command printed under it.
 1. `cd HIH/aegislab && bash scripts/real_model_demo.sh`: must end with 13/13 checks (LIVE). If not, use the fallbacks below for every real-model step.
 2. In a second terminal: `bash scripts/start_real_model_console.sh`. Open the printed link in the browser **with the projector off or the window hidden**, then close the terminal tab that shows it. The browser lands on the Lab page with the header "REAL MODEL · LIVE".
 3. Open the walkthrough video `AegisLab_Finale_Walkthrough.mp4` and the judge cut `AegisLab_Finale_Judge_Cut.mp4` in a player, paused at 0:00, on the same laptop (no network needed).
 4. Clear the terminal (`clear`), set a large font, and hide the shell history.
-5. Phone: open https://aegislab-demo.onrender.com if the venue has network; otherwise skip that step. Open it a few minutes early: on Render's free plan it sleeps after 15 minutes idle and can take up to a minute to wake.
+5. **About 5 minutes before the slot**, if the venue has network: `bash tools/venue/warm_render.sh`. It wakes https://aegislab-demo.onrender.com and prints the response time; on Render's free plan the site sleeps after 15 minutes idle and can take up to a minute to wake. Then open the URL on the phone. If it prints "NOT answering" or there is no network, skip the hosted demo and use the local public demo (step 6).
+6. Local public demo, the offline fallback for the hosted one: in a third terminal, `cd HIH/aegislab && AEGIS_VAR=var/console-public .venv/bin/uvicorn app:app --host 127.0.0.1 --port 8415`, then open `http://127.0.0.1:8415` in the stage browser profile. It is the same read-only public mode the hosted site runs (`AEGIS_PUBLIC_DEMO=1` through `app.py`), on loopback only.
 
 ## 6-minute track (main)
 
@@ -77,7 +79,7 @@ Same order as the 6-minute track, with these additions:
 | The run does not seal in about a minute | "A slow model is cut off and red gets the uniform refusal; that is the deadline policy working. Let me show the sealed run we recorded." | Walkthrough video, run card |
 | Verify does not say accepted | "A genuine bundle failing verification would itself be a finding; the recorded run shows exit code 0 and the tampered copy exit code 1 (LIVE)." | Slide 7, left terminal |
 | F4 proof fails or takes too long | "Sampling the containers needs a quiet host; the recorded proof is on slide 3 and in the repository." | Slide 3, `finale_package/terminal/t4_f4_proof.txt` |
-| Public demo unreachable or still shows the old verify bug | "The hosted demo serves main until our finale branches are merged; this laptop runs the same public mode." | Slide 9 screenshots |
+| Hosted public demo unreachable (no venue network, or `warm_render.sh` says NOT answering) | "The venue network is not with us; this laptop runs the same read-only public mode on loopback." | The local public demo on port 8415 (step 6 above); if that fails too, the slide 9 screenshots |
 | Projector or laptop fails | "We will talk you through the deck; the videos and the PDF are on a second device." | Handout PDF and the PDF deck on the backup device |
 
 ## Human checks before the finale
