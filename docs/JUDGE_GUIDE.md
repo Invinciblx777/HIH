@@ -11,14 +11,14 @@ bash scripts/judge_demo.sh     # a few seconds; --pause waits for Enter between 
 
 ## No Linux machine at hand? The public read-only demo
 
-https://aegislab.vercel.app is the prototype console in read-only mode (`AEGIS_PUBLIC_DEMO=1`). You can:
+RENDER_URL is the prototype console in read-only mode (`AEGIS_PUBLIC_DEMO=1`), hosted on Render. On Render's free plan, if it has been idle for 15 minutes, the first page load takes about a minute while the service wakes. A secondary copy at https://aegislab.vercel.app may lag behind the code in this repository. You can:
 
 - browse every page (lab, connections, audit, evidence, experiments, threat model);
 - play the recorded replay of a real `judge_demo.sh` execution (labelled RECORDED);
 - open **Evidence**, pick a bundle and click **Verify with the independent verifier**. This runs the real `aegis.verify_cli` as a separate process on the server: genuine bundles are accepted, and the tampered and legacy examples are rejected;
 - tamper with a disposable copy of a genuine bundle and watch the verifier reject the copy while the original still verifies.
 
-It cannot run anything live. There are no containers, no operator session and no launch link. Every other state-changing request returns HTTP 403, and verifier requests are rate-limited (HTTP 429). The demonstrations below need the local setup. The live console stays loopback-only.
+It cannot run anything live. There are no containers, no operator session and no launch link. Every other state-changing request returns HTTP 403, and verifier requests are rate-limited (HTTP 429). The demonstrations below need the local setup: a Linux machine with rootless Podman. The live console stays loopback-only and is never hosted.
 
 ## Result labels
 
