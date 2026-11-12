@@ -15,7 +15,7 @@ Cue legend: **[SLIDE n]** change slide · **[DEMO]** switch to the terminal or b
 2. In a second terminal: `bash scripts/start_real_model_console.sh`. Open the printed link in the browser **with the projector off or the window hidden**, then close the terminal tab that shows it. The browser lands on the Lab page with the header "REAL MODEL · LIVE".
 3. Open the walkthrough video `AegisLab_Finale_Walkthrough.mp4` and the judge cut `AegisLab_Finale_Judge_Cut.mp4` in a player, paused at 0:00, on the same laptop (no network needed).
 4. Clear the terminal (`clear`), set a large font, and hide the shell history.
-5. Phone: open https://aegislab-demo.onrender.com if the venue has network; otherwise skip that step. Open it a few minutes early: on Render's free plan it sleeps after 15 minutes idle and takes about a minute to wake.
+5. Phone: open https://aegislab-demo.onrender.com if the venue has network; otherwise skip that step. Open it a few minutes early: on Render's free plan it sleeps after 15 minutes idle and can take up to a minute to wake.
 
 ## 6-minute track (main)
 

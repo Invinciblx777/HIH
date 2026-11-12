@@ -137,7 +137,7 @@ What changed in the code (commit `c018c52`; tests `tests/test_finale_p2_*.py`):
   - `evaluation/check_claims.py` accepts exactly those changes and fails on any other.
   - The timing path is affected only by a shorter monitor string written after the padded sleep.
 
-**Public read-only demo.** https://aegislab.vercel.app serves the console read-only (`AEGIS_PUBLIC_DEMO=1`).
+**Public read-only demo.** https://aegislab-demo.onrender.com (Render) serves the console read-only (`AEGIS_PUBLIC_DEMO=1`). An older copy at `aegislab.vercel.app` still serves outdated code (28 Oct 2026, where Verify fails with HTTP 403): do not use it.
 - There is no operator session and no launch code, and it runs no containers and no model.
 - Every write is refused except bundle verification and tampering with a disposable copy, both rate-limited.
 - The live console (`scripts/start_prototype.sh`) stays loopback-only.
