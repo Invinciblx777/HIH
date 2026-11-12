@@ -1,0 +1,108 @@
+1
+00:00:00,350 --> 00:00:03,991
+AegisLab keeps a red team, a blue team and the model under
+
+2
+00:00:03,991 --> 00:00:07,382
+test apart on one machine, and proves it with evidence
+
+3
+00:00:07,382 --> 00:00:08,512
+anyone can verify.
+
+4
+00:00:09,412 --> 00:00:13,820
+The real model, Qwen2.5-0.5B, runs in a rootless container
+
+5
+00:00:13,820 --> 00:00:15,036
+with no network.
+
+6
+00:00:15,036 --> 00:00:19,444
+A leak it makes through a broken gateway is withheld, even
+
+7
+00:00:19,444 --> 00:00:21,800
+in base64: 13/13 checks (LIVE).
+
+8
+00:00:22,700 --> 00:00:27,479
+In the console, the run card says REAL MODEL, LIVE, and
+
+9
+00:00:27,479 --> 00:00:31,129
+every reply leaves at t0 + 1400 ms (LIVE).
+
+10
+00:00:32,029 --> 00:00:35,480
+Re-measured on the finale code, 0 of 104 sessions
+
+11
+00:00:35,480 --> 00:00:39,635
+(RE-MEASURED 11 Nov 2026) leaked across sessions, while the
+
+12
+00:00:39,635 --> 00:00:41,537
+controls built to leak did.
+
+13
+00:00:42,437 --> 00:00:47,569
+Our own test found that 250 ms padding leaks against the
+
+14
+00:00:47,569 --> 00:00:51,052
+real model: accuracy 0.945/0.960/0.950
+
+15
+00:00:51,052 --> 00:00:53,435
+(RE-MEASURED 11 Nov 2026).
+
+16
+00:00:53,435 --> 00:00:58,567
+Deadline release brings it to accuracy 0.495/0.545/0.575
+
+17
+00:00:58,567 --> 00:01:02,691
+(RE-MEASURED 11 Nov 2026), at +519 to +621 ms
+
+18
+00:01:02,691 --> 00:01:05,074
+(RE-MEASURED 11 Nov 2026).
+
+19
+00:01:05,074 --> 00:01:10,390
+One p-value, p = 0.044 (RE-MEASURED 11 Nov 2026), is below
+
+20
+00:01:10,390 --> 00:01:15,889
+0.05 but above our pre-declared threshold: no leak detected,
+
+21
+00:01:15,889 --> 00:01:16,988
+not no leak.
+
+22
+00:01:17,888 --> 00:01:21,284
+The independent verifier accepts the signed bundle with
+
+23
+00:01:21,284 --> 00:01:22,457
+exit code 0 (LIVE).
+
+24
+00:01:22,457 --> 00:01:25,667
+One edited field in a copy gives exit code 1 (LIVE).
+
+25
+00:01:26,567 --> 00:01:30,143
+Still open: a host-user compromise reaches the signing key,
+
+26
+00:01:30,143 --> 00:01:32,871
+and no leak detected is not proof of absence.
+
+27
+00:01:33,771 --> 00:01:35,873
+The code and every number are on GitHub.
+

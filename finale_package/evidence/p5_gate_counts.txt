@@ -1,0 +1,12 @@
+# P5 gate counts on finale/p5-media (code under test: aegislab at 9145592 plus the P5 working tree)
+# raw logs: round2/logs/finale_p5/20_pytest_all_final.log, 21_browser_all_final.log, 22_check_presentation_final.log
+recorded_utc=2026-11-11T20:15:00Z
+pytest_all_command=.venv/bin/python -m pytest -q tests (container-free and Podman tests; browser tests skip in .venv)
+pytest_all_exit=0
+pytest_all_passed=702
+pytest_all_skipped=2
+browser_command=bash scripts/run_browser_tests.sh --all --require
+browser_exit=0
+browser=18/18
+check_presentation_exit=0
+check_presentation=157/157

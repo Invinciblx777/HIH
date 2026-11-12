@@ -1,5 +1,7 @@
 # Tech Mavericks · AegisLab · Hack in Hills ’26 submission (Phase 4 candidate)
 
+> **HISTORICAL:** rc4 package of 23 Oct 2026, kept unchanged as submitted and still checked against its own 23 Oct figures by aegislab/evaluation/check_presentation.py. Several figures here were superseded by the finale work (10-12 Nov 2026); for the Grand Finale use finale_package/ and see RC4_PACKAGE_HISTORICAL.md.
+
 **Track 04: Securing Adversarial AI Safety Testing Infrastructure (Bayora).**
 AegisLab is controlled, measurable, adversarial AI testing infrastructure: red-team attacks, blue-team defences and the model under test coexist without leaking protected state, and every run ships evidence a reviewer can verify independently.
 

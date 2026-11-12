@@ -1,0 +1,82 @@
+{
+ "note": "Judge cut (about 90 s). Rendered by render_docs.py; 'say' is derived from 'caption'. Synthetic narration (Piper, en_US-lessac-medium).",
+ "segments": [
+  {
+   "key": "j1",
+   "visual": {
+    "kind": "title",
+    "cut": "judge cut"
+   },
+   "caption": "AegisLab keeps a red team, a blue team and the model under test apart on one machine, and proves it with evidence anyone can verify.",
+   "say": "Aegis Lab keeps a red team, a blue team and the model under test apart on one machine, and proves it with evidence anyone can verify."
+  },
+  {
+   "key": "j2",
+   "visual": {
+    "kind": "term",
+    "rec": "t1_real_model_demo",
+    "what": "scripts/real_model_demo.sh, real model"
+   },
+   "caption": "The real model, Qwen2.5-0.5B, runs in a rootless container with no network. A leak it makes through a broken gateway is withheld, even in base64: 13/13 checks (LIVE).",
+   "say": "The real model, Kwen two point five, half a billion parameters, runs in a rootless container with no network. A leak it makes through a broken gateway is withheld, even in base64: 13 of 13 checks, live."
+  },
+  {
+   "key": "j3",
+   "visual": {
+    "kind": "screen",
+    "files": [
+     "02e_run_card_crop_desktop.png"
+    ],
+    "what": "run card of a real-model run"
+   },
+   "caption": "In the console, the run card says REAL MODEL, LIVE, and every reply leaves at t0 + 1400 ms (LIVE).",
+   "say": "In the console, the run card says REAL MODEL, LIVE, and every reply leaves at t zero plus 1400 milliseconds, live."
+  },
+  {
+   "key": "j4",
+   "visual": {
+    "kind": "slide",
+    "page": 5
+   },
+   "caption": "Re-measured on the finale code, 0 of 104 sessions (RE-MEASURED 11 Nov 2026) leaked across sessions, while the controls built to leak did.",
+   "say": "Re-measured on the finale code, 0 of 104 sessions, re-measured on the eleventh of November, leaked across sessions, while the controls built to leak did."
+  },
+  {
+   "key": "j5",
+   "visual": {
+    "kind": "slide",
+    "page": 6
+   },
+   "caption": "Our own test found that 250 ms padding leaks against the real model: accuracy 0.945/0.960/0.950 (RE-MEASURED 11 Nov 2026). Deadline release brings it to accuracy 0.495/0.545/0.575 (RE-MEASURED 11 Nov 2026), at +519 to +621 ms (RE-MEASURED 11 Nov 2026). One p-value, p = 0.044 (RE-MEASURED 11 Nov 2026), is below 0.05 but above our pre-declared threshold: no leak detected, not no leak.",
+   "say": "Our own test found that 250 milliseconds padding leaks against the real model: accuracy 0.945, 0.960 and 0.950, re-measured on the eleventh of November. Deadline release brings it to accuracy 0.495, 0.545 and 0.575, at plus 519 to plus 621 milliseconds. One p-value, p equals 0.044, is below 0.05 but above our pre-declared threshold: no leak detected, not no leak."
+  },
+  {
+   "key": "j6",
+   "visual": {
+    "kind": "term",
+    "rec": "t5_verify_cli",
+    "what": "verify_cli, strict, then a tampered copy"
+   },
+   "caption": "The independent verifier accepts the signed bundle with exit code 0 (LIVE). One edited field in a copy gives exit code 1 (LIVE).",
+   "say": "The independent verifier accepts the signed bundle with exit code 0, live. One edited field in a copy gives exit code 1."
+  },
+  {
+   "key": "j7",
+   "visual": {
+    "kind": "slide",
+    "page": 10
+   },
+   "caption": "Still open: a host-user compromise reaches the signing key, and no leak detected is not proof of absence.",
+   "say": "Still open: a host-user compromise reaches the signing key, and no leak detected is not proof of absence."
+  },
+  {
+   "key": "j8",
+   "visual": {
+    "kind": "end"
+   },
+   "hold": 1.5,
+   "caption": "The code and every number are on GitHub.",
+   "say": "The code and every number are on GitHub."
+  }
+ ]
+}

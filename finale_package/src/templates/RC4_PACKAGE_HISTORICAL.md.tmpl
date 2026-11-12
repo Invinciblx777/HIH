@@ -1,0 +1,30 @@
+# The rc4 package is historical
+
+The presentation package at the repository root is the **rc4 submission of 23 Oct 2026**:
+
+- `Tech_Mavericks_AegisLab_Submission.pptx` and `.pdf` (the 8-slide deck), `Tech_Mavericks_AegisLab_Pitch_120s.mp4`,
+- `Captions.srt`, `Voiceover_Script.txt`, `Storyboard_Timestamped.txt`, `Judge_QA.md`, `README_FIRST.md`,
+- `PHASE4_CLAIM_MATRIX.json` and `.md`, `PHASE4_PRESENTATION_REPORT.md`, `PHASE3_LLM_SECURITY_REPORT.md`, `presentation_src/`.
+
+**Decision (finale P5, option a):** it stays exactly as submitted, labelled historical, and `aegislab/evaluation/check_presentation.py` keeps checking it against its own 23 Oct figures with **no expectation changed**. The only edits are one "HISTORICAL" line near the top of `README_FIRST.md`, `Judge_QA.md`, `Voiceover_Script.txt` (a bracketed line, which is not spoken or captioned), `Storyboard_Timestamped.txt`, `PHASE4_PRESENTATION_REPORT.md` and `PHASE3_LLM_SECURITY_REPORT.md`, and the same sentence appended to the note of `PHASE4_CLAIM_MATRIX.json` (its `.md` regenerated with `check_presentation.py --write-matrix-md`). `MANIFEST.sha256` was updated for exactly those files. The binaries and `Captions.srt` are unchanged.
+
+**For the Grand Finale use [`finale_package/`](finale_package/)**: the deck, the 3-minute, 6-minute and 10-minute talk tracks, the judge Q&A, the handout and the captions, all generated from `finale_package/claims_used_for_finale.json` and checked by `aegislab/evaluation/check_finale_presentation.py`.
+
+## What changed since rc4 (P3_REPORT section 5, items 1–17), and where each is now stated
+
+| Item | Topic | Current statement | Where |
+|---|---|---|---|
+| 1, 14 | E2 context-sharing control | {{e2_control.runs}}, {{e2_control.withheld}} ({{e2_control.label}}) | `finale_package/FINALE_JUDGE_QA.md` question 2; deck slide 5 |
+| 2, 14 | E3 cache-off latency AUC | {{e3_latency_off.auc}} ({{e3_latency_off.label}}) | `finale_package/FINALE_JUDGE_QA.md` question 2 |
+| 3 | M3 latency medians | both the 23 Oct and the 10 Nov medians | `aegislab/THREAT_MODEL.md` row 4 (since finale P3) |
+| 4, 10 | Timing with a real model | 250 ms buckets: {{timing_250_real.acc}}, {{timing_250_real.p}}; deadline release: {{timing_deadline_real.acc}}, {{timing_deadline_real.p}} ({{timing_deadline_real.label}}); cost {{timing_deadline_cost.cost}} ({{timing_deadline_cost.label}}); real-model default {{deadline_default.D_eq}} (LIVE); every "padding brings it to chance" statement now says "stub model" | `finale_package/FINALE_JUDGE_QA.md` questions 3–5; `FINALE_SCRIPT.md`; README finale block; console Experiments page (`aegislab/web/console/console.js`, two strings fixed in P5) |
+| 5 | A live real-model path exists | `scripts/real_model_demo.sh` {{real_model_demo.checks}}, console check {{console_check.checks}} (LIVE) | `finale_package/FINALE_JUDGE_QA.md` question 14; README finale block |
+| 6, 15 | check_claims totals | {{check_claims.total}}, {{check_claims.f}} (LIVE); the security demo's "checks" count still names the Part E rows, which is what it counts | `finale_package/FINALE_JUDGE_QA.md` "Can I reproduce it?" |
+| 7, 17 | Test counts | {{tests.passed}}, {{tests.browser}} ({{tests.label}}); MANIFEST entry count in `docs/finale/P5_REPORT.md` | `finale_package/FINALE_JUDGE_QA.md` "Can I reproduce it?"; `finale_package/evidence/p5_gate_counts.txt` |
+| 8 | Second model | {{second_model.trials}}, {{second_model.controls}} ({{second_model.label}}) | `finale_package/FINALE_JUDGE_QA.md` question 9 |
+| 9 | Re-run time of the real-model experiments | the measured wall clock of the 11 Nov run | `aegislab/evidence/finale_p4_2026-11-11/README.md`, "Command" line of `llm_final` |
+| 11 | Canary detector and encodings | single encodings withheld; double encodings, ciphers, homoglyphs, paraphrase missed | `finale_package/FINALE_JUDGE_QA.md` question 8 |
+| 12 | Key custody | containers on subordinate UIDs, {{f4_userns.errno}} on the key ({{f4_userns.label}}); host-user compromise still reaches the key | `finale_package/FINALE_JUDGE_QA.md` question 6 |
+| 13 | New controls | {{detectors.n}} (LIVE), capability tokens, countersignature (Partial), quotas, digest pin | `finale_package/FINALE_JUDGE_QA.md` questions 6, 11, 12, "Can a tenant flood the broker?", "Is the deployment reproducible?" |
+| 14 | E1 re-measured | {{e1_isolation.trials}}, {{e1_isolation.sessions}}; controls {{e1_positive.history_slash}} and {{e1_positive.gateway_slash}} ({{e1_isolation.label}}) | `finale_package/FINALE_JUDGE_QA.md` questions 1–2 |
+| 16 | Live demo counts | real-model demo {{real_model_demo.checks}}, console {{console_check.checks}}, security demo {{security_demo.checks}} and {{security_demo.limits}} (LIVE) | `finale_package/FINALE_JUDGE_QA.md` questions 6, 14 and "Can I reproduce it?" |

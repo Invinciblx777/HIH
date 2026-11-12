@@ -1,5 +1,15 @@
 # AegisLab
 
+<!-- finale:start -->
+> **Grand Finale (Manali, 20–21 Nov 2026) · status on 12 Nov 2026**
+>
+> - **Finale package:** [`finale_package/`](finale_package/): the 12-slide deck ([PDF](finale_package/Tech_Mavericks_AegisLab_Finale.pdf)), 3-minute, 6-minute and 10-minute talk tracks ([`FINALE_SCRIPT.md`](finale_package/FINALE_SCRIPT.md)), the judge Q&A ([`FINALE_JUDGE_QA.md`](finale_package/FINALE_JUDGE_QA.md)), the one-page handout, caption files, and the recorded terminal transcripts. Every figure comes from [`claims_used_for_finale.json`](finale_package/claims_used_for_finale.json) with its type (LIVE, RE-MEASURED <date> or RECORDED <date>), and `aegislab/evaluation/check_finale_presentation.py` enforces that.
+> - **Presented code:** branch `finale/p4-hardening` (commit `9145592`) plus this package; P1–P4 are not yet merged into `main`.
+> - **Real model, live:** `bash scripts/real_model_demo.sh` ends with 13/13 checks (LIVE). Re-measured on the finale code: 0 of 104 sessions leaked across sessions while the controls that must leak did (RE-MEASURED 11 Nov 2026). The real-model default is deadline release at t0 + 1400 ms (LIVE), because 250 ms padding leaked against the real model (accuracy 0.945/0.960/0.950, RE-MEASURED 11 Nov 2026).
+> - **Public read-only demo:** https://aegislab.vercel.app: browse the evidence, verify a bundle, tamper with a disposable copy. No operator session, no runs, no containers. It serves `main`; the verify fix (finale P1) is live only after the merge.
+> - **The rc4 package** at the repository root (`Tech_Mavericks_AegisLab_Submission.pptx` and `.pdf`, `Tech_Mavericks_AegisLab_Pitch_120s.mp4`, `Captions.srt`, `Voiceover_Script.txt`, `Storyboard_Timestamped.txt`, `Judge_QA.md`, `PHASE4_CLAIM_MATRIX.*`) is the **historical** pre-finale submission of 23 Oct 2026, kept unchanged and still checked against its own figures by `check_presentation.py`. See [`RC4_PACKAGE_HISTORICAL.md`](RC4_PACKAGE_HISTORICAL.md).
+<!-- finale:end -->
+
 **Secure infrastructure for adversarial AI safety testing.** Red-team attacks, blue-team defences and the model under test run side by side, cannot read each other's protected state, and every run ends with signed evidence that a reviewer can verify on their own machine.
 
 Team **Tech Mavericks** (Abdul Munaf Z, Likhith Sai N, Sreeram Rajesh) · **Hack in Hills '26** · Track 04: *Securing Adversarial AI Safety Testing Infrastructure* (Bayora).

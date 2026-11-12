@@ -1,0 +1,55 @@
+$ B=evidence/finale_p4_2026-11-11/validation/bundles/VAL-001; .venv/bin/python -m aegis.verify_cli --bundle $B --run-id VAL-001 --expect-state RELEASED --pubkey $(cat $B/broker_public_key.b64) --require-countersignature --reviewer-pubkey $(cat $B/reviewer_public_key.b64)
+{
+  "ok": true,
+  "entries": 28,
+  "chain_ok": true,
+  "checkpoints_checked": 4,
+  "checkpoint_ok": true,
+  "last_checkpoint_seq": 28,
+  "tail_uncovered": 0,
+  "terminal_required": true,
+  "terminal_verified": true,
+  "terminal_state": "RELEASED",
+  "anchor_checked": true,
+  "terminal_hash": "sha256:eee86127729801d6f5ec502359ebe3f3a56d52bfdda72e685bb10aecab5e77a2",
+  "findings": [],
+  "key_id": "sha256:f79bf361983e96dd",
+  "key_source": "pinned (--pubkey)",
+  "countersignature_ok": true,
+  "reviewer_key_source": "pinned (--reviewer-pubkey)"
+}
+$ echo "exit code: $?"
+exit code: 0
+$ T=$(mktemp -d /tmp/aegis-tamper.XXXXXX); cp -r $B $T/VAL-001; sed -i "3s/\"matches_manifest\": true/\"matches_manifest\": false/" $T/VAL-001/audit.jsonl; diff -q $B/audit.jsonl $T/VAL-001/audit.jsonl
+Files evidence/finale_p4_2026-11-11/validation/bundles/VAL-001/audit.jsonl and /tmp/aegis-tamper.gVkcKV/VAL-001/audit.jsonl differ
+$ echo "exit code: $?"
+exit code: 1
+$ .venv/bin/python -m aegis.verify_cli --bundle $T/VAL-001 --run-id VAL-001 --expect-state RELEASED --pubkey $(cat $B/broker_public_key.b64) --require-countersignature --reviewer-pubkey $(cat $B/reviewer_public_key.b64)
+{
+  "ok": false,
+  "entries": 28,
+  "chain_ok": false,
+  "checkpoints_checked": 4,
+  "checkpoint_ok": true,
+  "last_checkpoint_seq": 28,
+  "tail_uncovered": 0,
+  "terminal_required": true,
+  "terminal_verified": true,
+  "terminal_state": "RELEASED",
+  "anchor_checked": true,
+  "terminal_hash": "sha256:eee86127729801d6f5ec502359ebe3f3a56d52bfdda72e685bb10aecab5e77a2",
+  "findings": [
+    {
+      "seq": 3,
+      "issue": "entry content does not match its hash"
+    }
+  ],
+  "key_id": "sha256:f79bf361983e96dd",
+  "key_source": "pinned (--pubkey)",
+  "countersignature_ok": true,
+  "reviewer_key_source": "pinned (--reviewer-pubkey)"
+}
+$ echo "exit code: $?"
+exit code: 1
+$ exit
+exit

@@ -1,0 +1,32 @@
+$ F4=$(mktemp -d /tmp/aegis-f4.XXXXXX); AEGIS_VAR=$F4/var .venv/bin/python evaluation/p4_userns_proof.py --out-dir $F4/out
+ok   lab_run_sealed
+ok   lab_containers_sampled_red_blue_model
+ok   lab_every_container_process_runs_as_container_uid_900
+ok   lab_no_container_host_uid_equals_the_broker_uid
+ok   lab_container_host_uids_distinct
+ok   lab_container_host_uids_in_the_subordinate_range
+ok   model_server_runs_as_container_uid_900_not_the_broker
+ok   model_server_host_uid_matches_launch_record_and_socket_owner
+ok   model_server_host_uid_differs_from_the_concurrent_lab_containers
+ok   model_api_key_file_is_broker_owned_0600
+ok   key_files_broker_owned_and_private
+ok   guard_refuses_key_directory_mount
+ok   raw_mount_of_the_evidence_key_is_unreadable_errno_13
+classification: pass
+$ echo "exit code: $?"
+exit code: 0
+$ .venv/bin/python ../finale_package/src/f4_table.py $F4/out
+F4 proof: who runs each container (from podman top and /proc on the host)
+  container                    inside     host UID (top / proc)    uid_map
+  aegis-p4u-run-blue           900        527236 / 527236          0 526336 1024
+  aegis-p4u-run-model          900        526212 / 526212          0 525312 1024
+  aegis-p4u-run-red            900        528260 / 528260          0 527360 1024
+  sandboxed model server       900        525188 / 525188          0 524288 1024
+  broker (owns the signing key): host UID 1000
+  guard, key directory as a mount source: refused: refusing to mount key material into a container: /tmp/aegis-f4.uLyvZQ/var/keys
+  raw podman run, key bind-mounted read-only: errno 13 900
+checks: 13/13 hold · classification: pass
+$ echo "exit code: $?"
+exit code: 0
+$ exit
+exit
