@@ -5,6 +5,7 @@ AegisLab is a hackathon research prototype (Hack in Hills '26, Track 04). It is 
 ## Safe use
 
 - Bind the API to loopback only (`127.0.0.1`, the default in every script). Do not expose it to a network or the internet: it starts adversarial workloads, and its role tokens are local demo tokens, not authentication.
+- The only public deployment is the read-only demo at https://aegislab.vercel.app (`AEGIS_PUBLIC_DEMO=1`, forced by `aegislab/app.py`). In that mode the console issues no launch code and has no operator session. Live execution is off. Every state-changing request is refused (HTTP 403) except bundle verification and tampering with a disposable copy, and both are rate-limited (HTTP 429). Never put a live console (Podman plus a launch link) on a public URL. `AEGIS_PUBLIC_DEMO=1` is the only setting that lifts the loopback Host guard, and it disables every write.
 - Never set `AEGIS_DEMO_MODE=1` outside a local demo. It returns every role token to any local caller.
 - The real-model adapter is loopback-only unless `AEGIS_MODEL_ALLOW_REMOTE=1`. Keep model API keys in a file with mode 0600 (`AEGIS_MODEL_API_KEY_FILE`); never commit them.
 - Use synthetic data only. The attack pack, canaries and test keys in this repository are synthetic.

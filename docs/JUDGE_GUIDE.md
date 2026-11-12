@@ -9,6 +9,17 @@ bash scripts/quickstart.sh     # first time only: about 1-2 minutes; ends with o
 bash scripts/judge_demo.sh     # a few seconds; --pause waits for Enter between steps
 ```
 
+## No Linux machine at hand? The public read-only demo
+
+https://aegislab.vercel.app is the prototype console in read-only mode (`AEGIS_PUBLIC_DEMO=1`). You can:
+
+- browse every page (lab, connections, audit, evidence, experiments, threat model);
+- play the recorded replay of a real `judge_demo.sh` execution (labelled RECORDED);
+- open **Evidence**, pick a bundle and click **Verify with the independent verifier**. This runs the real `aegis.verify_cli` as a separate process on the server: genuine bundles are accepted, and the tampered and legacy examples are rejected;
+- tamper with a disposable copy of a genuine bundle and watch the verifier reject the copy while the original still verifies.
+
+It cannot run anything live. There are no containers, no operator session and no launch link. Every other state-changing request returns HTTP 403, and verifier requests are rate-limited (HTTP 429). The demonstrations below need the local setup. The live console stays loopback-only.
+
 ## Result labels
 
 The demos print a label wherever a result is not produced live on your machine.

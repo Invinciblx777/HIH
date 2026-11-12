@@ -14,6 +14,9 @@ already held (no fixation: the server always picks the session id).
 What a session is: the single local operator of this console. Inside that session the console drives the demonstration
 roles (operator, reviewer, blue and red participant) server-side, with the control plane's own tokens, through the
 unchanged role checks. It is not multi-user authentication: everybody who holds the launch link is that one operator.
+
+Finale P1: in the public read-only demo (AEGIS_PUBLIC_DEMO=1, set by app.py for the hosted site) no launch code is issued or
+accepted and no session can exist: start() refuses, get() finds nothing, launch_code() writes no file.
 """
 import hmac
 import os
@@ -36,6 +39,16 @@ _lock = threading.Lock()
 _sessions = {}                 # sid -> {"csrf", "created", "seen"}
 _failures = {"n": 0, "until": 0.0}
 _env_adopted = set()           # state directories whose AEGIS_CONSOLE_LAUNCH_CODE was already taken over (it is single-use too)
+
+
+PUBLIC_DEMO_REFUSAL = ("this is the public read-only demo: there is no operator session and no launch code. Live runs need a "
+                       "local console (scripts/start_prototype.sh)")
+
+
+def public_demo() -> bool:
+    """The one switch for the public read-only demo. Only AEGIS_PUBLIC_DEMO=1 turns it on (aegislab/app.py sets it for the
+    hosted site); no other variable, VERCEL included, does."""
+    return os.environ.get("AEGIS_PUBLIC_DEMO") == "1"
 
 
 def _code_file():
@@ -70,7 +83,9 @@ def _current(now):
 
 
 def issue() -> str:
-    """Write a fresh launch code (replacing any previous one) and return it."""
+    """Write a fresh launch code (replacing any previous one) and return it. Refused in the public read-only demo."""
+    if public_demo():
+        raise RuntimeError(PUBLIC_DEMO_REFUSAL)
     with _lock:
         _current(time.time())  # an unadopted launcher code must not resurface after this one
         value = secrets.token_urlsafe(24)
@@ -82,7 +97,10 @@ def launch_code() -> str:
     """The current unused launch code for this state directory, issuing a new one if there is none or it expired.
     The file $AEGIS_VAR/console/launch_code (mode 0600) always holds the code that works now; the launcher writes it with
     issue(). AEGIS_CONSOLE_LAUNCH_CODE, if set (manual starts, tests), is taken over once per process and state directory,
-    so a process started again with the same environment value would accept that value once more."""
+    so a process started again with the same environment value would accept that value once more.
+    In the public read-only demo no code exists: this returns an empty string and writes nothing."""
+    if public_demo():
+        return ""
     now = time.time()
     with _lock:
         value, issued = _current(now)
@@ -96,6 +114,8 @@ def launch_code() -> str:
 def start(code: str):
     """Exchange the launch code for a new session id, or return (None, reason). The code is consumed: it is replaced by a
     fresh one in the same critical section, so two requests with the same code cannot both succeed."""
+    if public_demo():
+        return None, PUBLIC_DEMO_REFUSAL
     now = time.time()
     with _lock:
         if now < _failures["until"]:
@@ -125,8 +145,8 @@ def _expire(now):
 
 
 def get(sid):
-    """The session for a cookie value, or None. Refreshes the idle timer."""
-    if not sid:
+    """The session for a cookie value, or None. Refreshes the idle timer. Always None in the public read-only demo."""
+    if not sid or public_demo():
         return None
     now = time.time()
     with _lock:
