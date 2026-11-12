@@ -274,6 +274,25 @@ def _client_ip(request: Request) -> str:
     return peer
 
 
+def _client_ip_present(request: Request) -> bool:
+    """Whether the configured client-IP source held exactly one valid IP address on this request. Configured header: that
+    header. "peer": the TCP peer. Unset: X-Real-IP, else the first X-Forwarded-For entry (the TCP peer does not count, so a
+    proxy that sets neither shows false). False means every client shares one per-client bucket."""
+    configured = _client_ip_header()
+    if configured == "peer":
+        v = request.client.host if request.client else ""
+    elif configured:
+        v = request.headers.get(configured, "").strip()
+    else:
+        v = next((x.split(",")[0].strip() for x in (request.headers.get("x-real-ip"), request.headers.get("x-forwarded-for"))
+                  if x and x.split(",")[0].strip()), "")
+    try:
+        ipaddress.ip_address(v)
+        return True
+    except ValueError:
+        return False
+
+
 def _public_rate_ok(ip: str) -> bool:
     """Sliding-window limit on public verifier requests (verify and tamper), global and per client IP. It sits in front of the
     two verifier slots (_verify_slots), which still cap concurrency."""
@@ -452,7 +471,7 @@ def _signed_upto(run_id) -> int:
 
 
 @app.get("/api/lab/status")
-def status():
+def status(request: Request):
     podman = _host_podman()
     rec_all = runs.list_runs()
     latest = api.public_view(rec_all[0]) if rec_all else None
@@ -485,18 +504,20 @@ def status():
                                      "terminal_verified": (shipped.get("result") or {}).get("terminal_verified")},
         "code_revision": _cached("revision", 3600, _code_revision),
         "generated_at": time.time(),
-    } | (_public_status() if lab_session.public_demo() else {})
+    } | (_public_status(request) if lab_session.public_demo() else {})
 
 
-def _public_status() -> dict:
-    """Extra status fields of the public read-only demo, so the UI can label it (absent outside that mode)."""
+def _public_status(request: Request) -> dict:
+    """Extra status fields of the public read-only demo, so the UI can label it (absent outside that mode).
+    client_ip_header_present says whether THIS request carried a usable client address (never the address itself)."""
     return {"public_demo": True,
             "identity_model": "public read-only demo: no launch code, no operator session; role tokens stay on the server",
             "public_demo_allows": ["browse", "replay", "verify bundles with the independent verifier", "tamper with disposable copies"],
             "public_demo_refuses": ["live runs", "operator session", "every other state-changing request"],
             "public_demo_rate_limit": {"per_client": {"requests": PUBLIC_RATE_CLIENT[0], "seconds": PUBLIC_RATE_CLIENT[1]},
                                        "global": {"requests": PUBLIC_RATE_GLOBAL[0], "seconds": PUBLIC_RATE_GLOBAL[1]},
-                                       "client_ip_from": _client_ip_header() or "x-real-ip, then x-forwarded-for"}}
+                                       "client_ip_from": _client_ip_header() or "x-real-ip, then x-forwarded-for",
+                                       "client_ip_header_present": _client_ip_present(request)}}
 
 
 def _shipped_status(ref) -> dict:
