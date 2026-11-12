@@ -267,34 +267,30 @@ detection, anomaly detectors, run-scoped capability tokens
 and mailbox quotas.
 
 68
-00:03:38,459 --> 00:03:42,105
+00:03:38,459 --> 00:03:42,066
 The public demo is read-only by design: anyone can verify a
 
 69
-00:03:42,105 --> 00:03:44,082
+00:03:42,066 --> 00:03:44,023
 bundle, nobody can run anything.
 
 70
-00:03:44,082 --> 00:03:47,604
-The hosted site serves main until the finale branches are
+00:03:44,023 --> 00:03:45,796
+It runs on Render, from main.
 
 71
-00:03:47,604 --> 00:03:48,037
-merged.
-
-72
-00:03:48,937 --> 00:03:53,009
+00:03:46,696 --> 00:03:50,769
 Residual risks: a host-user compromise still reaches the
 
-73
-00:03:53,009 --> 00:03:57,082
+72
+00:03:50,769 --> 00:03:54,841
 signing key; no leak detected is not absence; containers
 
-74
-00:03:57,082 --> 00:04:00,791
+73
+00:03:54,841 --> 00:03:58,550
 share the kernel; one host, CPU only, GPU untested.
 
-75
-00:04:01,691 --> 00:04:03,711
+74
+00:03:59,450 --> 00:04:01,470
 The code and every number are on GitHub.
 

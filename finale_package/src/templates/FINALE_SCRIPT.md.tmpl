@@ -2,7 +2,7 @@
 
 Team Tech Mavericks · Hack in Hills '26 · Track 04 · Grand Finale, Manali, 20–21 Nov 2026.
 
-- **Code presented:** branch `finale/p4-hardening`, commit `9145592`. P1–P4 are **not merged into `origin/main`**; the hosted read-only demo serves `main` until they are.
+- **Code presented:** `main`, with finale P1–P5 merged on 12 Nov 2026. The screenshots and terminal recordings were made on commit `9145592`. The hosted read-only demo runs on Render from `main`.
 - **Figures:** every figure below comes from `finale_package/claims_used_for_finale.json` and carries its type: **LIVE** (the presented code produces it when it runs; the number is the one from the rehearsal on 12 Nov, and the stage run must reproduce it), **RE-MEASURED <date>** (measured again on the finale code) or **RECORDED <date>** (measured earlier, not re-run). `aegislab/evaluation/check_finale_presentation.py` fails if a figure here differs from that file or lacks its label.
 - **Format:** no file in `docs/round2/` or `round2/` records the finale format (`docs/round2/REQUIREMENTS_LOG.md` gives only the dates and the venue). The main track assumes a 6-minute pitch with a live demo, then judge Q&A. The 3-minute and 10-minute tracks reuse the same slides.
 - **Never show:** the console launch link, API keys, `/home/...` paths, browser profile names. The launch link is opened off-screen before the talk.
@@ -15,7 +15,7 @@ Cue legend: **[SLIDE n]** change slide · **[DEMO]** switch to the terminal or b
 2. In a second terminal: `bash scripts/start_real_model_console.sh`. Open the printed link in the browser **with the projector off or the window hidden**, then close the terminal tab that shows it. The browser lands on the Lab page with the header "REAL MODEL · LIVE".
 3. Open the walkthrough video `AegisLab_Finale_Walkthrough.mp4` and the judge cut `AegisLab_Finale_Judge_Cut.mp4` in a player, paused at 0:00, on the same laptop (no network needed).
 4. Clear the terminal (`clear`), set a large font, and hide the shell history.
-5. Phone: open https://aegislab.vercel.app if the venue has network; otherwise skip that step.
+5. Phone: open https://aegislab-demo.onrender.com if the venue has network; otherwise skip that step. Open it a few minutes early: on Render's free plan it sleeps after 15 minutes idle and can take up to a minute to wake.
 
 ## 6-minute track (main)
 
