@@ -1,8 +1,11 @@
 # AegisLab finale release notes
 
 Team Tech Mavericks, Hack in Hills '26, Track 04. Grand Finale 20–21 Nov 2026, Manali.
-Written 12 Nov 2026 (finale P6). Covers everything since the Round 2 submission (`0beba3d`, "UI refresh", 28 Oct 2026)
-up to `main` at `105813b` (PR #15) and the P6 venue kit on the branch `finale/p6-kit`.
+Written 12 Nov 2026 (finale P6, updated in P7). Covers everything since the Round 2 submission (`0beba3d`, "UI refresh",
+28 Oct 2026) up to the finale tag.
+
+**Finale build: tag `aegislab-finale` → `c15fcaacfe5265516ce4667b19f80bda39ac554d`** (`main` after PR #17, 12 Nov 2026).
+This file was updated after the tag (PR "Finale P7 docs"); the tagged code is unchanged by it.
 
 Figures here are the ones in the evidence folders and `finale_package/claims_used_for_finale.json`. Each one carries the
 date it was measured. Nothing here is new evidence.
@@ -18,6 +21,8 @@ date it was measured. Nothing here is new evidence.
 | #13 | 12 Nov 01:45 | `cb9af28` | **P5, presentation assets on the final code.** 12-slide deck with speaker notes, PDF, one-page handout, 3/6/10-minute talk tracks, judge Q&A, judge cut and walkthrough videos with captions. A new release gate, `check_finale_presentation.py`, checks every figure in them against the claims file. The Round 2 package (rc4) is kept as submitted and labelled historical. |
 | #14 | 12 Nov 02:29 | `4266cb4` | **P6 task R, public read-only demo on Render.** `render.yaml` Blueprint (free plan) runs `app.py`, so the demo is always read-only. Per-client rate limit on the verifier and tamper (10 per minute; HTTP 429 with `Retry-After: 60`). The client is identified by the address Render's proxy adds; forged `X-Forwarded-For`, `X-Real-IP`, `True-Client-IP` and `CF-Connecting-IP` headers do not reset the limit. `/api/lab/status` reports `public_demo`, `client_ip_header_present` and a `code_revision` hash of the served code. |
 | #15 | 12 Nov 08:57 | `105813b` | **P6 R5, Render is the demo URL.** Every document, the deck, the handout and both videos now name https://aegislab-demo.onrender.com. The 429 message is shown as a readable toast in the console. The finale package was rebuilt (walkthrough segment w17 re-synthesised). |
+| #16 | 12 Nov 12:28 | `4ba2dcd` | **P6, venue kit.** CI live gates, venue tools, offline kit tooling, the launcher fix (`AEGIS_MODELS_DIR`), the projector CSS fix, deck layout fixes, THREAT_MODEL 10.7. Merged with the `real-model` CI job red (see section 3). |
+| #17 | 12 Nov 12:38 | `c15fcaa` | **Render paid instance.** `render.yaml` `plan: 0.5c-512mb` (no spin-down); the cold-start sentence removed from README, JUDGE_GUIDE and PROTOTYPE_GUIDE. |
 
 ### The hosted demo moved from Vercel to Render
 
@@ -32,9 +37,11 @@ date it was measured. Nothing here is new evidence.
   sleep took **23.6 s** (12 Nov, after 16.5 minutes idle), then 0.22–0.24 s. A second attempt the same day, after 17
   minutes with no request from our machine, answered in 0.26 s: the instance had not slept, probably because of
   other traffic. Running `tools/venue/warm_render.sh` before the slot avoids the wait. Switching to a paid instance
-  (`plan: 0.5c-512mb`) removes it; that change is prepared but not merged (it costs money; P6_REPORT section 8).
+  (`plan: 0.5c-512mb`) removes it: **merged in PR #17** (the team added a payment method on Render). After the merge (12 Nov):
+`code_revision` equal to `main`, `public_demo: true`, `client_ip_header_present: true`, Verify DEMO-001 accepted, session start
+HTTP 403, Playwright 16/16; `preflight.sh` render-revision PASS.
 
-### P6 (branch `finale/p6-kit`, not merged)
+### P6 (branch `finale/p6-kit`, merged in PR #16)
 
 - `tools/venue/`: `preflight.sh` (PASS/FAIL lines before the slot, optional Render checks), `reset.sh`, `warm_render.sh`,
   `offhost_reviewer.sh` (reviewer key kept on a removable device or a teammate's machine), `projector_check.py`.
@@ -74,8 +81,10 @@ it would break every merge commit since; the finding is accepted and stays visib
 | Capability tokens | No revocation list; the API has no TLS (loopback only). |
 | Shared kernel | Containers share the host kernel. gVisor and Kata were not tried (`runsc` not installed). |
 | Coverage | One host; one model at full scale (0.5B) plus a reduced 1.5B run; CPU only. GPU and accelerator KV-cache isolation untested. |
-| Hosted demo | Render free plan: a cold start of about 24 s after idle, and the site needs venue internet. The offline fallback is the local public demo (`AEGIS_PUBLIC_DEMO=1`, `app.py` on 127.0.0.1). The hosted demo is read-only and cannot run live sandboxes (no Podman on Render). |
-| Intermittent race test | `tests/test_phase2_lifecycle.py::test_P2L11_denied_reads_racing_release_stress` failed once on 12 Nov (`GateError('audit or commitment verification failed')` in `release` while 5 threads log denied reads). It passed in the next full run (743 passed) and 30 of 30 runs alone. Not investigated yet; the code is in the pinned `aegis/` tree. |
+| Hosted demo | Render paid instance since PR #17 (no spin-down); the site needs venue internet. The offline fallback is the local public demo (`AEGIS_PUBLIC_DEMO=1`, `app.py` on 127.0.0.1). The hosted demo is read-only and cannot run live sandboxes (no Podman on Render). |
+| Intermittent race test | `test_P2L11_denied_reads_racing_release_stress` (diagnosed 12 Nov, P7). Under load, the release check read `audit.jsonl` and then the reviewer vault while a denied read was appended and checkpointed between the two reads; the vault then covered an entry the first read had not seen ("log has 6 entries but a signed checkpoint covers seq 7"). **Fail-closed:** the release was refused, the run stayed SEALED, nothing was released, and an independent `verify_cli` run on the run directory afterwards passed. Not a torn read and not a chain inconsistency. The console UI cannot trigger it. Fix planned after the finale (verify under the audit file lock; touches hash-pinned files, needs a re-baseline). Reproduced at run 57 of a loop under load. |
+| Intermittent test input | `test_P4C20_..._reencoded_foreign_canary...[rot13]` draws a random canary; when its 12 hex digits contain 8 consecutive decimal digits (about 5.8 % of draws) rot13 leaves them unchanged and the plain detector sees them, so the test's premise fails. Failed once in CI on PR #17 (retried once, green). Test-only; fix after the finale. |
+| Real-model CI on GitHub runners | On a slower 4-vCPU runner `real_model_demo.sh` passed 12/13: answers past the 1400 ms deadline are cut off, including the base64 re-encoding probe, whose check then has nothing to see (PR #16, both runs). On PR #17 the same job passed 13/13 ×3. The job is `continue-on-error`; the deadline is host-specific (row above). |
 | Retired Vercel copy | Still online with the 28 Oct code until its owner deletes or redeploys it. |
 | Narration | Synthetic Piper voice. A person must still listen to both videos (FINALE_HUMAN_CHECKLIST). |
 

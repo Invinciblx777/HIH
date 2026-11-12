@@ -55,6 +55,9 @@ Yes. `scripts/real_model_demo.sh` and the console started with `scripts/start_re
 **What does strict verification check?**
 Chain, checkpoint signatures, the signed terminal checkpoint binding the final entry and state, a pinned key and terminal hash, and, if required, the reviewer countersignature. Recorded live on the presented code: strict verify exit code 0, a one-field edit of a copy exit code 1 (LIVE, `finale_package/terminal/t5_verify_cli.txt`). Tamper suite: 19/19 tamper categories detected in 30/30 trials; CLI 10/10 genuine bundles accepted, 40/40 tampered copies rejected (RE-MEASURED 11 Nov 2026, `aegislab/evidence/finale_p4_2026-11-11/validation/audit_tamper.json`).
 
+**Does any test fail intermittently?**
+One lifecycle stress test, rarely and only under load: many denied reads racing a release. The release check read the audit log and then the reviewer vault while a denied read was appended and checkpointed between the two reads, so the check refused the release. It fails closed: the run stays SEALED, nothing is released, and an independent `verify_cli` run on the run directory passes afterwards. The console cannot trigger it. A fix (one consistent read under the audit file lock) is planned after the finale; it touches hash-pinned files. Evidence: `docs/release/FINALE_RELEASE_NOTES.md` section 3.
+
 **Access control?**
 Role, operation and state matrix: 560 attempts, 419/419 denied, 141/141 allowed, none unexpectedly permitted (RE-MEASURED 11 Nov 2026, `aegislab/evidence/finale_p4_2026-11-11/role_matrix_extended.json`). API matrix: 181/181 unauthorized cases denied, 92/92 traversal rejected (RE-MEASURED 11 Nov 2026).
 
