@@ -13,11 +13,9 @@ services:
     region: singapore            # closest Render region to the venue and judges; cannot be changed after creation
 
     # PLAN: a deliberate choice, pick one before creating the service.
-    #   free        - $0. Spins down after 15 min without inbound traffic; the next request wakes it in up to 1 min (23.6 s measured, 12 Nov 2026).
-    #                 The filesystem is reset on spin-down (harmless: the demo keeps no state worth keeping, AEGIS_VAR=/tmp).
-    #                 If you choose free, open the URL a few minutes before the judges do.
+    #   free        - $0; spins down after 15 min without traffic. Not used for the finale.
     #   0.5c-512mb  - Render's smallest paid instance (the default when plan is omitted). Never sleeps.
-    plan: free
+    plan: 0.5c-512mb
 
     # Build: pip with the verified constraints, not uv. requirements.txt + constraints.txt is the exact set that the CI
     # release-gates job and every local gate install and test (Python 3.14). uv.lock is regenerated metadata for the project
