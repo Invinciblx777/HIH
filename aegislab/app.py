@@ -1,4 +1,4 @@
-"""Hosted entry point (Render, primary; Vercel, secondary): the unchanged console app as a read-only public demo (no podman,
+"""Hosted entry point (Render; the outdated Vercel copy used it too): the unchanged console app as a read-only public demo (no podman,
 no operator session, state in /tmp).
 
 Finale P1: AEGIS_PUBLIC_DEMO=1 is forced here, not defaulted, so a project setting cannot turn the hosted site into a

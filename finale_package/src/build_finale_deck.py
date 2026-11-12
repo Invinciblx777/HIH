@@ -473,7 +473,7 @@ DEPLOYABILITY, slide 9 (about 25 seconds)
 Everything runs on one ordinary laptop: rootless Podman (no root, no daemon), a sandbox image pinned by digest, llama.cpp on CPU, and model files checked by sha256, so nothing has to be downloaded at the venue.
 Checked, not trusted: the release gates run in CI on every push. On this branch: %s (%s); check_claims.py recomputes every quoted figure from the raw files, %s (%s).
 The public demo at %s is read-only by design: anyone can browse the evidence, verify a bundle with the independent verifier, and tamper with a disposable copy to see it rejected. It has no operator session, cannot create runs, has no containers, and is rate-limited. A live operator console on a public URL would expose run control, so the live console stays on loopback.
-The public demo runs on Render from main, so the verify fix from P1 is live there. The older copy on Vercel is secondary and is redeployed by hand. The screenshots are of the presented code run locally in the same public mode.
+The public demo runs on Render from main, so the verify fix from P1 is live there. The screenshots are of the presented code run locally in the same public mode.
 """ % (F("tests", "passed"), L("tests"), F("check_claims", "total"), L("check_claims"), DEMO_URL))
 
 

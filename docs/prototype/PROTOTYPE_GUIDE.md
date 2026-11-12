@@ -4,7 +4,7 @@ The prototype console is an interactive web app on top of the existing AegisLab 
 
 It runs on your own machine and answers on loopback only. The live console is a local demonstration tool, not a hosted service.
 
-A **read-only public demo** of the same console runs on Render at https://aegislab-demo.onrender.com, with a secondary copy at https://aegislab.vercel.app (see [Public read-only demo](#public-read-only-demo) below). It can browse, replay, run the real verifier and tamper with copies. It cannot start live runs and has no operator session. The live lab still needs a Linux machine with rootless Podman.
+A **read-only public demo** of the same console runs on Render at https://aegislab-demo.onrender.com (see [Public read-only demo](#public-read-only-demo) below). It can browse, replay, run the real verifier and tamper with copies. It cannot start live runs and has no operator session. The live lab still needs a Linux machine with rootless Podman.
 
 ![Overview page](screenshots/01_overview.jpg)
 
@@ -110,13 +110,13 @@ Each result shows every request, its expected and observed HTTP status, the poli
 
 ## Public read-only demo
 
-https://aegislab-demo.onrender.com (Render, primary, from the repo-root `render.yaml`) and https://aegislab.vercel.app (Vercel, secondary, redeployed by hand) both run `aegislab/app.py`, which forces `AEGIS_PUBLIC_DEMO=1` and keeps state in `/tmp`. In that mode (Finale P1, `aegis/console.py`, `aegis/lab_session.py`):
+https://aegislab-demo.onrender.com (Render, from the repo-root `render.yaml`) runs `aegislab/app.py`, which forces `AEGIS_PUBLIC_DEMO=1` and keeps state in `/tmp`. In that mode (Finale P1, `aegis/console.py`, `aegis/lab_session.py`):
 
 - **Can do:** browse every page, play the recorded replay, run the independent verifier on the shipped bundles (`POST /api/lab/bundles/{id}/verify`), and tamper with a disposable copy (`POST /api/lab/bundles/{id}/tamper`). Tamper results are returned to the browser only. Nothing is written to the journal or the results list.
 - **Cannot do:** start live runs; live mode is forced off even on a host with Podman. No launch code is issued or accepted: `/session/start` answers 403, and no operator session can exist. Every other state-changing request answers 403 with a message that starts `public read-only demo:`. This covers runs, defence, freeze, start, scenarios, probe, tamper suite, session end and the mounted control plane.
 - **Limits:** verify and tamper requests together are limited to 10 per minute per client IP (Finale P6: read only from the header named by `AEGIS_CLIENT_IP_HEADER`; on Render that is `CF-Connecting-IP`, which Render's edge overwrites, because Render appends to `X-Forwarded-For` and a client controls its first entry; unset, as on Vercel, `X-Real-IP` then `X-Forwarded-For`, which Vercel overwrites; a missing or malformed value shares one bucket) and 60 per minute overall, each per server process. Over the limit the answer is HTTP 429 with a fixed message. The two concurrent verifier slots still apply.
 - `/api/lab/status` reports `"public_demo": true`, the header shows **Public demo**, and `public_demo_rate_limit.client_ip_from` names the client-IP source.
-- **Render's free plan** spins the service down after 15 minutes without traffic; the next request wakes it in about a minute. Uvicorn runs with `--no-proxy-headers`, so nothing rewrites the client address from forwarded headers.
+- **Render's free plan** spins the service down after 15 minutes without traffic; the next request wakes it in up to a minute (23.6 s measured). An older copy at `aegislab.vercel.app` still serves outdated code (28 Oct 2026, where Verify fails with HTTP 403): do not use it. Uvicorn runs with `--no-proxy-headers`, so nothing rewrites the client address from forwarded headers.
 - Only `AEGIS_PUBLIC_DEMO=1` lifts the loopback Host guard. A bare `VERCEL` or `RENDER` variable does not. Behind HTTPS, the browser's `Origin: https://<host>` is accepted for the same host.
 
 ## Security of the console itself

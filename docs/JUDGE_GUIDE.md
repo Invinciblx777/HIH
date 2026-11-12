@@ -11,7 +11,7 @@ bash scripts/judge_demo.sh     # a few seconds; --pause waits for Enter between 
 
 ## No Linux machine at hand? The public read-only demo
 
-https://aegislab-demo.onrender.com is the prototype console in read-only mode (`AEGIS_PUBLIC_DEMO=1`), hosted on Render. On Render's free plan, if it has been idle for 15 minutes, the first page load takes about a minute while the service wakes. A secondary copy at https://aegislab.vercel.app may lag behind the code in this repository. You can:
+https://aegislab-demo.onrender.com is the prototype console in read-only mode (`AEGIS_PUBLIC_DEMO=1`), hosted on Render. On Render's free plan, if it has been idle for 15 minutes, the first page load takes up to a minute (23.6 s measured) while the service wakes. An older copy at `aegislab.vercel.app` still serves outdated code (28 Oct 2026, where Verify fails with HTTP 403): do not use it. You can:
 
 - browse every page (lab, connections, audit, evidence, experiments, threat model);
 - play the recorded replay of a real `judge_demo.sh` execution (labelled RECORDED);
