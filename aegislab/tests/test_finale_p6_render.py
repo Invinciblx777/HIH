@@ -145,6 +145,38 @@ def test_P6R10_app_entry_point(extra, expected):
     assert r.stdout.split("\n")[-2] == expected
 
 
+@pytest.mark.parametrize("value,present", [("198.51.100.7", True), ("2001:db8::7", True), (None, False), ("", False),
+                                           ("not-an-ip", False), ("198.51.100.7, 10.0.0.1", False), ("198.51.100.7:443", False)])
+def test_P6R14_status_says_whether_the_client_ip_header_arrived_without_echoing_it(render, value, present):
+    hdrs = {"X-Real-IP": "192.0.2.77", "X-Forwarded-For": "192.0.2.78"}  # forged P1 headers never make it true
+    if value is not None:
+        hdrs[CF] = value
+    r = render.get("/api/lab/status", headers=hdrs)
+    assert r.json()["public_demo_rate_limit"]["client_ip_header_present"] is present
+    for leak in ("198.51.100.7", "2001:db8::7", "192.0.2.77", "192.0.2.78", "not-an-ip"):
+        assert leak not in r.text
+
+
+@pytest.mark.parametrize("env,hdrs,present", [(None, {"X-Real-IP": "192.0.2.5"}, True),
+                                              (None, {"X-Forwarded-For": "192.0.2.6, 10.0.0.1"}, True),
+                                              (None, {}, False),  # unset and no proxy header: the TCP peer does not count
+                                              ("peer", {}, False),  # TestClient's peer is "testclient", not an address
+                                              ("x-client-ip", {"X-Client-IP": "192.0.2.7"}, True)])
+def test_P6R15_present_flag_follows_the_configured_source(monkeypatch, env, hdrs, present):
+    if env:
+        monkeypatch.setenv(console.CLIENT_IP_HEADER_ENV, env)
+    c = TestClient(console.app, base_url="https://" + HOST)
+    st = c.get("/api/lab/status", headers=hdrs).json()
+    assert st["public_demo_rate_limit"]["client_ip_header_present"] is present
+    assert "192.0.2." not in c.get("/api/lab/status", headers=hdrs).text
+
+
+def test_P6R16_present_flag_is_absent_outside_public_mode(monkeypatch):
+    monkeypatch.delenv("AEGIS_PUBLIC_DEMO")
+    st = TestClient(console.app, base_url="http://127.0.0.1:8400").get("/api/lab/status").json()
+    assert "public_demo_rate_limit" not in st and "public_demo" not in st
+
+
 # ------------------------------------------------------------------ R1: the blueprint
 def _blueprint():
     return (REPO / "render.yaml").read_text()
