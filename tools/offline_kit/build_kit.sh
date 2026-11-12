@@ -9,7 +9,7 @@ HERE=$(cd "$(dirname "$0")" && pwd); REPO=$(cd "$HERE/../.." && pwd); APP="$REPO
 KIT=${1:?KIT_DIR}; mkdir -p "$KIT"; KIT=$(cd "$KIT" && pwd)
 MODELS="${AEGIS_MODELS_DIR:-$H/_models}"; MEDIA="$H/finale"
 CLEAN="${KIT_SOURCE_CLONE:-$H/round2/work/finale_clean}"      # the clean clone of origin/main (task 1)
-. "$REPO/tools/venue/expected.env"
+. "$REPO/tools/venue/expected.conf"
 log() { echo "== $(date +%H:%M:%S) $*"; }
 rm -rf "$KIT"/{repo,images,models,wheelhouse,playwright,media}; mkdir -p "$KIT"/{repo,images,models,wheelhouse,playwright,media}
 

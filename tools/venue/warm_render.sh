@@ -9,7 +9,7 @@
 set -uo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
 # shellcheck disable=SC1091
-. "$HERE/expected.env"
+. "$HERE/expected.conf"
 URL="${1:-$RENDER_URL}"
 getent hosts "$(echo "$URL" | sed -E 's#^https?://([^/]+).*#\1#')" >/dev/null 2>&1 || { echo "no network: cannot resolve $URL. Use the local public demo (OFFLINE_KIT.md)."; exit 2; }
 T=$(mktemp); trap 'rm -f "$T"' EXIT

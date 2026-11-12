@@ -6,14 +6,14 @@
 #   tools/venue/preflight.sh --offline             also SKIP the Render checks without trying the network
 #   tools/venue/preflight.sh --models DIR          model directory (default: $AEGIS_MODELS_DIR, else <repo>/../../../_models)
 #   tools/venue/preflight.sh --media DIR           finale media directory with SHA256SUMS (default: <repo>/../../../finale)
-#   tools/venue/preflight.sh --record-image        print the current sandbox image ID for expected.env, then exit
+#   tools/venue/preflight.sh --record-image        print the current sandbox image ID for expected.conf, then exit
 #
 # Lives in tools/venue/ (not aegislab/scripts/): outside the MANIFEST-pinned folders and outside code_revision's tree, so the
 # venue tooling can change up to the slot without touching pinned files or the code revision the Render site reports.
 set -uo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd); REPO=$(cd "$HERE/../.." && pwd); APP="$REPO/aegislab"
 # shellcheck disable=SC1091
-. "$HERE/expected.env"
+. "$HERE/expected.conf"
 MODELS="${AEGIS_MODELS_DIR:-$REPO/../../../_models}"; MEDIA="$REPO/../../../finale"; OFFLINE=0
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -48,7 +48,7 @@ fi
 ID=$(podman image inspect "$SANDBOX_IMAGE" --format '{{.Id}}' 2>/dev/null)
 if [ -z "$ID" ]; then fail sandbox-image "$SANDBOX_IMAGE missing" "podman load -i <kit>/images/aegislab-sandbox.tar"
 elif [ "$ID" = "$SANDBOX_IMAGE_ID" ]; then pass sandbox-image "${ID:0:12} as expected"
-else fail sandbox-image "${ID:0:12}, expected ${SANDBOX_IMAGE_ID:0:12}" "rebuilt image: podman load the kit's image, or update expected.env after re-running the gates"; fi
+else fail sandbox-image "${ID:0:12}, expected ${SANDBOX_IMAGE_ID:0:12}" "rebuilt image: podman load the kit's image, or update expected.conf after re-running the gates"; fi
 podman image exists "$BASE_IMAGE" && pass base-image "digest-pinned python:3.12-slim present" \
   || fail base-image "digest-pinned base image missing" "podman load -i <kit>/images/python-3.12-slim-pinned.tar"
 
