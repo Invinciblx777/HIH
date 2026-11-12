@@ -1,0 +1,56 @@
+{
+ "schema": "aegislab-remeasured/1",
+ "created": "2026-11-10",
+ "code_commit": "c018c5238c106bab6e9f50442b09b4977ebeba7e",
+ "code_revision": {
+  "files": 65,
+  "note": "not a git repository; hash over aegis/ sandbox/ evaluation/ scripts/ tests/ samples/ (*.py, *.sh, *.json)",
+  "tree_sha256": "sha256:15b30b87c208fdd6d1421b5f8edc9559c31b79de0f037aaad1a79d92e5ea4036"
+ },
+ "host": "Fedora 45 (kernel 7.2.15-300.fc45.x86_64), Python 3.15, rootless Podman 6.1.3, crun 1.30.1, SELinux enforcing",
+ "measurements": [
+  {
+   "what": "audit tamper / truncation suite (19 categories x 30 released runs, CLI 10 bundles x 5 variants) and the API isolation matrix (212 cases, 216 public GET bodies, 92 traversal cases); publishes bundles/VAL-001 and bundles/VAL-001_TAMPERED_truncated_last3",
+   "command": "AEGIS_VAR=<scratch>/validation .venv/bin/python evaluation/run_validation.py --out evidence/finale_rebaseline_2026-11-10/validation --runs 30 --seed 1",
+   "needs": "rootless Podman (30 real runs, stub model)",
+   "wall_clock_s": 98,
+   "files": [
+    "validation/audit_tamper.json",
+    "validation/isolation_matrix.json"
+   ],
+   "recorded_before": "evidence/validation_2026-10-22/{audit_tamper.json,isolation_matrix.json}"
+  },
+  {
+   "what": "Phase 2 extended role x operation x state matrix (560 attempts)",
+   "command": "AEGIS_VAR=<scratch>/phase2 .venv/bin/python evaluation/phase2_matrix.py --out evidence/finale_rebaseline_2026-11-10/role_matrix_extended.json",
+   "needs": "nothing (container-free)",
+   "wall_clock_s": 3,
+   "files": [
+    "role_matrix_extended.json"
+   ],
+   "recorded_before": "evidence/phase2_2026-10-23/role_matrix_extended.json"
+  },
+  {
+   "what": "E1-E9 harness (stub model, real sandboxes)",
+   "command": "AEGIS_VAR=<scratch>/e1e9 .venv/bin/python evaluation/run_evaluation.py --runs 10 --out evidence/finale_rebaseline_2026-11-10/e1_e9_rerun",
+   "needs": "rootless Podman",
+   "wall_clock_s": 167,
+   "files": [
+    "e1_e9_rerun/results.json",
+    "e1_e9_rerun/RESULTS.md"
+   ],
+   "recorded_before": "evidence/validation_2026-10-22/e1_e9_rerun/"
+  }
+ ],
+ "raw_files_sha256": {
+  "validation/isolation_matrix.json": "bb8bc3bb8ff6b8490206973f1af3203b4e65190fb9ce0b8444c77b0629a0c968",
+  "validation/audit_tamper.json": "cf4b2c4446831b056e67ece50ed761c2d0e119137bdcd5c9189d5171774784b5",
+  "role_matrix_extended.json": "c97700f23e0408af818bd9f96ffa5d1714784c754b5fa8e6b2507782c2f60b1f",
+  "e1_e9_rerun/results.json": "17d0abe145e131df124ab85ab9f09b8a0561d149893080ec708245428b502bf6",
+  "e1_e9_rerun/RESULTS.md": "72fb5c7d649f1016a08e0390474aee6809702ea0eb7c6b8e50853c6a486cdf76"
+ },
+ "not_remeasured": {
+  "timing (closeout_2026-10-22/timing, phase2 contention)": "recorded before P2, not re-run (hours). The P2 change touches aegis/runs.py, including Broker.attack(): only the monitor summary passed to run.log after the padding sleep (a shorter string, one extra short field), and the read-side monitor_view. The padding computation, the model/defence calls and the reply path are byte-identical; the per-attack audit/monitor writes still happen after the padded sleep and before the reply, exactly as when the timing was measured.",
+  "real-model experiments (validation_2026-10-22/model_experiments.json, phase3_2026-10-23/llm E1-E5)": "recorded before P2, not re-run (needs the real model; planned for finale P3). Source changes they recorded are acknowledged per experiment in SOURCE_DRIFT.json."
+ }
+}

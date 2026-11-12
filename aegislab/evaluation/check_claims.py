@@ -169,6 +169,128 @@ def timing_rows(full):
     return rows, claims
 
 
+# ----------------------------------------------------------------------------------------------- acknowledged source drift
+# A saved experiment records the sha256 of the security-relevant sources it ran on, and its row fails ("DRIFT") when one of
+# them changes. A change can be acknowledged, never silently: a dated file under evidence/ names, per file, the hash the runs
+# recorded (old_sha256), the hash the file has after the change (new_sha256), the commit, a one-line reason, and for every
+# experiment whether the change affects what it measured and why. A difference is accepted ONLY when the file's current hash
+# equals an acknowledged new_sha256 for the recorded old_sha256 AND that acknowledgement says, with a reason, that the change
+# does not affect that experiment. A further edit, an unacknowledged change, or one acknowledged as affecting the measurement
+# still fails. The list of acknowledgement files is fixed here (this file is pinned by MANIFEST.sha256), not discovered.
+SOURCE_DRIFT_FILES = (ROOT / "evidence" / "finale_rebaseline_2026-11-10" / "SOURCE_DRIFT.json",)
+
+
+def source_drift_acks(files=None):
+    """{path: [acknowledged change, ...]} from the acknowledgement files that exist."""
+    acks = {}
+    for f in SOURCE_DRIFT_FILES if files is None else files:
+        f = Path(f)
+        if f.exists():
+            for c in json.loads(f.read_text())["changes"]:
+                acks.setdefault(c["path"], []).append(dict(c, ack_file=f.name))
+    return acks
+
+
+def source_drift(recorded, experiment, acks=None):
+    """Compare the source hashes a run recorded with the tree now. Returns (unacknowledged, acknowledged) lists of paths."""
+    acks = source_drift_acks() if acks is None else acks
+    bad, ok = [], []
+    for k, h in sorted(recorded.items()):
+        p = ROOT / k
+        if not p.exists():
+            continue
+        cur = hashlib.sha256(p.read_bytes()).hexdigest()
+        if cur == h:
+            continue
+        hit = [a for a in acks.get(k, []) if a.get("old_sha256") == h and a.get("new_sha256") == cur
+               and (a.get("claims") or {}).get(experiment, {}).get("affects") is False
+               and str((a.get("claims") or {}).get(experiment, {}).get("why", "")).strip()]
+        (ok if hit else bad).append(k)
+    return bad, ok
+
+
+def phase3_provenance():
+    """For the demos and checkers: per saved Phase 3 experiment, the revision it was recorded on and which of its sources
+    changed since (acknowledged or not). Nothing here is re-measured."""
+    out = []
+    if not (P3 / "INDEX.json").exists():
+        return out
+    latest = {}
+    for e in json.loads((P3 / "INDEX.json").read_text()):
+        latest[e["experiment"]] = e
+    acks = source_drift_acks()
+    for exp, e in sorted(latest.items()):
+        res = json.loads((P3 / e["dir"] / "result.json").read_text())
+        bad, ok = source_drift(res["source_sha256"], exp, acks)
+        out.append({"experiment": exp, "dir": e["dir"], "recorded_utc": res["timestamp_utc"],
+                    "recorded_tree": res["code_revision"]["tree_sha256"], "acknowledged": ok, "unacknowledged": bad,
+                    "commits": sorted({a["commit"][:12] for k in ok for a in acks[k]})})
+    return out
+
+
+# ----------------------------------------------------------------------------------------------- re-measured (Part D)
+RB = ROOT / "evidence" / "finale_rebaseline_2026-11-10"
+
+
+def remeasured_rows():
+    """Part D: the measurements that need no real model, re-run on the finale P2 code (REMEASURED.json names the commit, the
+    commands and the raw-file hashes). Each row checks a security property and prints the re-measured figure next to the one
+    recorded on 22/23 Oct; Part A keeps checking the recorded figures. Returns rows (claim, source, found, ok)."""
+    if not (RB / "REMEASURED.json").exists():
+        return []
+    idx = json.loads((RB / "REMEASURED.json").read_text())
+    tag = "re-measured on %s" % idx["code_commit"][:7]
+    changed = [n for n, h in idx["raw_files_sha256"].items() if not (RB / n).exists() or sha(RB / n) != h]
+    rows = [("%s: raw files unchanged since the re-measurement" % tag, "REMEASURED.json", "changed: %s" % (changed or "none"), not changed)]
+    if changed:
+        return rows
+    iso, aud = json.loads((RB / "validation/isolation_matrix.json").read_text()), json.loads((RB / "validation/audit_tamper.json").read_text())
+    oiso, oaud = load("isolation_matrix.json"), load("audit_tamper.json")
+    rm = json.loads((RB / "role_matrix_extended.json").read_text())["totals"]
+    orm = json.loads((ROOT / "evidence/phase2_2026-10-23/role_matrix_extended.json").read_text())["totals"]
+    e2 = json.loads((RB / "e1_e9_rerun/results.json").read_text())["E2_cross_tenant"]
+    cats, ocats = aud["categories"], oaud["categories"]
+    cli, gap = aud["cli_level"], aud["original_gap_case"]
+
+    def f(d, *k):
+        return "/".join(str(d[x]) for x in k)
+    rows += [
+        ("%s: unauthorized API cases denied, none succeeded" % tag, "validation/isolation_matrix.json",
+         "%s (22 Oct %s), %d succeeded" % (f(iso, "denied_as_expected", "cases_expect_deny"), f(oiso, "denied_as_expected", "cases_expect_deny"), iso["unauthorized_succeeded"]),
+         iso["denied_as_expected"] == iso["cases_expect_deny"] and iso["unauthorized_succeeded"] == 0),
+        ("%s: secret markers in public GET bodies" % tag, "validation/isolation_matrix.json",
+         "%d in %d (22 Oct %d in %d)" % (iso["secret_marker_hits"], iso["public_get_bodies_scanned"], oiso["secret_marker_hits"], oiso["public_get_bodies_scanned"]),
+         iso["secret_marker_hits"] == 0 and iso["public_get_bodies_scanned"] > 0),
+        ("%s: traversal cases rejected" % tag, "validation/isolation_matrix.json",
+         "%s (22 Oct %s)" % (f(iso, "path_traversal_rejected", "path_traversal_cases"), f(oiso, "path_traversal_rejected", "path_traversal_cases")),
+         iso["path_traversal_rejected"] == iso["path_traversal_cases"] > 0),
+        ("%s: every tamper category detected in every trial" % tag, "validation/audit_tamper.json",
+         "%d/%d categories %d/%d (22 Oct %d categories)" % (sum(c["detected"] == c["trials"] for c in cats.values()), len(cats), min(c["detected"] for c in cats.values()),
+                                                           max(c["trials"] for c in cats.values()), len(ocats)),
+         all(c["detected"] == c["trials"] > 0 for c in cats.values()) and sorted(cats) == sorted(ocats)),
+        ("%s: clean logs accepted and terminal verified" % tag, "validation/audit_tamper.json",
+         "%d / %d of %d runs" % (aud["clean_runs_verify"], aud["clean_runs_terminal_verified"], aud["runs"]),
+         aud["clean_runs_verify"] == aud["clean_runs_terminal_verified"] == aud["runs"] > 0),
+        ("%s: truncation with only the freeze checkpoint: fail-closed" % tag, "validation/audit_tamper.json",
+         "%d/%d" % (gap["new_rules_detected_fail_closed"], gap["trials"]), gap["new_rules_detected_fail_closed"] == gap["trials"] > 0),
+        ("%s: CLI genuine bundles accepted, tampered rejected" % tag, "validation/audit_tamper.json",
+         "%s, %s (22 Oct %s, %s)" % (f(cli, "genuine_accepted", "bundles"), f(cli, "tampered_rejected", "tampered_total"),
+                                    f(oaud["cli_level"], "genuine_accepted", "bundles"), f(oaud["cli_level"], "tampered_rejected", "tampered_total")),
+         cli["genuine_accepted"] == cli["bundles"] > 0 and cli["tampered_rejected"] == cli["tampered_total"] > 0),
+        ("%s: extended role x operation x state matrix" % tag, "role_matrix_extended.json",
+         "%d attempts, %d/%d denied, %d/%d allowed, %d hits (23 Oct %d attempts)" % (rm["attempted"], rm["denied"], rm["expected_deny"], rm["allowed"], rm["expected_allow"],
+                                                                                   rm["secret_hits"], orm["attempted"]),
+         rm["unexpectedly_permitted"] == rm["wrongly_denied"] == rm["test_errors"] == rm["secret_hits"] == 0 and rm["attempted"] > 0),
+        ("%s: E2 red sandbox: forbidden requests, connects, foreign paths" % tag, "e1_e9_rerun/results.json",
+         "%s, %s, %s" % (f(e2["forbidden_broker_requests"], "denied", "attempts"), f(e2["network_connect_attempts"], "failed", "attempts"),
+                         f(e2["foreign_paths_checked"], "absent", "checks")),
+         e2["forbidden_broker_requests"]["denied"] == e2["forbidden_broker_requests"]["attempts"] > 0
+         and e2["network_connect_attempts"]["failed"] == e2["network_connect_attempts"]["attempts"] > 0
+         and e2["foreign_paths_checked"]["absent"] == e2["foreign_paths_checked"]["checks"] > 0),
+    ]
+    return rows
+
+
 # ----------------------------------------------------------------------------------------------- Phase 3 (Part C)
 P3 = ROOT / "evidence" / "phase3_2026-10-23" / "llm"
 P3_REPORT = "PHASE3_LLM_SECURITY_REPORT.md"
@@ -190,17 +312,22 @@ def phase3_rows():
     for e in index:  # a later entry of the same experiment supersedes an earlier one; earlier runs stay on disk
         latest[e["experiment"]] = e
     runs_ = {}
+    acks = source_drift_acks()
     for exp, e in sorted(latest.items()):
         d = P3 / e["dir"]
         res = json.loads((d / "result.json").read_text())
         obs = _jsonl(d / "observations.jsonl")
         runs_[exp] = (res, obs)
-        drift = [k for k, h in res["source_sha256"].items() if (ROOT / k).exists() and sha256_file(ROOT / k) != h]
+        drift, acked = source_drift(res["source_sha256"], exp, acks)
+        found = ("DRIFT: " + ", ".join(drift) if drift else
+                 "recorded on %s (%s); acknowledged change, does not affect %s: %s" % (
+                     res["code_revision"]["tree_sha256"][:19], res["timestamp_utc"][:10], exp.split("_")[0], ", ".join(acked))
+                 if acked else "no drift")
         rows += [
             ("%s: result.json hash equals INDEX entry" % exp, e["dir"], e["result_sha256"][:12], sha256_file(d / "result.json") == e["result_sha256"]),
             ("%s: observations.jsonl hash and count recorded" % exp, e["dir"], "%d observations" % len(obs),
              sha256_file(d / "observations.jsonl") == res["observations_sha256"] and len(obs) == res["observation_count"]),
-            ("%s: security-relevant sources unchanged since the run" % exp, e["dir"], "no drift" if not drift else "DRIFT: " + ", ".join(drift), not drift),
+            ("%s: security-relevant sources unchanged since the run" % exp, e["dir"], found, not drift),
             ("%s: provenance fields present" % exp, e["dir"], res["run_id"],
              all(k in res for k in ("run_id", "timestamp_utc", "model_backend", "config", "seed", "fixture_version", "environment", "limitations", "classification"))
              and res["model_backend"].get("model_sha256") and res["classification"] in ("pass", "fail", "inconclusive", "not_run")),
@@ -385,6 +512,8 @@ def main():
         bad += not ok
         print("%-3d %-62s %-26s %s%s" % (obj, claim, src, found, "" if ok else "   <-- MISMATCH (expected %s)" % want))
     print("\n%d/%d quoted numbers match their source files" % (sum(1 for r in rows if r[4] is None or r[3] == r[4]), len(rows)))
+    print("(Part A figures were recorded on 22 Oct 2026, code tree %s; the security-relevant ones are re-measured on the finale P2 code in Part D)"
+          % load("audit_tamper.json")["code_revision"]["tree_sha256"][:19])
     trows, claims = timing_rows(full)
     print("\nTIMING: recomputed from raw per-request / per-round-trip files%s" % (" (incl. permutation tests)" if full else ""))
     for claim, src, found, ok in trows:
@@ -399,7 +528,13 @@ def main():
     pbad = sum(not r[3] for r in prow)
     print("\n%d/%d Phase 3 checks pass" % (len(prow) - pbad, len(prow)))
     print("Phase 3 claims as they must be quoted: " + json.dumps(pclaims, ensure_ascii=False))
-    return 1 if (bad or tbad or pbad) else 0
+    drows = remeasured_rows()
+    print("\nRE-MEASURED on the finale P2 code (evidence/finale_rebaseline_2026-11-10): security properties from the raw files")
+    for claim, src, found, ok in drows:
+        print("%-4s %-100s %-26s %s" % ("ok" if ok else "FAIL", claim[:100], src[:26], found))
+    dbad = sum(not r[3] for r in drows)
+    print("\n%d/%d re-measured checks pass" % (len(drows) - dbad, len(drows)))
+    return 1 if (bad or tbad or pbad or dbad) else 0
 
 
 if __name__ == "__main__":

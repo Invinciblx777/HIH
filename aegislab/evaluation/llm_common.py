@@ -190,6 +190,8 @@ class Server:
                "AEGIS_MODEL_API_KEY": self.key if key is None else key, "AEGIS_MODEL_TIMEOUT_S": str(timeout),
                "AEGIS_MODEL_MAX_TOKENS": str(max_tokens),
                "AEGIS_MODEL_EXTRA_JSON": json.dumps(extra if extra is not None else {"cache_prompt": bool(cache_prompt)})}
+        if cache_prompt or (extra or {}).get("cache_prompt"):  # the cache-on positive control needs the explicit unsafe opt-in
+            env[mc.UNSAFE_CACHE_OPT_IN] = "1"
         return mc.OpenAICompatibleClient(mc.load_config(env))
 
     def get(self, path, key=None):

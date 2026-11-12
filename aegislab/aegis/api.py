@@ -57,11 +57,15 @@ def gate(fn, *a, **kw):
         raise HTTPException(409, str(exc))
 
 
-def public_view(rec: dict) -> dict:
+def public_view(rec: dict, trusted: bool = False) -> dict:
+    """The run record without protected values. commitments_root is a digest over red-chosen commitments, so while the run is
+    still open only the operator and reviewer see it (runs.monitor_view explains why such a digest is withheld)."""
     keys = ("id", "state", "created_at", "frozen_at", "started_at", "sealed_at", "released_at", "policy", "tags",
             "attack_count", "evaluated", "manifest_digest", "commitments_root", "model_cache_at_start", "complete", "model_backend_errors")
     out = {k: rec.get(k) for k in keys}
-    out["outcomes"] = rec.get("outcomes") if rec.get("state") == "RELEASED" else None
+    out["outcomes"] = rec.get("outcomes") if runs_mod.released(rec) else None
+    if not trusted and rec.get("state") not in runs_mod.CLOSED_STATES:
+        out["commitments_root"] = None
     return out
 
 
@@ -127,16 +131,23 @@ def run_detail(run_id: str, x_aegis_token: str | None = Header(None)):
     run = get_run(run_id)
     role = role_of(x_aegis_token)
     manifest = store.read_json(run.dir / "manifest.json") or {}
-    show_secret = role in ("operator", "reviewer") or run.state == "RELEASED"
+    show_secret = role in ("operator", "reviewer") or runs_mod.released(run.record)
     keys = ("sandbox_image_id", "base_image_digest", "signing_key_id", "hardening_flags", "environment",
             "frozen_at") + (SECRET_DIGESTS if show_secret else ())
-    return {**public_view(run.record), "manifest": {k: manifest.get(k) for k in keys} if manifest else None}
+    return {**public_view(run.record, role in runs_mod.MONITOR_TRUSTED_ROLES), "manifest": {k: manifest.get(k) for k in keys} if manifest else None}
 
 
 @app.get("/api/runs/{run_id}/events")
-def events(run_id: str):
-    """Redacted monitoring stream: no payloads, outputs or defence rules."""
-    return read_jsonl(get_run(run_id).dir / "monitor.jsonl")
+def events(run_id: str, x_aegis_token: str | None = Header(None)):
+    """Redacted monitoring stream: no payloads, outputs or defence rules. Operator and reviewer get every event live,
+    alerts included; anyone else gets run-level events only until the run is SEALED (runs.monitor_view). An unknown token
+    gets the least-privileged view, as before this endpoint looked at tokens at all, rather than a 401."""
+    run = get_run(run_id)
+    try:
+        trusted = role_of(x_aegis_token) in runs_mod.MONITOR_TRUSTED_ROLES
+    except HTTPException:
+        trusted = False
+    return runs_mod.monitor_view(run, trusted)
 
 
 @app.post("/api/runs/{run_id}/freeze")
@@ -211,7 +222,7 @@ def do_tamper(run_id: str, req: TamperReq, x_aegis_token: str | None = Header(No
 def get_evidence(run_id: str, x_aegis_token: str | None = Header(None)):
     run = get_run(run_id)
     role = role_of(x_aegis_token)
-    if run.state != "RELEASED" and role != "reviewer":
+    if not runs_mod.released(run.record) and role != "reviewer":
         raise HTTPException(403, "evidence report is available after release")
     return evidence.build(run_id)
 

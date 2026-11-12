@@ -84,6 +84,10 @@ def llm_section():
     print("  this demo        : stub model worker (deterministic, not an LLM; it emulates a shared cache for the reuse control)")
     print("  real-model runs  : %s (sha256 %s...), %s, %s" % (mb["model_class"], mb["model_sha256"][:12], mb["inference_server"], mb["bind"]))
     print("  gpu / accelerator: NOT used. Hardware, GPU-memory and CUDA-context isolation are UNTESTED.")
+    for pv in check_claims.phase3_provenance():  # which revision each saved run was recorded on, and what changed since
+        print("  %s recorded on %s (%s)%s" % (pv["experiment"].split("_")[0], pv["recorded_tree"][:19], pv["recorded_utc"][:10],
+              "; sources changed since and acknowledged as not affecting it (finale P2, %s): %s" % (", ".join(pv["commits"]), ", ".join(pv["acknowledged"]))
+              if pv["acknowledged"] else "; sources unchanged since"))
     names = {"E1_canary_matrix": ("E1 cross-session canary matrix, direct adapter", "e1_trials", "e1_bound", "e1_neg", "e1_pos"),
              "E2_pipeline_canary": ("E2 same property through the full pipeline (broker + sandboxes + model)", "e2_iso", "e2_neg", "e2_pos"),
              "E3_kv_cache_oracle": ("E3 KV / prompt-cache state", "e3_on", "e3_off", "e3_fresh"),

@@ -234,6 +234,10 @@ def main():
         index = {e["experiment"]: e for e in json.loads((base / "INDEX.json").read_text())}
         mb = json.loads((base / index["E1_canary_matrix"]["dir"] / "result.json").read_text())["model_backend"]
         label_line("PRECOMPUTED", "model %s, %s, %s, CPU only" % (mb["model_class"], mb["inference_server"], mb["bind"]))
+        for pv in check_claims.phase3_provenance():  # which revision each saved run was recorded on, and what changed since
+            out("  %s recorded on %s (%s)%s" % (pv["experiment"].split("_")[0], pv["recorded_tree"][:19], pv["recorded_utc"][:10],
+                "; sources changed since and acknowledged as not affecting it (finale P2, %s): %s" % (", ".join(pv["commits"]), ", ".join(pv["acknowledged"]))
+                if pv["acknowledged"] else "; sources unchanged since"))
         out("  the stub model ran steps 2 to 5. The figures below are from the saved runs, recomputed now from raw observations.")
         shown = (("E1_canary_matrix", ("e1_trials", "e1_bound", "e1_neg", "e1_pos")), ("E2_pipeline_canary", ("e2_iso", "e2_neg", "e2_pos")),
                  ("E3_kv_cache_oracle", ("e3_on", "e3_off", "e3_fresh")), ("E4_injection_output_isolation", ("e4",)))
