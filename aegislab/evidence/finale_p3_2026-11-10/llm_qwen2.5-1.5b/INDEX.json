@@ -1,0 +1,18 @@
+[
+  {
+    "run_id": "P3-20261110T133343Z-E3_kv_cache_oracle",
+    "experiment": "E3_kv_cache_oracle",
+    "classification": "pass",
+    "dir": "P3-20261110T133343Z-E3_kv_cache_oracle",
+    "result_sha256": "f804b87fdc553bb2189ba5d9da83c60202e895e0b8b0c1130564cffabf46e4f6",
+    "timestamp_utc": "2026-11-10T13:33:42Z"
+  },
+  {
+    "run_id": "P3-20261110T180107Z-E1_canary_matrix",
+    "experiment": "E1_canary_matrix",
+    "classification": "pass",
+    "dir": "P3-20261110T180107Z-E1_canary_matrix",
+    "result_sha256": "25453497e88b1db0502b6572ca3ce184d9c9eb731fe459224ec2b4c505877497",
+    "timestamp_utc": "2026-11-10T18:01:07Z"
+  }
+]

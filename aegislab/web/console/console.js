@@ -120,6 +120,13 @@ function loadExp() {
   return S.expP;
 }
 const isLive = () => !!(S.status && S.status.mode === "live");
+/* finale P3: the console started by scripts/start_real_model_console.sh runs the real model live (status.model.backend) */
+const isRealModel = () => !!(S.status && S.status.model && S.status.model.backend === "openai_compatible");
+const STUB_SANDBOX = "LIVE SANDBOX · STUB MODEL", REAL_SANDBOX = "LIVE SANDBOX · REAL MODEL · LIVE";
+function runModeTag(v) {
+  if (!v || !v.model) return `<span class="label sandbox">${STUB_SANDBOX}</span>`;
+  return `<span class="label sandbox real">${REAL_SANDBOX}</span><br><span class="tiny mono">${esc(v.model.badge)}</span><br><span class="tiny">${esc(v.model.reachability)}</span>`;
+}
 const decisionOf = (e) => e.decision || (e.type === "policy.denied" ? "denied" : "info");
 const lastJ = (pred) => S.journal.find(typeof pred === "function" ? pred : (j) => j.kind === pred);
 
@@ -168,7 +175,7 @@ function wrapTables(root) {
   $$(".table-wrap", root).forEach((w) => w.classList.toggle("scrolls", w.scrollWidth > w.clientWidth + 2));
 }
 function labelTag(kind) {
-  const m = { live: "LIVE SYSTEM TEST", sandbox: "LIVE SANDBOX · STUB MODEL", rec: "REPLAY · RECORDED", pre: "PRECOMPUTED REAL-MODEL", stub: "STUB MODEL", na: "UNAVAILABLE" };
+  const m = { live: "LIVE SYSTEM TEST", sandbox: isRealModel() ? REAL_SANDBOX : STUB_SANDBOX, rec: "REPLAY · RECORDED", pre: "PRECOMPUTED REAL-MODEL", stub: "STUB MODEL", na: "UNAVAILABLE" };
   return `<span class="label ${kind}">${m[kind]}</span>`;
 }
 
@@ -388,11 +395,15 @@ async function refreshStatus() {
     cls = live ? "live" : "degraded";
     html = live ? `Live<span class="long"> · Podman ${esc(pm.podman)} rootless · ${esc((st.model || {}).label || "")}</span>` : `Degraded<span class="long"> · replay only</span>`;
     if (st.public_demo && S.session && !S.session.public_demo) { S.session.public_demo = true; paintSession(); }
-    title = live ? "Control plane connected; scenarios start real rootless containers. The model in live runs is the deterministic stub." : "Live containers unavailable: " + (st.mode_reason || "");
+    title = live ? (isRealModel() ? "Control plane connected; scenarios start real rootless containers. Live runs use the REAL model: " + ((st.model || {}).badge || "") + ". " + ((st.model || {}).reachability || "")
+      : "Control plane connected; scenarios start real rootless containers. The model in live runs is the deterministic stub.") : "Live containers unavailable: " + (st.mode_reason || "");
   } catch (e) {
     S.status = null; cls = "offline"; html = `Offline<span class="long"> · control plane unreachable</span>`; title = e.message;
   }
   el.className = "sys " + cls; el.title = title;
+  const fm = $("#foot-mode");   /* finale P3: the footer names the mode instead of always saying "public demo" */
+  if (fm) fm.textContent = !S.status ? "" : S.status.public_demo ? " · read-only public demo" : S.status.mode !== "live" ? " · local console, degraded"
+    : isRealModel() ? " · local console, real model live" : " · local console, stub model";
   if (txt.innerHTML !== html) txt.innerHTML = html;
 }
 
@@ -510,9 +521,9 @@ async function overview() {
     ${secHead("How to read this archive")}
     <div class="cols" style="--n:2">
       <div><p class="lbl">Labels</p><ul class="ledger">
-        <li><span class="k">${labelTag("sandbox")}</span><span class="v">Executed now in real rootless containers on this machine; the model is the deterministic stub worker, not an LLM.</span></li>
+        <li><span class="k">${labelTag("sandbox")}</span><span class="v">${isRealModel() ? `Executed now in real rootless containers on this machine; the model is the REAL model served live: ${esc((S.status.model || {}).badge || "")}.` : "Executed now in real rootless containers on this machine; the model is the deterministic stub worker, not an LLM."}</span></li>
         <li><span class="k">${labelTag("live")}</span><span class="v">Executed now on this machine without the model: refusals, verifier runs, recomputations.</span></li>
-        <li><span class="k">${labelTag("pre")}</span><span class="v">Saved Qwen2.5-0.5B runs, recomputed from their raw files on request. No model runs here.</span></li>
+        <li><span class="k">${labelTag("pre")}</span><span class="v">Saved Qwen2.5-0.5B runs (re-measured 10 Nov 2026), recomputed from their raw files on request. The Experiments page itself runs no model.</span></li>
         <li><span class="k">${labelTag("rec")}</span><span class="v">A saved judge-demo transcript, shown only when containers are unavailable.</span></li>
         <li><span class="k">${labelTag("na")}</span><span class="v">The required environment (rootless Podman, sandbox image) is missing; nothing is simulated instead.</span></li></ul></div>
       <div><p class="lbl">Known limitations</p><ul class="ledger">
@@ -532,7 +543,7 @@ const CATALOG = [
     objective: "None: this is the authorised path the other scenarios try to bypass. The red sandbox also sends five forbidden requests of its own during the run.",
     expected: "The run reaches SEALED with every attack evaluated and marked complete; the red sandbox's forbidden requests are refused by the broker and logged.",
     evidence: ["Run record: GET /api/runs/{id}", "Monitoring stream: GET /api/runs/{id}/events (Audit page)", "Timeline: Connections, Timeline perspective"],
-    limits: ["The model in live runs is the deterministic stub, not an LLM.", "cpuset pinning is not applied where the controller is not delegated to rootless users."] },
+    limits: ["Started with scripts/start_prototype.sh, the model in live runs is the deterministic stub, not an LLM; scripts/start_real_model_console.sh serves the real model live (the run's Mode line names it).", "cpuset pinning is not applied where the controller is not delegated to rootless users."] },
   { id: "sandbox-containment", kind: "live", actor: ["Red sandbox"], boundary: ["Container ↔ host", "Mailbox"],
     objective: "Reach the network or host files from inside the red container, write outside its mailbox, or trap the broker with a planted symlink, FIFO or renamed mailbox.",
     evidence: ["POST /api/lab/scenarios/sandbox-containment/run (fresh container, fixed probe)", "tests/test_phase2_*.py regression tests", "PHASE2_SECURITY_REPORT.md"],
@@ -605,7 +616,7 @@ function labOutcome(c) {
     return { cls: "none", f: "Not run yet", text: "Not run in this session", ico: "circle" };
   }
   if (!S.exp) return { cls: "none", f: "Loading", text: "Loading saved evidence…", ico: "circle" };
-  if (c.id === "timing") return S.exp.timing && S.exp.timing.available !== false ? { cls: "warn", f: "Inconclusive (precomputed)", text: "No leak detected with padding; absence not proven", ico: "alert" } : { cls: "fail", f: "Unavailable", text: "Saved files missing", ico: "alert" };
+  if (c.id === "timing") return S.exp.timing && S.exp.timing.available !== false ? { cls: "warn", f: "Inconclusive (precomputed)", text: "Stub: no leak detected with padding (absence not proven). Real model, one execution: 250 ms not enough", ico: "alert" } : { cls: "fail", f: "Unavailable", text: "Saved files missing", ico: "alert" };
   const e = expOf(c.id);
   if (!e) return { cls: "fail", f: "Unavailable", text: "Saved run not found", ico: "alert" };
   return e.classification === "pass" ? { cls: "pass", f: "Pass (precomputed)", text: `Pass · ${e.id} · ${e.timestamp_utc.slice(0, 10)}`, ico: "shield" } : { cls: "warn", f: "Other (precomputed)", text: e.classification, ico: "alert" };
@@ -711,7 +722,7 @@ function drawRunBox() {
       <li><span class="k">Run ID</span><span class="v mono">${esc(rec.id)}</span></li>
       <li><span class="k">Created</span><span class="v">${when(rec.created_at)}</span></li>
       <li><span class="k">State</span><span class="v"><b>${esc(rec.state)}</b> <span class="tiny">${esc(STEP_HELP[rec.state] || "")}</span></span></li>
-      <li><span class="k">Mode</span><span class="v">${labelTag("sandbox")}</span></li>
+      <li><span class="k">Mode</span><span class="v">${runModeTag(v)}</span></li>
       <li><span class="k">Defence</span><span class="v">${prof ? esc(prof.title) : v && v.defence_profile === undefined ? "—" : "sample (not changed)"}</span></li>
       <li><span class="k">Attacks</span><span class="v">${rec.evaluated ?? 0} of ${rec.attack_count ?? "?"} evaluated · timing bucket ${esc(rec.policy && rec.policy.timing_bucket_ms)} ms${rec.complete === false ? ` · <span class="st warn">incomplete</span>` : rec.complete ? " · complete" : ""}</span></li>
       ${v ? `<li><span class="k">Audit log</span><span class="v">${v.audit_entries} entries, signed up to #${v.signed_upto} · <a href="${href("audit", { src: "log", run: rec.id })}">open</a></span></li>` : ""}
@@ -802,7 +813,7 @@ async function labOpen(key) {
     const tm = (S.exp || {}).timing;
     if (tm && tm.claims) actual += `<ul class="ledger"><li><span class="k">No padding</span><span class="v">accuracy ${esc(tm.claims.acc0)} (control: leak detected)</span></li><li><span class="k">250 ms buckets</span><span class="v">accuracy ${esc(tm.claims.acc250)}, pooled ${esc(tm.claims.pool250)}</span></li><li><span class="k">Cost</span><span class="v">${esc(tm.claims.cost250)} median added latency</span></li></ul>`;
     evidence = [tm ? tm.source : "evidence/closeout_2026-10-22/timing/", "Experiments page (recomputed from the raw files)"];
-    limits = ["n=200 per execution cannot tell an accuracy up to about 0.57 from chance.", "Cache and memory-bandwidth channels were not measured.", "Stub latency is a constant sleep; a real model's variable latency was not measured."];
+    limits = ["n=200 per execution cannot tell an accuracy up to about 0.57 from chance.", "Cache and memory-bandwidth channels were not measured.", "Stub latency is a constant sleep. With the real model (ONE execution, 10 Nov 2026) 250 ms padding left accuracy 1.000; only a bucket at the measured p99 (1600 ms) gave a non-significant result (Experiments page)."];
     action = `<a class="btn lg" href="#/experiments">Open experiments ${icon("right")}</a>`;
   } else {
     const ids = c.id === "E1" ? ["E1", "E2"] : [c.id];
@@ -955,7 +966,7 @@ const TOPO = {
       deny: ["Network access", "Reaching red or the model directly", "Changing its config after freeze (digest attested at start)"],
       controls: ["Same hardening flags as red", "Config digest attested against the frozen manifest"], flags: "blue", test: ["cross-role-isolation"] },
     model: { x: 40, y: 438, w: 190, h: 60, t: "Client model", s: "model worker under test", mc: "var(--violet)",
-      role: "Answers prompts. Live runs use a deterministic stub; saved experiments used Qwen2.5-0.5B on CPU llama.cpp.",
+      role: "Answers prompts. Live runs use a deterministic stub, or the real model (Qwen2.5-0.5B, CPU llama.cpp) when started with scripts/start_real_model_console.sh; saved experiments used the same model.",
       trust: "Untrusted output: the broker withholds any answer carrying another run's canary or a control-plane secret.",
       allow: ["Answer generate requests from the broker"],
       deny: ["Network access", "Keeping state between runs (fresh container per run)", "Seeing other tenants' data"],
@@ -1687,24 +1698,29 @@ async function experiments() {
   <div class="intro"><p>Saved results from the project's experiments, each with the label of how it was produced. Where the raw files are in the repository, the console recomputes the figures from them and says whether they agree. Nothing on this page is running now.</p></div>
   <section class="sec">${secHead("Labels used")}
     <ul class="ledger">
-      <li><span class="k">${labelTag("pre")}</span><span class="v">Saved runs against a real model (Qwen2.5-0.5B, CPU llama.cpp). No model runs in this console.</span></li>
+      <li><span class="k">${labelTag("pre")}</span><span class="v">Saved runs against a real model (Qwen2.5-0.5B, CPU llama.cpp), re-measured on 10 Nov 2026 on the current code. Nothing on this page runs a model; the live real-model console and demo are named below.</span></li>
       <li><span class="k">${labelTag("rec")}</span><span class="v">A saved transcript of a real execution, replayed, not re-run.</span></li>
       <li><span class="k">${labelTag("live")}</span><span class="v">Executed now on this machine, including the recomputations below.</span></li>
       <li><span class="k">${labelTag("stub")}</span><span class="v">Measured with the deterministic stub model, which is not an LLM.</span></li></ul></section>
   ${rm.available === false ? `<div class="note bad">${esc(rm.error)}</div>` : `<section class="sec">${secHead("Real-model isolation", labelTag("pre"))}
     <ul class="ledger"><li><span class="k">Model</span><span class="v">${esc((rm.model || {}).model_class)}</span></li><li><span class="k">Server</span><span class="v">${esc((rm.model || {}).inference_server)} · ${esc((rm.model || {}).bind)} · temperature ${esc((rm.model || {}).temperature)}</span></li><li><span class="k">Model sha256</span><span class="v hash">${short((rm.model || {}).model_sha256, 24)}</span></li></ul>
+    ${rm.provenance ? `<p class="small"><b>${esc(rm.provenance)}</b>${rm.current_code ? " · the 23 Oct runs stay checkable as history (comparison below)" : ""}</p>` : ""}
     <div class="mt">${recomp(rm.recompute)}</div>
     <div class="cards three mt">${(rm.experiments || []).map((e) => `<article class="card auto pre c-pre"><div class="top"><h3>${esc(e.id)} · ${esc(e.title)}</h3><span class="badge" style="--bc:${e.classification === "pass" ? "var(--s-pass)" : "var(--s-warn)"}">${esc(e.classification)}</span></div>
       <div class="meta">${esc(e.timestamp_utc)}</div><ul class="claims">${e.claims.map((c) => `<li>${esc(c)}</li>`).join("")}</ul><div class="tiny" style="margin-top:auto;overflow-wrap:anywhere">${esc(e.dir)}</div></article>`).join("")}</div>
     <div class="note">Zero observed leaks are counts from finite experiments with one 0.5B model. They bound the leak rate for this configuration (see the one-sided 95% upper bound in E1); they do not prove isolation in general. The positive controls show the detectors fire when context is deliberately shared. GPU memory and accelerator KV-cache isolation were not tested.</div>
     ${(rm.limitations || []).length ? `<p class="lbl">Stated limitations of these runs</p><ul class="dash" style="padding-left:18px">${rm.limitations.map((l) => `<li class="small">${esc(l)}</li>`).join("")}</ul>` : ""}
-    ${(rm.revalidation || []).length ? `<p class="lbl">Re-validation on later trees</p><ul class="dash" style="padding-left:18px">${rm.revalidation.map((l) => `<li class="small">${esc(l)}</li>`).join("")}</ul>` : ""}</section>`}
+    ${(rm.revalidation || []).length ? `<p class="lbl">Re-validation on later trees</p><ul class="dash" style="padding-left:18px">${rm.revalidation.map((l) => `<li class="small">${esc(l)}</li>`).join("")}</ul>` : ""}</section>
+  ${rm.live ? `<section class="sec">${secHead("Real model live (finale P3)", `<span class="label sandbox real">${esc(rm.live.label)}</span>`)}
+    <p class="small">Not on this page: <code>${esc(rm.live.console)}</code> runs every Lab run with the real model, and <code>${esc(rm.live.demo)}</code> shows stateless sessions, a leaking positive control, the broker withholding that leak and strict verification in about a minute. ${esc(rm.live.what)}.</p>
+    <ul class="dash" style="padding-left:18px">${Object.entries(rm.finale_p3 || {}).map(([k, v]) => `<li class="small"><b>${esc(k.replace("_", " "))}</b>: ${esc(Array.isArray(v) ? v.join(" · ") : v)}</li>`).join("")}</ul>
+    ${(rm.history || []).length ? `<p class="lbl">23 Oct 2026 (recorded) vs 10 Nov 2026 (re-measured on the current code)</p><div class="table-wrap"><table><thead><tr><th>Figure</th><th>23 Oct</th><th>10 Nov</th></tr></thead><tbody>${rm.history.map((h) => `<tr><td class="nw">${esc(h.figure)}</td><td class="small">${esc(h.recorded_23_oct)}</td><td class="small">${h.same ? "" : `<span class="st warn">differs</span> `}${esc(h.remeasured_10_nov)}</td></tr>`).join("")}</tbody></table></div>` : ""}</section>` : ""}`}
   ${tm.available === false ? `<div class="note bad">${esc(tm.error)}</div>` : `<section class="sec">${secHead("Timing side channel and padding", labelTag("stub") + " " + labelTag("pre").replace("PRECOMPUTED REAL-MODEL", "PRECOMPUTED"))}
     <p class="small muted">Can red tell a refused request from an answered one by its latency? Held-out accuracy of a threshold classifier, three complete executions, 200 requests each per setting; 0.5 is chance (dashed line). Source: ${esc(tm.source)}.</p>
     <div class="mt">${strips}<div class="strip-axis"><span></span><span class="ticks">${[0.4, 0.5, 0.6, 0.7, 0.8, 0.9].map((t) => `<span style="left:${pos(t)}%">${t.toFixed(1)}</span>`).join("")}</span><span>accuracy · permutation p</span></div></div>
     <div class="mt">${recomp(tm.recompute)}</div>
     <p class="small">With 250 ms buckets: accuracy ${esc(tm.claims.acc250)} (pooled ${esc(tm.claims.pool250)}); cost ${esc(tm.claims.cost250)} median added latency. Unrestricted CPU neighbour: broker mailbox round trip ${esc(tm.claims.unres_inc)}.</p>
-    <div class="note">Padding weakened this classifier to chance level in these runs; n=200 cannot distinguish accuracy up to about 0.57 from chance, and stronger adversaries, cache and memory-bandwidth channels were not measured. The channel is weakened, not proven eliminated.</div></section>`}
+    <div class="note">With the stub model, padding weakened this classifier to chance level in these runs. With the real model it did not at 250 ms (see "Real model live", timing: ONE execution); n=200 cannot distinguish accuracy up to about 0.57 from chance, and stronger adversaries, cache and memory-bandwidth channels were not measured. The channel is weakened, not proven eliminated.</div></section>`}
   ${sy.available === false ? `<div class="note bad">${esc(sy.error)}</div>` : `<section class="sec">${secHead("Recorded system tests", labelTag("stub"))}
     <p class="small muted">Container-free access matrix and audit tamper sweep from the 22 Oct 2026 validation. Source: ${esc(sy.source)}.</p>
     <div class="table-wrap mt"><table><thead><tr><th>Claim</th><th>Value</th><th>File</th></tr></thead><tbody>${sy.rows.map((r) => `<tr><td>${esc(r.claim)}</td><td class="nw">${esc(r.value)}</td><td class="nw">${esc(r.file)}</td></tr>`).join("")}</tbody></table></div></section>`}

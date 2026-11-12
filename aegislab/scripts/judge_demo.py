@@ -9,8 +9,10 @@ for a live talk. It needs the sandbox image and the stub model only: no model do
   4 strict verification of the completed audit bundle   5 a tampered copy is rejected   6 LLM isolation evidence (PRECOMPUTED, see step 6)
   7 residual risks
 
-Step 6 does NOT run a model. It reads the saved Phase 3 runs under evidence/phase3_2026-10-23/llm/ (Qwen2.5-0.5B Q4_K_M, CPU llama.cpp,
-loopback) and recomputes every printed figure from their raw observations.jsonl through evaluation/check_claims.py.
+Step 6 does NOT run a model. It reads the newest saved real-model runs (evidence/finale_p3_2026-11-10/llm/, re-measured
+10 Nov 2026 on the current code; the 23 Oct runs under evidence/phase3_2026-10-23/llm/ when the newer set is absent), Qwen2.5-0.5B
+Q4_K_M, CPU llama.cpp, loopback, and recomputes every printed figure from their raw observations.jsonl through
+evaluation/check_claims.py. The real model runs LIVE in scripts/real_model_demo.sh and scripts/start_real_model_console.sh.
 
 Everything runs against a FRESH state directory (default: a new temp dir). Nothing under evidence/ or var/ is written.
 --record writes every printed line with its time offset, so a real execution can be replayed as a transcript.
@@ -226,17 +228,22 @@ def main():
     step(6, "LLM isolation evidence: PRECOMPUTED from saved real-model runs (this demo does not run a model)")
     sys.path.insert(0, str(ROOT / "evaluation"))
     import check_claims
-    base = ROOT / "evidence" / "phase3_2026-10-23" / "llm"
+    base, provenance = check_claims.latest_real_model()   # finale P3: the newest runs (re-measured 10 Nov) when present
+    rel = base.relative_to(ROOT).as_posix()
     if not (base / "INDEX.json").exists():
         label_line("NOT RUN", "evidence/phase3_2026-10-23/llm/INDEX.json is missing in this tree")
     else:
-        rows, claims = check_claims.phase3_rows()
+        if base == check_claims.P3:
+            rows, claims = check_claims.phase3_rows()
+        else:
+            rows, fc, _ = check_claims.finale_p3_rows()
+            claims = {k[2:]: v for k, v in fc.items() if k.startswith("f_")}
         index = {e["experiment"]: e for e in json.loads((base / "INDEX.json").read_text())}
         mb = json.loads((base / index["E1_canary_matrix"]["dir"] / "result.json").read_text())["model_backend"]
-        label_line("PRECOMPUTED", "model %s, %s, %s, CPU only" % (mb["model_class"], mb["inference_server"], mb["bind"]))
-        for pv in check_claims.phase3_provenance():  # which revision each saved run was recorded on, and what changed since
+        label_line("PRECOMPUTED", "model %s, %s, %s, CPU only; %s (%s)" % (mb["model_class"], mb["inference_server"], mb["bind"], provenance, rel))
+        for pv in check_claims.phase3_provenance(base):  # which revision each saved run was recorded on, and what changed since
             out("  %s recorded on %s (%s)%s" % (pv["experiment"].split("_")[0], pv["recorded_tree"][:19], pv["recorded_utc"][:10],
-                "; sources changed since and acknowledged as not affecting it (finale P2, %s): %s" % (", ".join(pv["commits"]), ", ".join(pv["acknowledged"]))
+                "; sources changed since and acknowledged as not affecting it (%s): %s" % (", ".join(pv["commits"]), ", ".join(pv["acknowledged"]))
                 if pv["acknowledged"] else "; sources unchanged since"))
         out("  the stub model ran steps 2 to 5. The figures below are from the saved runs, recomputed now from raw observations.")
         shown = (("E1_canary_matrix", ("e1_trials", "e1_bound", "e1_neg", "e1_pos")), ("E2_pipeline_canary", ("e2_iso", "e2_neg", "e2_pos")),
@@ -246,10 +253,11 @@ def main():
             for k in keys:
                 for part in claims[k].split("; "):
                     out("      " + part)
-            out("      raw: evidence/phase3_2026-10-23/llm/%s/observations.jsonl" % index[exp]["dir"])
+            out("      raw: %s/%s/observations.jsonl" % (rel, index[exp]["dir"]))
         check("saved LLM runs agree with their raw observations, hashes and source files", all(r[3] for r in rows), "%d checks" % len(rows))
         out("  scope: one 0.5B model, ten probe wordings, CPU llama.cpp on loopback. GPU memory, accelerator KV cache and hardware side")
         out("  channels were NOT tested. Zero observed leaks in a finite experiment do not prove zero risk.")
+        out("  LIVE with the real model instead: scripts/real_model_demo.sh (about a minute) or scripts/start_real_model_console.sh")
 
     step(7, "Residual risks (stated, not hidden)")
     out("  - a compromised broker or signing key can sign a false but consistent record; only a reviewer's independent")
