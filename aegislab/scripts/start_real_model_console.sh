@@ -40,7 +40,7 @@ die() { echo "  ${R}fail${N}  $1" >&2; echo "        -> $2" >&2; exit 1; }
 export AEGIS_VAR="$ROOT/var/console-real"
 export PYTHONDONTWRITEBYTECODE=1
 unset AEGIS_DEMO_MODE AEGIS_CONSOLE_LAUNCH_CODE AEGIS_PUBLIC_DEMO
-for k in $(env | sed -n 's/^\(AEGIS_MODEL[A-Z_]*\)=.*/\1/p'); do unset "$k"; done   # only the launcher's settings below
+for k in $(env | sed -n 's/^\(AEGIS_MODEL_[A-Z_]*\)=.*/\1/p'); do unset "$k"; done   # only the launcher's settings below; keeps AEGIS_MODELS_DIR (finale P6)
 unset AEGIS_UNSAFE_EXPERIMENT_SHARED_PROMPT_CACHE
 
 if [ "$LINK" = 1 ]; then

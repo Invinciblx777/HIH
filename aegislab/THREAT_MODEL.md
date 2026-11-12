@@ -359,6 +359,7 @@ When a release verifies, `aegis/countersign.py` countersigns the terminal checkp
 | Offline countersigning on the reviewer's own machine (`python -m aegis.countersign --bundle ... --key ...`); refuses a bundle that does not verify | P4S04, P4S05 | Verified |
 | Three distinct keys: evidence, capability, reviewer | P4S06 | Verified |
 | Second party against a host compromise | Only when the reviewer key is off the broker host. Countersigning on release, the prototype's default, keeps it on the same host. The security demo shows the remaining limit: a forger holding both keys still succeeds. | **Partial** |
+| Finale stage flow with the reviewer key off the broker's disk (`tools/venue/offhost_reviewer.sh`, P6) | The key is generated on, and only read from, the reviewer's device; the broker side pins the reviewer's public key (`--reviewer-pubkey`), never the bundle's. Tested 12 Nov 2026 with a stand-in, not a second device: a FAT image in tmpfs, loop-mounted like a USB drive. The genuine bundle verified with both keys pinned; the on-host reviewer key, an edited audit line and a key directory on the laptop's disk were refused; no key file was written under the home directory or `/tmp`. On a teammate's laptop the key never exists on the broker host. On a removable drive in the broker laptop it never lies on the broker's disk, but the broker's processes read it while countersigning, so a host already compromised at that moment can copy it. | **Partial** |
 
 ### 10.8 Mailbox quotas (SHOULD 8)
 
