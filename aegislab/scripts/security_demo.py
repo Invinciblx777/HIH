@@ -228,6 +228,24 @@ def main():
           vf["ok"], "NOT a success of the control; the signing key and the reviewer's retained copy must stay out of reach of whoever can edit the run directory")
     if not vf["ok"]:
         print("  (limit not reproduced: the forged history was rejected)")
+    # finale P4 (SHOULD 7): the same forgery against the reviewer's countersignature. The release countersigned the genuine
+    # terminal checkpoint with the reviewer key; a verifier that requires both signatures (verify_cli
+    # --require-countersignature --reviewer-pubkey <pinned>) rejects the re-signed history, because the broker key alone
+    # cannot produce a matching countersignature.
+    from aegis import countersign
+    if b.get("countersignature") and b.get("reviewer_pubkey"):
+        cf = countersign.check(b["countersignature"], b["reviewer_pubkey"], vf, run_id=run_id)
+        check("with the reviewer's countersignature required, the broker-key forgery is REJECTED", vf["ok"] and bool(cf),
+              (cf or ["accepted (BUG)"])[0][:90])
+        # what remains: a forger who ALSO holds the reviewer key countersigns the forged terminal checkpoint
+        rk = countersign.Signer(countersign.reviewer_key_path())
+        fcs = countersign.make(forged_anchor, forged, rk)
+        both = countersign.check(fcs, b["reviewer_pubkey"], vf, run_id=run_id)
+        limit("a forger who holds BOTH the broker key and the reviewer key (here on the same host) still produces history that verifies",
+              vf["ok"] and not both, "the countersignature adds a second party only when the reviewer key lives off the broker host "
+              "(python -m aegis.countersign --bundle ... on the reviewer's machine)")
+    else:
+        check("the bundle carries the reviewer's countersignature", False, "reviewer_countersignature.json missing")
     # (b) timing: the model worker is a stub; buckets only reduce the timing signal
     agg = ROOT / "evidence" / "closeout_2026-10-22" / "timing" / "aggregate.json"
     if agg.exists():

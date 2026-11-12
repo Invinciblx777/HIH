@@ -1,0 +1,69 @@
+{
+  "broker_uid": 1000,
+  "checks": {
+    "guard_refuses_key_directory_mount": true,
+    "key_files_broker_owned_and_private": true,
+    "lab_container_host_uids_distinct": true,
+    "lab_container_host_uids_in_the_subordinate_range": true,
+    "lab_containers_sampled_red_blue_model": true,
+    "lab_every_container_process_runs_as_container_uid_900": true,
+    "lab_no_container_host_uid_equals_the_broker_uid": true,
+    "lab_run_sealed": true,
+    "model_api_key_file_is_broker_owned_0600": true,
+    "model_server_host_uid_differs_from_the_concurrent_lab_containers": true,
+    "model_server_host_uid_matches_launch_record_and_socket_owner": true,
+    "model_server_runs_as_container_uid_900_not_the_broker": true,
+    "raw_mount_of_the_evidence_key_is_unreadable_errno_13": true
+  },
+  "classification": "pass",
+  "code_revision": {
+    "files": 92,
+    "note": "not a git repository; hash over aegis/ sandbox/ evaluation/ scripts/ tests/ samples/ (*.py, *.sh, *.json)",
+    "tree_sha256": "sha256:1d1e1abe2f38d2b479f70b9aca90dbf3b04b498c38c185f2728db41d7f98d0a0"
+  },
+  "hardening_flags": [
+    "--network",
+    "none",
+    "--read-only",
+    "--tmpfs",
+    "/tmp:rw,size=16m",
+    "--cap-drop",
+    "ALL",
+    "--security-opt",
+    "no-new-privileges",
+    "--userns",
+    "auto:size=1024",
+    "--user",
+    "900:900",
+    "--pids-limit",
+    "64",
+    "--memory",
+    "256m",
+    "--memory-swap",
+    "256m",
+    "--cpus",
+    "1.0"
+  ],
+  "image": "localhost/aegislab-sandbox:0.1",
+  "image_id": "b61316f9128445113be34f990b1c570c19c4b8fa63b58aeaf783011422b43df0",
+  "observation_count": 7,
+  "observations_sha256": "4744093aa8dfddb58459f2dd8bd73f05e860f9bc6c2e000c4b229408cf0ea322",
+  "schema": "aegislab-p4-userns-proof/1",
+  "source_sha256": {
+    "Containerfile": "f95ad2be7ea71a18032c8c67ae657e761983b0e2731847a7d34db9992ac96ca0",
+    "aegis/model_client.py": "4b357838fc05a0751cd31af4aa3af266be7ef541380d6c1a71147ccea9742791",
+    "aegis/runs.py": "2e48dc26f7b55c4ca777db7b912783112447e9442709be56d4464e60fce9592e",
+    "aegis/runtime.py": "3cb8569136f0873417035879ae7eace2566ab8514811a4a5e64f4ec494566b42",
+    "aegis/userns.py": "a61c76a9e3f5e6fd6d398c582608522db23327749ac998a70784c3ad996a5d28",
+    "evaluation/p4_userns_proof.py": "e51f671ac3ff11f158bc563a4c7e405cde2c9aad607d3942ec086ccce176b7c6",
+    "scripts/start_model_server.sh": "7a688763a104e39549be72ad5fcbdf716c092e67a6fa1b619ee220b01bc007bb"
+  },
+  "started_utc": "2026-11-11T06:04:53.331253+00:00",
+  "subuid_ranges": [
+    [
+      524288,
+      65536
+    ]
+  ],
+  "wall_clock_s": 8.1
+}

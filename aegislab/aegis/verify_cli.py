@@ -103,9 +103,11 @@ def load_bundle(directory):
     d = Path(directory)
     meta = json.loads((d / "bundle.json").read_text()) if (d / "bundle.json").exists() else {}
     anchor = json.loads((d / "terminal_anchor.json").read_text()) if (d / "terminal_anchor.json").exists() else None
+    cs = json.loads((d / "reviewer_countersignature.json").read_text()) if (d / "reviewer_countersignature.json").exists() else None
+    rpub = (d / "reviewer_public_key.b64").read_text().strip() if (d / "reviewer_public_key.b64").exists() else None
     return {"audit": d / "audit.jsonl", "checkpoints": d / "reviewer_checkpoints.jsonl",
             "pubkey": (d / "broker_public_key.b64").read_text().strip(), "anchor": anchor,
-            "run_id": meta.get("run_id"), "state": meta.get("state")}
+            "run_id": meta.get("run_id"), "state": meta.get("state"), "countersignature": cs, "reviewer_pubkey": rpub}
 
 
 def main(argv=None):
@@ -123,6 +125,11 @@ def main(argv=None):
     ap.add_argument("--expect-state", choices=["RELEASED", "FAILED"])
     ap.add_argument("--expect-events", type=int, help="number of audit entries the reviewer expects")
     ap.add_argument("--sealed", action="store_true", help="kept for compatibility; terminal evidence is now required by default")
+    ap.add_argument("--require-countersignature", action="store_true",
+                    help="finale P4: also require the reviewer's countersignature of the terminal checkpoint (both signatures)")
+    ap.add_argument("--reviewer-pubkey", help="base64 Ed25519 reviewer key, pinned out of band (default with --bundle: the bundle's, "
+                                              "NOT pinned)")
+    ap.add_argument("--countersignature", help="reviewer countersignature file (default with --bundle: reviewer_countersignature.json)")
     ap.add_argument("--allow-in-progress", action="store_true",
                     help="accept a log without terminal evidence (run not finished, or a legacy bundle); "
                          "completeness is then NOT established")
@@ -147,6 +154,13 @@ def main(argv=None):
             anchor = json.loads(Path(a.anchor).read_text()) if a.anchor else None
             run_id, state = a.run_id, a.expect_state
             key_source = "pinned (--pubkey)"
+        cs, rpub, rkey_source = None, None, None
+        if a.require_countersignature:
+            cs = json.loads(Path(a.countersignature).read_text()) if a.countersignature else (b["countersignature"] if a.bundle else None)
+            rpub = a.reviewer_pubkey.strip() if a.reviewer_pubkey else (b["reviewer_pubkey"] if a.bundle else None)
+            rkey_source = "pinned (--reviewer-pubkey)" if a.reviewer_pubkey else "bundle (NOT pinned: pass --reviewer-pubkey)"
+            if a.reviewer_pubkey and a.bundle and b["reviewer_pubkey"] and b["reviewer_pubkey"] != rpub:
+                notes.append("the reviewer key inside the bundle differs from the pinned reviewer key; the pinned key is used")
         entries, checkpoints = read_jsonl(audit), read_jsonl(cps)
         key_id = sha256(base64.b64decode(pub, validate=True))[:23]
     except (ValueError, OSError, KeyError) as exc:
@@ -158,6 +172,13 @@ def main(argv=None):
                  run_id=run_id, expected_state=state, expected_events=a.expect_events, anchor=anchor,
                  expected_terminal_hash=a.expect_terminal_hash)
     res["key_id"], res["key_source"] = key_id, key_source
+    if a.require_countersignature:
+        from .countersign import check as check_countersignature
+        cf = check_countersignature(cs, rpub, res, run_id=run_id) if rpub else ["reviewer public key missing (pass --reviewer-pubkey)"]
+        res["countersignature_ok"], res["reviewer_key_source"] = not cf, rkey_source
+        if cf:
+            res["ok"] = False
+            res["findings"] = res["findings"] + [{"issue": f} for f in cf]
     if notes:
         res["notes"] = notes
     print(json.dumps(res, indent=2))
@@ -165,6 +186,8 @@ def main(argv=None):
         print("WARNING: in-progress check only; completeness of the log is NOT established.", file=sys.stderr)
     if res["ok"] and key_source.startswith("bundle"):
         print("NOTE: the public key came from the bundle itself and is not pinned.", file=sys.stderr)
+    if res["ok"] and (rkey_source or "").startswith("bundle"):
+        print("NOTE: the reviewer key came from the bundle itself and is not pinned.", file=sys.stderr)
     return 0 if res["ok"] else 1
 
 

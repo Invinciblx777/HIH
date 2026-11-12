@@ -92,7 +92,7 @@ def get(cl, path, with_key=True, method="GET", body=None):
     import urllib.parse
     cfg = cl.cfg
     if cfg.unix_socket:
-        conn = mc._UnixHTTPConnection(cfg.unix_socket, 30)
+        conn = mc._UnixHTTPConnection(cfg.unix_socket, 30, cfg.unix_socket_owner)
     else:
         u = urllib.parse.urlsplit(cfg.base_url)
         conn = http.client.HTTPConnection(u.hostname, u.port, timeout=30)

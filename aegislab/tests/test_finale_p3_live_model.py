@@ -142,17 +142,21 @@ def test_p3_acknowledgement_covers_only_the_three_p3_files_and_all_say_unaffecte
         assert all(v["affects"] is False and len(v["why"]) > 80 for v in c["claims"].values())
 
 
-def test_remeasured_runs_may_not_rely_on_an_acknowledgement(monkeypatch):
+def test_remeasured_runs_may_not_rely_on_an_acknowledgement(monkeypatch, tmp_path):
+    """While the 10 Nov runs were the current real-model set (Part E), an acknowledged row failed. Finale P4 made them history:
+    Part E then accepts acknowledged rows, and the same rule applies to the current set, Part F (tests/test_finale_p4_source_drift.py)."""
     fake = [("E1_canary_matrix: security-relevant sources unchanged since the run", "d", "recorded on x; acknowledged change, does not affect E1: a", True)]
     monkeypatch.setattr(check_claims, "phase3_rows", lambda base=None, report=None: (fake, {}) if base is not None else ([], {}))
     if not (check_claims.P3F / "INDEX.json").exists():
         pytest.skip("no finale P3 evidence")
+    monkeypatch.setattr(check_claims, "P4F", tmp_path / "no_p4")  # as before P4: Part E is the current set
     rows, _, _ = check_claims.finale_p3_rows()
     src = [r for r in rows if "security-relevant sources" in r[0]]
     assert src and not src[0][3]
 
 
 def test_latest_real_model_prefers_the_newest_set(monkeypatch, tmp_path):
+    monkeypatch.setattr(check_claims, "P4F", tmp_path / "nothing_p4")  # finale P4 is newer still; see test_finale_p4_source_drift.py
     monkeypatch.setattr(check_claims, "P3F", tmp_path / "nothing")
     assert check_claims.latest_real_model()[0] == check_claims.P3
     (tmp_path / "llm").mkdir()

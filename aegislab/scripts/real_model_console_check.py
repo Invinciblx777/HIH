@@ -122,7 +122,7 @@ def main():
             page.screenshot(path=str(shots / "r01_lab_real_model_status.png"), full_page=True)
 
             # lifecycle
-            page.select_option("#bucket", "250")
+            page.select_option("#bucket", "")  # the default policy: deadline release with a real model (finale P4)
             page.select_option("#prof1", "sample")
             page.click("#start-run")
             run_state(page, "CREATED", 30_000)
@@ -138,6 +138,8 @@ def main():
             check("lab run LAB-001 reached SEALED with the real model", "SEALED" in box, "%.1f s RUNNING" % run_s)
             check("run Mode line: LIVE SANDBOX · REAL MODEL · LIVE + model file + sha256 prefix + llama.cpp CPU + loopback",
                   all(x in box for x in ("LIVE SANDBOX · REAL MODEL · LIVE", MODEL_FILE, SHA_PREFIX, "llama.cpp CPU", "loopback")))
+            check("default policy with a real model: deadline release (finale P4), shown on the run card", "deadline release at t0 + " in box,
+                  next((ln for ln in box.splitlines() if "deadline" in ln or "bucket" in ln), ""))
             v = page.request.get(base + "/api/lab/runs/LAB-001").json()
             rec = v["run"]
             check("run: every attack evaluated, complete, 0 model backend errors",

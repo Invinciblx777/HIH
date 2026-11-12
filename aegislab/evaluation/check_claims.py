@@ -178,7 +178,13 @@ def timing_rows(full):
 # does not affect that experiment. A further edit, an unacknowledged change, or one acknowledged as affecting the measurement
 # still fails. The list of acknowledgement files is fixed here (this file is pinned by MANIFEST.sha256), not discovered.
 SOURCE_DRIFT_FILES = (ROOT / "evidence" / "finale_rebaseline_2026-11-10" / "SOURCE_DRIFT.json",
-                      ROOT / "evidence" / "finale_p3_2026-11-10" / "SOURCE_DRIFT.json")  # finale P3: keeps the 23 Oct runs checkable
+                      ROOT / "evidence" / "finale_p3_2026-11-10" / "SOURCE_DRIFT.json",   # finale P3: keeps the 23 Oct runs checkable
+                      ROOT / "evidence" / "finale_p4_2026-11-11" / "SOURCE_DRIFT.json")   # finale P4: 23 Oct and 10 Nov runs, see below
+# Finale P4 adds a second, stricter way to acknowledge a change: "affects": true together with "superseded_by", a directory
+# holding a RE-MEASUREMENT of that experiment on the current code. Such an acknowledgement is accepted only if the newest run
+# of the experiment in that directory recorded exactly the current hash of every source it lists (no drift at all), so the
+# old run stays checkable as history while the claim it supported is carried by the new run. The row says which kind
+# applied. An "affects": true acknowledgement without a matching re-measurement still fails.
 
 
 def source_drift_acks(files=None):
@@ -192,8 +198,34 @@ def source_drift_acks(files=None):
     return acks
 
 
-def source_drift(recorded, experiment, acks=None):
-    """Compare the source hashes a run recorded with the tree now. Returns (unacknowledged, acknowledged) lists of paths."""
+def _remeasured_on_current_code(claim, experiment):
+    """True when claim["superseded_by"] holds a run of ``experiment`` whose recorded sources all equal the current files."""
+    rel = str(claim.get("superseded_by") or "").strip()
+    d = ROOT / rel
+    if not rel or not d.is_dir():
+        return False
+    try:
+        if (d / "INDEX.json").exists():
+            latest = {}
+            for e in json.loads((d / "INDEX.json").read_text()):
+                latest[e["experiment"]] = e
+            if experiment not in latest:
+                return False
+            res = json.loads((d / latest[experiment]["dir"] / "result.json").read_text())
+        else:
+            runs_ = sorted(x for x in d.iterdir() if x.is_dir() and (x / "result.json").exists())
+            if not runs_:
+                return False
+            res = json.loads((runs_[-1] / "result.json").read_text())
+    except (OSError, ValueError, KeyError):
+        return False
+    rec = res.get("source_sha256") or {}
+    return bool(rec) and all((ROOT / k).exists() and hashlib.sha256((ROOT / k).read_bytes()).hexdigest() == h for k, h in rec.items())
+
+
+def source_drift(recorded, experiment, acks=None, kinds=None):
+    """Compare the source hashes a run recorded with the tree now. Returns (unacknowledged, acknowledged) lists of paths.
+    kinds, if given, is filled with {path: "unaffected" | "re-measured in <dir>"} for the acknowledged ones."""
     acks = source_drift_acks() if acks is None else acks
     bad, ok = [], []
     for k, h in sorted(recorded.items()):
@@ -203,10 +235,18 @@ def source_drift(recorded, experiment, acks=None):
         cur = hashlib.sha256(p.read_bytes()).hexdigest()
         if cur == h:
             continue
-        hit = [a for a in acks.get(k, []) if a.get("old_sha256") == h and a.get("new_sha256") == cur
-               and (a.get("claims") or {}).get(experiment, {}).get("affects") is False
-               and str((a.get("claims") or {}).get(experiment, {}).get("why", "")).strip()]
-        (ok if hit else bad).append(k)
+        kind = None
+        for a in acks.get(k, []):
+            c = (a.get("claims") or {}).get(experiment, {})
+            if a.get("old_sha256") != h or a.get("new_sha256") != cur or not str(c.get("why", "")).strip():
+                continue
+            if c.get("affects") is False:
+                kind = kind or "unaffected"
+            elif c.get("affects") is True and _remeasured_on_current_code(c, experiment):
+                kind = "re-measured in %s" % c["superseded_by"]
+        (ok if kind else bad).append(k)
+        if kind and kinds is not None:
+            kinds[k] = kind
     return bad, ok
 
 
@@ -235,10 +275,11 @@ def phase3_provenance(base=None):
 RB = ROOT / "evidence" / "finale_rebaseline_2026-11-10"
 
 
-def remeasured_rows():
+def remeasured_rows(RB=RB):
     """Part D: the measurements that need no real model, re-run on the finale P2 code (REMEASURED.json names the commit, the
     commands and the raw-file hashes). Each row checks a security property and prints the re-measured figure next to the one
-    recorded on 22/23 Oct; Part A keeps checking the recorded figures. Returns rows (claim, source, found, ok)."""
+    recorded on 22/23 Oct; Part A keeps checking the recorded figures. Returns rows (claim, source, found, ok).
+    Finale P4 runs the same checks on its own re-measurement (Part F) by passing its directory."""
     if not (RB / "REMEASURED.json").exists():
         return []
     idx = json.loads((RB / "REMEASURED.json").read_text())
@@ -327,10 +368,15 @@ def phase3_rows(base=None, report=None):
         res = json.loads((d / "result.json").read_text())
         obs = _jsonl(d / "observations.jsonl")
         runs_[exp] = (res, obs)
-        drift, acked = source_drift(res["source_sha256"], exp, acks)
+        kinds = {}
+        drift, acked = source_drift(res["source_sha256"], exp, acks, kinds)
+        remeasured = sorted({v for v in kinds.values() if v != "unaffected"})
         found = ("DRIFT: " + ", ".join(drift) if drift else
                  "recorded on %s (%s); acknowledged change, does not affect %s: %s" % (
                      res["code_revision"]["tree_sha256"][:19], res["timestamp_utc"][:10], exp.split("_")[0], ", ".join(acked))
+                 if acked and not remeasured else
+                 "recorded on %s (%s); acknowledged change that affects %s, %s: %s" % (
+                     res["code_revision"]["tree_sha256"][:19], res["timestamp_utc"][:10], exp.split("_")[0], "; ".join(remeasured), ", ".join(acked))
                  if acked else "no drift")
         rows += [
             ("%s: result.json hash equals INDEX entry" % exp, e["dir"], e["result_sha256"][:12], sha256_file(d / "result.json") == e["result_sha256"]),
@@ -503,8 +549,15 @@ P3F_SECOND = P3F_DIR / "llm_qwen2.5-1.5b"
 P3F_README = "aegislab/evidence/finale_p3_2026-11-10/README.md"
 
 
+P4F_DIR = ROOT / "evidence" / "finale_p4_2026-11-11"
+P4F = P4F_DIR / "llm_final"  # the re-measurement on the final P4 code; the first pass on e048ad9 (llm/) is superseded
+P4F_README = "aegislab/evidence/finale_p4_2026-11-11/README.md"
+
+
 def latest_real_model():
     """(INDEX directory, label) of the newest real-model experiment set: what demos and the console should quote."""
+    if (P4F / "INDEX.json").exists():
+        return P4F, "re-measured 11 Nov 2026 on the finale P4 code"
     if (P3F / "INDEX.json").exists():
         return P3F, "re-measured 10 Nov 2026 on the finale P3 code"
     return P3, "recorded 23 Oct 2026"
@@ -523,9 +576,11 @@ def finale_p3_rows(full=False):
     sys.path.insert(0, str(HERE))
     from llm_common import auc_with_permutation, sha256_file, source_hashes
     r, c = phase3_rows(P3F, P3F_README)
-    for row in r:  # the re-measured runs must not depend on any acknowledgement: their sources are the current ones
+    history = (P4F / "INDEX.json").exists()  # finale P4: the 10 Nov runs are history; Part F holds the current ones
+    for row in r:  # while they were the current runs they could not depend on any acknowledgement
         if "security-relevant sources unchanged" in row[0]:
-            row = (row[0] + " (no acknowledgement allowed)", row[1], row[2], row[3] and row[2] == "no drift")
+            row = ((row[0] + " (history since P4: acknowledged, or affected and re-measured in Part F)", row[1], row[2], row[3]) if history else
+                   (row[0] + " (no acknowledgement allowed)", row[1], row[2], row[3] and row[2] == "no drift"))
         rows.append(("10 Nov " + row[0], row[1], row[2], row[3]))
     claims.update({"f_" + k: v for k, v in c.items()})
     _, old = phase3_rows()
@@ -534,7 +589,7 @@ def finale_p3_rows(full=False):
             comp.append((k, old[k], c[k]))
     if (P3F_SECOND / "INDEX.json").exists():
         r2, c2 = phase3_rows(P3F_SECOND, P3F_README)
-        rows += [("1.5B " + x[0], x[1], x[2], x[3] and ("security-relevant" not in x[0] or x[2] == "no drift")) for x in r2]
+        rows += [("1.5B " + x[0], x[1], x[2], x[3] and ("security-relevant" not in x[0] or x[2] == "no drift" or history)) for x in r2]
         claims.update({"s_" + k: "Qwen2.5-1.5B: " + v for k, v in c2.items()})
     # M1-M6, unmodified script, on the P3 tree
     mf = P3F_DIR / "model_experiments_M1_M6.json"
@@ -550,7 +605,8 @@ def finale_p3_rows(full=False):
         res = json.loads((hd / "result.json").read_text())
         obs = _jsonl(hd / "observations.jsonl")
         ok_hash = sha256_file(hd / "observations.jsonl") == res["observations_sha256"] and len(obs) == res["observation_count"]
-        drift = [k for k, h in res["source_sha256"].items() if (ROOT / k).exists() and sha256_file(ROOT / k) != h]
+        hkinds = {}  # finale P4: the launcher changed (F4, libgomp pin); acknowledged only together with the P4 re-measurement
+        drift, hacked = source_drift(res["source_sha256"], "model_server_hardening", source_drift_acks(), hkinds)
         cells = {}
         for o in obs:
             cells.setdefault(o["cell"], []).append(o)
@@ -560,7 +616,9 @@ def finale_p3_rows(full=False):
         stored = {x["cell"]: (x["trials_with_cached_tokens"], x["cached_tokens_oracle"]["auc"]) for x in res["cells"]}
         closed = [k for k in recomputed if not k.startswith("control") and k.endswith(("/aegislab", "/field_absent"))]
         rows += [("P3 hardened server: observation hash and count", hd.name, "%d observations" % len(obs), ok_hash),
-                 ("P3 hardened server: sources unchanged since the check (launcher, adapter, checker)", hd.name, "drift: %s" % (drift or "none"), not drift),
+                 ("P3 hardened server: sources unchanged since the check (launcher, adapter, checker)", hd.name,
+                  "drift: %s" % (drift or "none") + ("; acknowledged, %s: %s" % ("; ".join(sorted(set(hkinds.values()))), ", ".join(hacked)) if hacked else ""),
+                  not drift),
                  ("P3 hardened server: per-cell cached-token counts and AUC recomputed", hd.name, "%d cells" % len(recomputed), recomputed == stored),
                  ("P3 hardened server: 0 cached tokens for broker-style and field-absent requests, both modes", hd.name,
                   ", ".join("%s %d" % (k, recomputed[k][0]) for k in closed), bool(closed) and all(recomputed[k][0] == 0 for k in closed)),
@@ -633,6 +691,202 @@ def finale_p3_rows(full=False):
             rows.append(("README quotes: %s" % v[:90], "recomputed", "present" if text and v in text else ("README missing" if text is None else "NOT FOUND"), bool(text and v in text)))
     return rows, claims, comp
 
+# ----------------------------------------------------------------------------------------------- finale P4 (Part F)
+# Everything re-measured on the finale P4 code (11 Nov 2026): the real-model E1-E5 and M1-M6, the hardened model server, the
+# container-only measurements whose runtime flags changed (F4: --userns auto, a non-root image user), the F4 proof, the stub
+# timing (the release path changed: every write now happens before the padded reply) and the real-model timing with the new
+# deadline mode, three executions each. These are the CURRENT figures; Parts C, D and E keep the earlier runs as history.
+def _stub_timing_rows(base, full):
+    import timing_eval as te
+    rows, acc, ps, cost, k250, n250 = [], {b: [] for b in te.BUCKETS}, {b: [] for b in te.BUCKETS}, [], 0, 0
+    execs = sorted(p for p in base.glob("exec*_seed*") if p.is_dir())
+    rows.append(("P4 stub timing: three executions saved", base.name, "%d found" % len(execs), len(execs) == 3))
+    for d in execs:
+        res = json.loads((d / "result.json").read_text())
+        changed = [n for n, h in res["raw_files_sha256"].items() if sha(d / n) != h]
+        rows.append(("P4 stub %s: COMPLETE, raw files unchanged" % d.name[:5], "result.json", "%s, changed: %s, %d unusable runs" % (
+            res["status"], changed or "none", len(res["unusable"])), res["status"] == "COMPLETE" and not changed))
+        meta = json.loads((d / "raw_runs.json").read_text())
+        bad = {m["run_id"] for m in meta if "unusable" in m}
+        cls = _jsonl(d / "raw_classification.jsonl")
+        for b in te.BUCKETS:
+            r = [(c["rep"], c["latency_ms"], c["refused"]) for c in cls if c["bucket_ms"] == b and c["run_id"] not in bad]
+            pairs = te.grouped_cv(r, 5, random.Random(res["seed"]))
+            a = round(te.score(pairs)[0], 3)
+            want = res["conditions"][str(b)]
+            good = a == want["heldout_accuracy"]
+            if full:
+                pv = te.analyse(r, res["seed"])["permutation_p"]
+                good &= pv == want["permutation_p"]
+            rows.append(("P4 stub %s: %3d ms held-out accuracy recomputed%s from %d raw requests" % (d.name[:5], b, " and p re-run" if full else "", len(r)),
+                         "raw_classification.jsonl", "%.3f (result.json %.3f, p %.4f)" % (a, want["heldout_accuracy"], want["permutation_p"]), good))
+            acc[b].append(a)
+            ps[b].append(want["permutation_p"])
+            if b == 250:
+                cost.append(want["added_median_latency_for_answered_requests_ms"])
+                k250 += sum(p_ == y for p_, y in pairs)
+                n250 += len(pairs)
+    if len(execs) != 3:
+        return rows, None
+    lo, hi = te.wilson(k250, n250)
+    claim = ("stub model, 3 executions, 11 Nov 2026 (P4 code, writes before the padded reply): held-out accuracy %s; pooled at 250 ms %.3f "
+             "(95%% CI %.3f-%.3f, n=%d); smallest padded p %.3f; 250 ms cost +%d to +%d ms per answered request" % (
+                 ", ".join("%.3f-%.3f at %d ms" % (min(acc[b]), max(acc[b]), b) for b in te.BUCKETS), k250 / n250, lo, hi, n250,
+                 min(min(ps[b]) for b in te.BUCKETS if b), round(min(cost)), round(max(cost))))
+    return rows, claim
+
+
+def _deadline_timing_rows(base, full):
+    sys.path.insert(0, str(HERE))
+    import timing_deadline as td
+    rows = []
+    execs = sorted(p for p in base.glob("exec*_seed*") if p.is_dir())
+    rows.append(("P4 real-model timing: three executions saved", base.name, "%d found" % len(execs), len(execs) == 3))
+    per = {}
+    for d in execs:
+        res = json.loads((d / "result.json").read_text())
+        changed = [n for n, h in res["raw_files_sha256"].items() if (d / n).exists() and sha(d / n) != h]
+        rows.append(("P4 deadline %s: COMPLETE, raw files unchanged" % d.name[:5], "result.json", "%s, changed: %s, %d unusable runs, D=%s ms" % (
+            res["status"], changed or "none", len(res.get("unusable") or []), res.get("calibration", {}).get("deadline_ms")),
+            res["status"] == "COMPLETE" and not changed))
+        if res["status"] != "COMPLETE" or changed:
+            continue
+        cal = _jsonl(d / "raw_calibration.jsonl")
+        meta = json.loads((d / "raw_runs.json").read_text())
+        raw = _jsonl(d / "raw_classification.jsonl")
+        bad = {m["run_id"] for m in meta if "unusable" in m}
+        for st in td.SETTINGS:
+            rws = [r for r in raw if r["setting"] == st and r["run_id"] not in bad]
+            want = res["conditions"][st]
+            if full:
+                c = td.analyse_setting(rws, res["seed"])
+                good = all(c[k] == want[k] for k in ("heldout_accuracy", "majority_baseline", "permutation_p", "cut_offs"))
+            else:
+                import timing_eval as te
+                c = {"heldout_accuracy": round(te.score(te.grouped_cv([(r["rep"], r["latency_ms"], r["refused"]) for r in rws], 5, random.Random(res["seed"])))[0], 3)}
+                good = c["heldout_accuracy"] == want["heldout_accuracy"] and sum(r["cut_off"] for r in rws) == want["cut_offs"]
+            both = all(len({r["refused"] for r in rws if r["attack_id"] == aid}) == 2 for aid in {r["attack_id"] for r in rws})
+            rows.append(("P4 deadline %s: %-15s accuracy%s recomputed from %d raw requests; every payload in both classes" % (
+                d.name[:5], st, ", baseline, p, cut-offs" if full else " and cut-offs", len(rws)), "raw_classification.jsonl",
+                "acc %.3f base %.3f p %.4f cut-offs %d (result.json)" % (want["heldout_accuracy"], want["majority_baseline"], want["permutation_p"], want["cut_offs"]),
+                good and both and len(rws) >= 200))
+            per.setdefault(st, []).append(want)
+        rows.append(("P4 deadline %s: deadline D was fixed from the calibration raw file before classification" % d.name[:5], "raw_calibration.jsonl",
+                     "%d calibration requests, D=%d ms" % (len(cal), res["calibration"]["deadline_ms"]), len(cal) > 0 and res["calibration"]["deadline_ms"] >= 200))
+    if len(per.get("deadline", [])) != 3:
+        return rows, None
+    ag = base / "aggregate.json"
+    if ag.exists():
+        a = json.loads(ag.read_text())
+        rows.append(("P4 deadline aggregate: verdicts follow the pre-declared rule (p < 0.05/9 in any execution)", ag.name,
+                     ", ".join("%s: %s" % (k, v["verdict"]) for k, v in sorted(a["settings"].items())),
+                     all(v["verdict"] == ("(control)" if k == "0" else "leak detected" if any(x < td.ALPHA for x in v["permutation_p"])
+                                          else "no leak detected (inconclusive as to absence)") for k, v in a["settings"].items())))
+
+    def fmt(st):
+        w = per[st]
+        return "%s: accuracy %s (baseline-adjusted %s, p %s)" % (
+            {"0": "unpadded", "250": "250 ms buckets", "deadline": "deadline", "deadline+shadow": "deadline + shadow call"}[st],
+            "/".join("%.3f" % x["heldout_accuracy"] for x in w), "/".join("%+.3f" % x["baseline_adjusted_accuracy"] for x in w),
+            "/".join("%.4f" % x["permutation_p"] for x in w))
+    claim = "real-model timing, 3 executions, 11 Nov 2026, balanced classes, every payload in both classes: " + "; ".join(fmt(st) for st in td.SETTINGS if st in per)
+    cost = "deadline cost per answered request (median, vs unpadded): %s ms; cut-off rate of requests that reached the model: %s" % (
+        "/".join("%+.0f" % x["added_median_latency_for_answered_requests_ms"] for x in per["deadline"]),
+        "/".join("%.3f" % (x["cut_off_rate_of_requests_that_reached_the_model"] or 0) for x in per["deadline"]))
+    return rows, (claim, cost)
+
+
+def finale_p4_rows(full=False):
+    """Part F. Returns (rows, claims)."""
+    rows, claims = [], {}
+    if not P4F_DIR.exists():
+        return [("finale P4 evidence present", "finale_p4_2026-11-11", "not present (skipped)", True)], claims
+    sys.path.insert(0, str(HERE))
+    from llm_common import auc_with_permutation, sha256_file
+    # real-model E1-E5: current, so no acknowledgement of any kind
+    if (P4F / "INDEX.json").exists():
+        r, c = phase3_rows(P4F, P4F_README)
+        for row in r:
+            if "security-relevant sources unchanged" in row[0]:
+                row = (row[0] + " (no acknowledgement allowed)", row[1], row[2], row[3] and row[2] == "no drift")
+            rows.append(("11 Nov " + row[0], row[1], row[2], row[3]))
+        claims.update({"p4_" + k: v for k, v in c.items()})
+    mf = P4F_DIR / "model_experiments_M1_M6.json"
+    if mf.exists():
+        m = json.loads(mf.read_text())
+        claims["p4_m"] = m_claim("finale P4 tree (11 Nov 2026)", m)
+        rows.append(("11 Nov M1-M6 on the finale P4 tree: raw file readable, tree hash recorded", mf.name, m["code_revision"]["tree_sha256"][:19], True))
+    # hardened model server, re-measured with the F4 launcher
+    hd = _dir_run(P4F_DIR / "model_server_hardening", "P3H-")
+    if hd:
+        res = json.loads((hd / "result.json").read_text())
+        obs = _jsonl(hd / "observations.jsonl")
+        drift = [k for k, h in res["source_sha256"].items() if (ROOT / k).exists() and sha256_file(ROOT / k) != h]
+        cells = {}
+        for o in obs:
+            cells.setdefault(o["cell"], []).append(o)
+        rec = {k: (sum(o["cached_tokens"] > 0 for o in v), auc_with_permutation([o["cached_tokens"] for o in v if o["guess_correct"]],
+                                                                             [o["cached_tokens"] for o in v if not o["guess_correct"]], perms=1000)["auc"]) for k, v in cells.items()}
+        stored = {x["cell"]: (x["trials_with_cached_tokens"], x["cached_tokens_oracle"]["auc"]) for x in res["cells"]}
+        closed = [k for k in rec if not k.startswith("control") and k.endswith(("/aegislab", "/field_absent"))]
+        rows += [("P4 hardened server: observation hash and count", hd.name, "%d observations" % len(obs),
+                  sha256_file(hd / "observations.jsonl") == res["observations_sha256"] and len(obs) == res["observation_count"]),
+                 ("P4 hardened server: sources unchanged since the check (no acknowledgement allowed)", hd.name, "drift: %s" % (drift or "none"), not drift),
+                 ("P4 hardened server: per-cell cached-token counts and AUC recomputed", hd.name, "%d cells" % len(rec), rec == stored),
+                 ("P4 hardened server: 0 cached tokens for broker-style and field-absent requests, both modes", hd.name,
+                  ", ".join("%s %d" % (k, rec[k][0]) for k in closed), bool(closed) and all(rec[k][0] == 0 for k in closed)),
+                 ("P4 hardened server: every recorded check holds", hd.name, "%d/%d" % (sum(res["checks"].values()), len(res["checks"])),
+                  all(res["checks"].values()) and res["classification"] == "pass")]
+        n = 2 * res["trials_per_class"]
+        claims["p4_hardening"] = ("hardened launcher, F4 user namespace: cached prompt tokens in %d of %d broker-style trials and %d of %d field-absent trials (host process and sandbox); "
+                                  "a client sending cache_prompt=true still gets them (AUC %s)" % (
+                                      sum(rec[k][0] for k in closed if k.endswith("/aegislab")), n * sum(k.endswith("/aegislab") for k in closed),
+                                      sum(rec[k][0] for k in closed if k.endswith("/field_absent")), n * sum(k.endswith("/field_absent") for k in closed),
+                                      "/".join("%.2f" % rec[k][1] for k in sorted(rec) if k.endswith("/client_true"))))
+    # container-only measurements on the F4 runtime flags (the Part D checks, on the P4 directory)
+    for row in remeasured_rows(P4F_DIR):
+        rows.append(("P4 " + row[0], row[1], row[2], row[3]))
+    # the F4 proof
+    up = P4F_DIR / "userns_proof_final"
+    if (up / "result.json").exists():
+        res = json.loads((up / "result.json").read_text())
+        obs = _jsonl(up / "observations.jsonl")
+        me = res["broker_uid"]
+        ctr = [o for o in obs if o["kind"] in ("lab_container", "model_server") and o.get("podman_top")]
+        hosts = [int(p_["huser"]) for o in ctr for p_ in o["podman_top"]] + [o["proc_status_uid"][0] for o in ctr]
+        per_ctr = [o["proc_status_uid"][0] for o in ctr]
+        users = {p_["user"] for o in ctr for p_ in o["podman_top"]}
+        raw = next((o for o in obs if o["kind"] == "negative_control_raw_mount"), {})
+        guard = next((o for o in obs if o["kind"] == "negative_control_guard"), {})
+        drift = [k for k, h in res["source_sha256"].items() if (ROOT / k).exists() and sha256_file(ROOT / k) != h]
+        rows += [("P4 F4 proof: observation hash and count, sources unchanged", up.name, "%d observations, drift: %s" % (len(obs), drift or "none"),
+                  sha256_file(up / "observations.jsonl") == res["observations_sha256"] and len(obs) == res["observation_count"] and not drift),
+                 ("P4 F4 proof: no container process runs as the broker's host UID (podman top and /proc, recomputed)", "observations.jsonl",
+                  "%d containers, host UIDs %s, broker %d, container users %s" % (len(ctr), sorted(set(per_ctr)), me, sorted(users)),
+                  len(ctr) >= 4 and me not in hosts and users == {"900"} and len(set(per_ctr)) == len(per_ctr)),
+                 ("P4 F4 proof: key-directory mount refused by the guard; raw bind-mount of the evidence key unreadable (errno 13)", "observations.jsonl",
+                  "%s; %s" % (guard.get("result", "")[:40], raw.get("stdout", "").replace("\n", " ")), guard.get("result", "").startswith("refused") and raw.get("stdout", "").split()[:2] == ["errno", "13"]),
+                 ("P4 F4 proof: every recorded check holds", up.name, "%d/%d" % (sum(res["checks"].values()), len(res["checks"])), all(res["checks"].values()) and res["classification"] == "pass")]
+        claims["p4_userns"] = ("F4: %d containers sampled live (red, blue, model worker, sandboxed model server), all as container UID 900 on distinct host UIDs %s; "
+                               "none as the broker's UID %d; the evidence key bind-mounted into a container is unreadable (errno 13)" % (len(ctr), "/".join(str(x) for x in sorted(per_ctr)), me))
+    # timing
+    if (P4F_DIR / "timing_stub").is_dir():
+        r, c = _stub_timing_rows(P4F_DIR / "timing_stub", full)
+        rows += r
+        if c:
+            claims["p4_timing_stub"] = c
+    if (P4F_DIR / "timing_deadline").is_dir():
+        r, c = _deadline_timing_rows(P4F_DIR / "timing_deadline", full)
+        rows += r
+        if c:
+            claims["p4_timing_deadline"], claims["p4_timing_deadline_cost"] = c
+    # the P4 evidence README quotes every Part F figure verbatim
+    text = (REL / P4F_README).read_text() if (REL / P4F_README).exists() else None
+    for k, v in sorted(claims.items()):
+        rows.append(("P4 README quotes: %s" % v[:90], "recomputed", "present" if text and v in text else ("README missing" if text is None else "NOT FOUND"), bool(text and v in text)))
+    return rows, claims
+
+
 def main():
     full = "--full" in sys.argv[1:]
     iso, aud, mod = load("isolation_matrix.json"), load("audit_tamper.json"), load("model_experiments.json")
@@ -699,7 +953,14 @@ def main():
         for k, o, n in comp:
             print("  %-9s 23 Oct: %s\n  %-9s 10 Nov: %s%s" % (k, o, "", n, "" if o.replace("Phase 3 tree", "") == n.replace("finale P3 tree (10 Nov 2026)", "") else "   <-- differs"))
     print("finale P3 claims as they must be quoted: " + json.dumps(eclaims, ensure_ascii=False))
-    return 1 if (bad or tbad or pbad or dbad or ebad) else 0
+    frows, fclaims = finale_p4_rows(full)
+    print("\nFINALE P4 (re-measured on the P4 code, evidence/finale_p4_2026-11-11): recomputed from the raw files")
+    for claim, src, found, ok in frows:
+        print("%-4s %-100s %-26s %s" % ("ok" if ok else "FAIL", claim[:100], src[:26], found))
+    fbad = sum(not r[3] for r in frows)
+    print("\n%d/%d finale P4 checks pass" % (len(frows) - fbad, len(frows)))
+    print("finale P4 claims as they must be quoted: " + json.dumps(fclaims, ensure_ascii=False))
+    return 1 if (bad or tbad or pbad or dbad or ebad or fbad) else 0
 
 
 if __name__ == "__main__":

@@ -52,7 +52,7 @@ with warnings.catch_warnings():  # starlette's notice about httpx; the in-proces
     from fastapi.testclient import TestClient
 from pydantic import BaseModel, ConfigDict
 
-from . import api, evidence, lab_session, model_client, runs, runtime, store
+from . import anomaly, api, evidence, lab_session, model_client, runs, runtime, store
 from .audit import entry_hash, read_jsonl
 from .verify_cli import TAMPER_MODES
 
@@ -492,7 +492,7 @@ def _code_revision():
 # ------------------------------------------------------------------------------------------------ live evaluation run
 class PrepareReq(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    timing_bucket_ms: int = 250
+    timing_bucket_ms: int | None = None   # finale P4: omitted = runs.default_timing() (deadline release with a real model)
     defence_profile: str | None = None
     stop_after: Literal["created", "started"] = "started"
 
@@ -581,8 +581,8 @@ def prepare_run(req: PrepareReq, request: Request, x_aegis_token: str | None = H
         if not IDEMPOTENCY_RE.fullmatch(x_aegis_idempotency_key):
             raise HTTPException(422, "X-Aegis-Idempotency-Key must be 8-64 characters of A-Z a-z 0-9 _ -")
         key = (who["via"], x_aegis_token or request.cookies.get(lab_session.COOKIE), x_aegis_idempotency_key)
-    if req.timing_bucket_ms not in (0, 250):
-        raise HTTPException(422, "timing_bucket_ms must be 0 or 250")
+    if req.timing_bucket_ms not in (None, 0, 250):
+        raise HTTPException(422, "timing_bucket_ms must be 0 or 250, or omitted for the default policy")
     if req.defence_profile is not None and req.defence_profile not in DEFENCE_PROFILES:
         raise HTTPException(422, "unknown defence profile")
     _require_live()
@@ -599,7 +599,10 @@ def prepare_run(req: PrepareReq, request: Request, x_aegis_token: str | None = H
         if active:
             raise HTTPException(409, "run %s is still executing; wait for it to seal" % active[0])
         run_id = "LAB-%03d" % (max((int(r[4:]) for r in existing), default=0) + 1)
-        steps = [_api_step("operator", "POST", "/api/runs", {"run_id": run_id, "timing_bucket_ms": req.timing_bucket_ms, "tags": ["lab", "console"]})]
+        body = {"run_id": run_id, "tags": ["lab", "console"]}
+        if req.timing_bucket_ms is not None:
+            body["timing_bucket_ms"] = req.timing_bucket_ms
+        steps = [_api_step("operator", "POST", "/api/runs", body)]
         if req.defence_profile:
             steps.append(_apply_profile(run_id, req.defence_profile))
         if req.stop_after == "started":
@@ -1003,12 +1006,8 @@ def _s_containment(_run_id):
         marker = "AEGISLAB-PROBE-VICTIM-MUST-SURVIVE\n"
         victim = work / "run" / "audit.jsonl"
         victim.write_text(marker)
-        args = ["podman", "run", "--rm", "--name", name, "--label", "aegislab=1"] + runtime.hardening_flags("red")
-        for h, ctr, _m in runs.Broker._spool_mounts(base):
-            args += ["-v", "%s:%s:Z" % (h, ctr)]
-        args += [runtime.IMAGE, "python", "-c", PROBE_CODE]
-        try:
-            p = subprocess.run(args, capture_output=True, text=True, timeout=PROBE_TIMEOUT_S)
+        try:  # finale P4: run_attached grants the probe's own subordinate UID (--userns auto) its two mailbox directories
+            p = runtime.run_attached(name, "red", runs.Broker._spool_mounts(base), ["python", "-c", PROBE_CODE], timeout=PROBE_TIMEOUT_S)
             obs = json.loads(p.stdout)
         except subprocess.TimeoutExpired:
             subprocess.run(["podman", "rm", "-f", "-t", "0", name], capture_output=True)
@@ -1023,7 +1022,7 @@ def _s_containment(_run_id):
         outside = sorted(q.name for q in (work / "run").iterdir() if q.name not in ("spool", "audit.jsonl"))
         intact = victim.read_text() == marker and not outside
     finally:
-        shutil.rmtree(work, ignore_errors=True)
+        runtime.remove_tree(work)
     net_ok = all(v.startswith("refused") for v in obs["net"].values())
     proc = obs.get("proc", {})
     steps = [{"actor": "red sandbox (probe)", "action": k, "expected_status": "refused", "status": v, "decision": "denied" if v.startswith("refused") else "allowed",
@@ -1101,10 +1100,12 @@ def results(scenario: str | None = None, limit: int = 20):
 # ------------------------------------------------------------------------------------------------ signed audit log (metadata)
 AUDIT_SAFE = ("op", "reason", "tenant", "complete", "evaluated", "attack_count", "count", "commitments_verified", "audit_entries_verified",
               "matches_manifest", "network_modes", "strategy", "action", "attack_id", "commitment_verified", "canary_leaks", "policy",
-              "aborted", "model_backend_errors", "manifest_digest", "sandbox_image_id", "error", "where")
+              "aborted", "model_backend_errors", "manifest_digest", "sandbox_image_id", "error", "where",
+              "detector", "threshold", "occurrence", "quota", "limit")  # anomaly.alert (finale P4): the detector's name and fixed threshold
 AUDIT_AFTER_RELEASE = ("outcome", "outcomes")
 AUDIT_DECISION = {"policy.denied": "denied", "mailbox.violation": "denied", "run.failed": "failed", "run.released": "allowed",
-                  "attack.evaluated": "allowed", "defence.attested": "ok"}
+                  "attack.evaluated": "allowed", "defence.attested": "ok", "anomaly.alert": "alert",
+                  "mailbox.quota_exceeded": "denied"}
 
 
 def _audit_view(e, signed_upto, released):
@@ -1141,6 +1142,30 @@ def run_audit(run_id: str, request: Request, x_aegis_token: str | None = Header(
             "facets": {"type": sorted({e["type"] for e in read_jsonl(run.dir / "audit.jsonl")}),
                        "actor": sorted({e["actor"] for e in read_jsonl(run.dir / "audit.jsonl")})},
             "entries": rows[offset:offset + limit], "after_close": _after_close(run)}
+
+
+@app.get("/api/lab/runs/{run_id}/anomalies")
+def run_anomalies(run_id: str, request: Request, x_aegis_token: str | None = Header(None)):
+    """Finale P4: the broker's anomaly detectors for one run, for the operator session (or an operator / reviewer token): each
+    detector's fixed threshold and rationale, and the alerts recorded in the audit chain so far (sequence, hash, signature
+    coverage). Participants never reach this endpoint; they see the alerts in the monitoring stream once the run is sealed."""
+    _authorize(request, x_aegis_token, "operator", "reviewer")
+    _lab_run(run_id, None)
+    run = runs.Run(run_id)
+    signed = _signed_upto(run_id)
+    entries = [e for e in read_jsonl(run.dir / "audit.jsonl") if e["type"] in ("anomaly.alert", "anomaly.summary")]
+    alerts = [{"seq": e["seq"], "ts": e["ts"], "detector": e["data"].get("detector"), "occurrence": e["data"].get("occurrence"),
+               "observed": e["data"].get("observed"), "hash": e["hash"], "signed": e["seq"] <= signed}
+              for e in entries if e["type"] == "anomaly.alert"]
+    fired = {}
+    for a in alerts:
+        fired[a["detector"]] = fired.get(a["detector"], 0) + 1
+    return {"run_id": run_id, "state": run.state, "sealed_summary": any(e["type"] == "anomaly.summary" for e in entries),
+            "detectors": [{"name": k, "threshold": v["threshold"], "rationale": v["rationale"], "fired": fired.get(k, 0)}
+                          for k, v in anomaly.DETECTORS.items()],
+            "alerts": alerts,
+            "note": "Alerts raised by a denial are written at the next padded attack release or at the seal, never on the denial's "
+                    "reply path; with timing padding off they are written at the seal (aegis/anomaly.py)."}
 
 
 def _post_terminal_view(e):
@@ -1620,7 +1645,12 @@ def _experiments() -> dict:
         import check_claims
         p3, provenance = check_claims.latest_real_model()   # finale P3: the newest set of runs, labelled with where and when
         current = p3 != check_claims.P3
-        if current:
+        p4 = p3 == getattr(check_claims, "P4F", None)
+        if p4:  # finale P4: the 11 Nov set is the newest; its figures come from Part F, not from the 10 Nov Part E
+            rows, claims = check_claims.finale_p4_rows(False)
+            claims = {k[3:]: v for k, v in claims.items() if k.startswith("p4_")}
+            comparison = []
+        elif current:
             rows, claims, comparison = check_claims.finale_p3_rows(False)
             claims = {k[2:]: v for k, v in claims.items() if k.startswith("f_")} | {k: v for k, v in claims.items() if not k.startswith("f_")}
         else:
@@ -1649,14 +1679,18 @@ def _experiments() -> dict:
                              "model": mb, "experiments": exps, "limitations": lim,
                              "recompute": {"label": "LIVE RECOMPUTATION", "checks": len(rows), "passed": sum(1 for r in rows if r[3]),
                                            "failed": [r[0] for r in rows if not r[3]][:10],
-                                           "what": ("evaluation/check_claims.py finale_p3_rows() (Part E): result hashes vs INDEX, observation counts, "
+                                           "what": ("evaluation/check_claims.py finale_p4_rows() (Part F): result hashes vs INDEX, observation counts, "
+                                                    "source-file hashes (no acknowledgement allowed), every figure recomputed from observations.jsonl, plus the "
+                                                    "hardened-server check, the F4 user-namespace proof, the container re-measurement and both three-execution "
+                                                    "timing sets" if p4 else
+                                                    "evaluation/check_claims.py finale_p3_rows() (Part E): result hashes vs INDEX, observation counts, "
                                                     "source-file hashes (no acknowledgement allowed), every figure recomputed from observations.jsonl, plus the "
                                                     "hardened-server check, the real-model timing execution and the live console bundle" if current else
                                                     "evaluation/check_claims.py phase3_rows(): result hashes vs INDEX, observation counts, source-file hashes, "
                                                     "every figure recomputed from observations.jsonl")},
                              "revalidation": [claims[k] for k in ("m_rc2", "m_p3", "m") if k in claims],
                              "history": [{"figure": k, "recorded_23_oct": o, "remeasured_10_nov": n, "same": o == n} for k, o, n in comparison],
-                             "finale_p3": {k: claims[k] for k in ("hardening", "timing") if k in claims} | (
+                             "finale_p3": {k: claims[k] for k in ("hardening", "userns", "timing", "timing_deadline", "timing_deadline_cost") if k in claims} | (
                                  {"second_model": [v for k, v in claims.items() if k.startswith("s_e1") or k.startswith("s_e3")]} if any(k.startswith("s_") for k in claims) else {}),
                              "live": {"label": "REAL MODEL · LIVE", "console": "scripts/start_real_model_console.sh", "demo": "scripts/real_model_demo.sh",
                                       "what": "both start the hardened model server (scripts/start_model_server.sh) and answer with the real model now"}}
@@ -1693,7 +1727,7 @@ def _experiments() -> dict:
     except Exception as exc:  # noqa: BLE001
         out["system_tests"] = {"available": False, "error": "validation evidence could not be read (%s)" % type(exc).__name__}
     out["detector_limits"] = [
-        {"item": "Re-encoded canaries (base64, ciphers, spelled-out digits) are not recognised by the broker's detector", "test": "tests/test_phase3_llm.py P3B02d"},
+        {"item": "Re-encoded canaries outside the fixed list (base64/hex/rot13/reversed/split/spelled are caught since P4) are not recognised: double encodings, ciphers, base32/85, homoglyphs, paraphrase", "test": "tests/test_phase3_llm.py P3B02d"},
         {"item": "Timing padding lowers one threshold classifier to chance at 250 ms (n=200 per execution); it does not prove the channel is gone", "test": "evidence/closeout_2026-10-22/timing/"},
         {"item": "With cache_prompt=true a cached-token oracle reaches AUC 1.00: cross-session server state exists even when no content leaks", "test": "E3_kv_cache_oracle"},
         {"item": "GPU memory and accelerator KV-cache isolation were not tested (CPU llama.cpp only)", "test": "-"},

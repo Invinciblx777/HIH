@@ -26,7 +26,7 @@ done
 
 export AEGIS_VAR="${AEGIS_VAR:-$ROOT/var/quickstart}"
 BUNDLE="$AEGIS_VAR/bundles/DEMO-001"
-IMAGE_BASE="docker.io/library/python:3.12-slim"
+IMAGE_BASE="docker.io/library/python@sha256:e8a38829209aea82774882e5157e1f7c3e8c8393ff53a697b3580896e57f345c"  # python:3.12-slim pinned by digest, as in Containerfile (finale P4)
 RESULTS=()
 
 if [ -t 1 ]; then OK=$'\e[32mPASS\e[0m'; BAD=$'\e[31mFAIL\e[0m'; else OK=PASS; BAD=FAIL; fi

@@ -58,6 +58,22 @@ Validation of this release (one host, Fedora, rootless Podman 5.8.9): 345 tests 
 - **Timing.** One real-model timing execution shows that 250 ms padding does **not** hide the defence's decision with a real model: accuracy 1.000. A bucket at the measured p99 (1600 ms) gave a non-significant result in that one execution.
 - **Figures in this package.** The figures below are this package's (23 Oct). The finale presentation updates them.
 
+**Finale P4 update (11 Nov 2026): hardening.** Measured on the P4 code; the evidence is in `aegislab/evidence/finale_p4_2026-11-11/` and its README.
+- **Timing.** Three real-model executions (n = 200 each, balanced classes) show:
+  - 250 ms buckets leak in every one (accuracy 0.945–0.960);
+  - deadline release, where every reply leaves at a fixed t0 + D, gave accuracy 0.495, 0.545 and 0.575 against baselines 0.515, 0.540 and 0.515. No leak was detected, which does not prove absence.
+  - Its cost is +519 to +621 ms per answered request, and 3–8 % of model answers are cut off.
+  - It is now the default for a real-model backend (D = 1400 ms). The stub keeps 250 ms buckets.
+- **Containers no longer run as the key owner.** Each container runs as its own subordinate host UID (`--userns auto`), never the broker's. A container that reads the signing key gets "Permission denied" (measured live).
+- **Re-encoded canaries.** Another run's canary in base64, hex, rot13, reversed, split or spelled-out form is now withheld. Double encodings, ciphers and paraphrase still are not.
+- **Also new:**
+  - six anomaly detectors in the signed audit log;
+  - run-scoped, expiring capability tokens;
+  - a reviewer countersignature that a broker-key forgery cannot produce;
+  - per-tenant mailbox quotas;
+  - the base image pinned by digest.
+- The real-model E1–E5 experiments were re-measured on the final code with the same E1 figures. The figures below remain this package's (23 Oct).
+
 ## What the deck and video claim, and what they do not
 
 - **Measured, current:** boundary enforcement (role matrix 560 attempts, 419 / 419 expected denials denied), the hostile-mailbox attack blocked, strict verification and tamper rejection, broker hop 2.59–2.84 ms median, timing padding at 250 ms accuracy 0.495–0.555 versus 0.795–0.800 unpadded at +198 to +201 ms per answered request (stub model; lowers one classifier's accuracy; does not show the channel is gone; with a real model 250 ms is not enough, see the finale P3 update).
