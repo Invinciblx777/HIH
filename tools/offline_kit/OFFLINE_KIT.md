@@ -78,9 +78,19 @@ Render URL must all fail. It then runs:
 3. `real_model_console_check.py`, the real-model console driven by Playwright;
 4. the local public demo: `/api/lab/status`, then `public_demo_check.py --local` (desktop and phone).
 
-The results, and how the network was cut, are in `docs/finale/P6_REPORT.md` section 4.
+Without network for the non-Podman parts (rootless Podman cannot run inside `unshare -rn`):
+
+```bash
+unshare -rn bash -c 'ip link set lo up; bash KIT/restore.sh KIT DEST --no-podman'
+unshare -rn bash -c 'ip link set lo up; bash DEST/HIH/tools/offline_kit/offline_check.sh DEST OUT --no-podman'
+```
+
+Measured 12 Nov 2026: the network check passed (every host unreachable, only `lo`), the restore took 15 s, and the local public
+demo passed 14/14. From the restored copy, with the host network up: `judge_demo.sh` 17/17, `real_model_demo.sh` 13/13,
+`real_model_console_check.py` 21/21. A run of the Podman parts with the host network off (`nmcli networking off`) is listed in
+`docs/finale/P6_REPORT.md` section 4.
 
 ## Size and copying
 
-The kit size is given in P6_REPORT.md. The models make up most of it (about 1.6 GB). Copy it with
+The kit is 2.7 GiB; the models make up 1.6 GiB. It has symlinks and executable files: copy it to an ext4 drive with
 `cp -a` or `rsync -a`, then run `sha256sum -c SHA256SUMS` on the copy.
