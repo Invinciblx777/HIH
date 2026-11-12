@@ -45,10 +45,27 @@ else
 fi
 
 # 2 sandbox image ID
+# Image identity (P6). Every build gets a new image ID and new layer digests (the COPY layer records file times), even from the
+# same Containerfile, and the gates and judge_demo.sh rebuild it. So the check compares content: /app in the image (without
+# __pycache__) against this checkout's sandbox/, the user 900:900, and the digest-pinned base layers underneath.
 ID=$(podman image inspect "$SANDBOX_IMAGE" --format '{{.Id}}' 2>/dev/null)
+TREE='find . -type f -not -path "*/__pycache__/*" -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-64'
 if [ -z "$ID" ]; then fail sandbox-image "$SANDBOX_IMAGE missing" "podman load -i <kit>/images/aegislab-sandbox.tar"
-elif [ "$ID" = "$SANDBOX_IMAGE_ID" ]; then pass sandbox-image "${ID:0:12} as expected"
-else fail sandbox-image "${ID:0:12}, expected ${SANDBOX_IMAGE_ID:0:12}" "rebuilt image: podman load the kit's image, or update expected.conf after re-running the gates"; fi
+else
+  want=$(cd "$APP/sandbox" && sh -c "$TREE")
+  got=$(timeout 60 podman run --rm --network none --user 900:900 "$SANDBOX_IMAGE" sh -c "cd /app && $TREE" 2>/dev/null)
+  user=$(podman image inspect "$SANDBOX_IMAGE" --format '{{.Config.User}}' 2>/dev/null)
+  bl=$(podman image inspect "$BASE_IMAGE" --format '{{range .RootFS.Layers}}{{.}} {{end}}' 2>/dev/null)
+  il=$(podman image inspect "$SANDBOX_IMAGE" --format '{{range .RootFS.Layers}}{{.}} {{end}}' 2>/dev/null)
+  if [ -n "$got" ] && [ "$got" = "$want" ] && [ "$user" = "900:900" ] && [ -n "$bl" ] && [ "${il#"$bl"}" != "$il" ]; then
+    pass sandbox-image "${ID:0:12}: /app matches sandbox/ (${want:0:12}), user 900:900, on the pinned base"
+  else
+    fail sandbox-image "${ID:0:12}: /app ${got:0:12} vs sandbox/ ${want:0:12}, user '$user', base layers $([ -n "$bl" ] && [ "${il#"$bl"}" != "$il" ] && echo ok || echo MISMATCH)" \
+         "podman load -i <kit>/images/aegislab-sandbox.tar, or rebuild from this checkout: scripts/start_prototype.sh"
+  fi
+  [ "$ID" = "$SANDBOX_IMAGE_ID" ] && info sandbox-image-id "${ID:0:12} = the offline kit's image" \
+    || info sandbox-image-id "${ID:0:12} (the kit's is ${SANDBOX_IMAGE_ID:0:12}; a rebuild changes the ID, the content check above decides)"
+fi
 podman image exists "$BASE_IMAGE" && pass base-image "digest-pinned python:3.12-slim present" \
   || fail base-image "digest-pinned base image missing" "podman load -i <kit>/images/python-3.12-slim-pinned.tar"
 
@@ -67,12 +84,16 @@ for p in $PORTS; do
 done
 
 # 5 disk
-for d in "$REPO" "${XDG_RUNTIME_DIR:-/tmp}" "$HOME/.local/share/containers"; do
+for d in "$REPO" "$HOME/.local/share/containers"; do
   [ -d "$d" ] || continue
   gb=$(df -P -BG "$d" | awk 'NR==2 {gsub("G","",$4); print $4}')
   [ "$gb" -ge "$MIN_FREE_GB" ] && pass disk "${gb} GB free on $(df -P "$d" | awk 'NR==2 {print $6}')" \
     || fail disk "${gb} GB free on $(df -P "$d" | awk 'NR==2 {print $6}') (< $MIN_FREE_GB GB)" "delete old var/ state or podman image prune"
 done
+# XDG_RUNTIME_DIR is a small tmpfs (about 10 % of RAM): it holds only the model server's socket, key file and log, not the model.
+RT=${XDG_RUNTIME_DIR:-/tmp}; mb=$(df -P -BM "$RT" | awk 'NR==2 {gsub("M","",$4); print $4}')
+[ "$mb" -ge 256 ] && pass disk "${mb} MB free on $RT (runtime tmpfs; needs 256 MB)" \
+  || fail disk "${mb} MB free on $RT (< 256 MB)" "tools/venue/reset.sh removes old model-server run directories there"
 
 # 6 leftover containers
 LEFT=$(podman ps -a --filter label=aegislab=1 --format '{{.Names}}' 2>/dev/null | tr '\n' ' ')
@@ -127,7 +148,8 @@ else
 import json, sys
 try: d = json.load(open(sys.argv[1]))
 except Exception as e: print("bad-json"); sys.exit()
-print(d.get("public_demo") is True, d.get("client_ip_header_present") is True, (d.get("code_revision") or {}).get("tree_sha256", ""), (d.get("code_revision") or {}).get("files", ""))
+ip = d.get("client_ip_header_present", (d.get("public_demo_rate_limit") or {}).get("client_ip_header_present"))   # nested under public_demo_rate_limit
+print(d.get("public_demo") is True, ip is True, (d.get("code_revision") or {}).get("tree_sha256", ""), (d.get("code_revision") or {}).get("files", ""))
 PY
 )
     read -r pd ip rrev rfiles <<<"$chk"
@@ -136,7 +158,7 @@ PY
     lrev=$(cd "$APP" && python3 -c 'import sys; sys.path.insert(0, "evaluation"); from revision import code_revision as c; r = c(); print(r["tree_sha256"], r["files"])')
     if [ -z "$rrev" ]; then fail render-revision "no code_revision in the status" "check the deploy on the Render dashboard"
     elif [ "$rrev $rfiles" = "$lrev" ]; then pass render-revision "Render serves this checkout (${rrev:7:12}, $rfiles files)"
-    else fail render-revision "Render ${rrev:7:12} ($rfiles files) != local ${lrev:7:12}" "git -C $REPO status (untracked files count); git pull; or wait for the autodeploy"; fi
+    else fail render-revision "Render ${rrev:7:12} ($rfiles files) != local ${lrev:7:12}" "expected while this checkout has commits not yet on main (Render deploys main); on main: git pull, or wait for the autodeploy"; fi
   fi
   rm -f "$T"
 fi
