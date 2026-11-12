@@ -24,6 +24,7 @@ Nothing here accepts a command, path, container option, network target or expres
 bundle ids and tamper modes are dictionary keys; run ids must match an existing LAB-nnn run. aegis/api.py, runs.py,
 evidence.py and model_client.py are deliberately not modified (their hashes are pinned by the Phase 3 evidence).
 """
+import dataclasses
 import hashlib
 import io
 import json
@@ -346,14 +347,64 @@ def _podman_status() -> dict:
     return out
 
 
+REAL_LIVE_LABEL = "REAL MODEL · LIVE"
+REAL_MODE = "LIVE SANDBOX / REAL MODEL"
+STUB_MODE = "LIVE SANDBOX / STUB MODEL"
+
+
+def model_identity(desc: dict) -> dict:
+    """What a label may say about a real-model backend, taken from a model_client describe() (the current settings, or the
+    frozen manifest of a run). The file name and sha256 are declared by scripts/start_model_server.sh, which hashes the file it
+    serves. "loopback" is literal: AegisLab refuses any other endpoint unless AEGIS_MODEL_ALLOW_REMOTE=1."""
+    ident = desc.get("declared_identity") or {}
+    server = ident.get("inference_server") or "OpenAI-compatible server (not declared)"
+    if server.startswith("llama.cpp") and server.endswith("CPU") and "llama.cpp CPU" not in server:
+        server = "llama.cpp CPU (%s)" % server[len("llama.cpp"):-len("CPU")].strip()
+    sock = desc.get("transport") == "unix_socket"
+    reach = ("loopback (UNIX socket, model server in rootless Podman with --network none)" if sock else
+             "loopback (TCP 127.0.0.1, model server as a host process)" if desc.get("loopback_only") else "REMOTE endpoint (prompts leave this host)")
+    sha = ident.get("model_sha256") or ""
+    parts = [REAL_LIVE_LABEL, ident.get("model_file") or desc.get("model") or "?", "sha256 " + sha[:12] if sha else "sha256 not declared",
+             server, "loopback" if desc.get("loopback_only") else "REMOTE"]
+    return {"model_file": ident.get("model_file"), "model_sha256": sha or None, "model_sha256_prefix": sha[:12] or None,
+            "inference_server": server, "reachability": reach, "server_isolation": ident.get("server_isolation"),
+            "loopback": bool(desc.get("loopback_only")), "badge": " · ".join(parts)}
+
+
+def _model_reachable(cfg) -> bool:
+    """A 2-second availability probe for the status page only (cached); a run still pings with its own timeout at start."""
+    def probe():
+        try:
+            model_client.OpenAICompatibleClient(dataclasses.replace(cfg, timeout_s=2.0)).ping()
+            return True
+        except model_client.ModelBackendError:
+            return False
+    return _cached("model-ping", 10, probe)
+
+
 def _model_status() -> dict:
     try:
-        d = model_client.load_config().describe()
+        cfg = model_client.load_config()
+        d = cfg.describe()
     except model_client.ModelBackendError:
         return {"backend": "invalid", "label": "MODEL BACKEND MISCONFIGURED", "detail": "AEGIS_MODEL_* settings are invalid; runs refuse to freeze"}
     if d.get("backend", "stub") == "stub":
         return {"backend": "stub", "label": "STUB MODEL", "detail": "deterministic stub model worker in a fresh container per run; not an LLM"}
-    return {"backend": d.get("backend"), "label": "REAL MODEL (OpenAI-compatible endpoint)", "detail": "model %s; server-side state is outside AegisLab's control" % d.get("model")}
+    ident = model_identity(d)
+    up = _model_reachable(cfg)
+    return {"backend": d.get("backend"), "label": REAL_LIVE_LABEL if up else "REAL MODEL · UNREACHABLE", "reachable": up, **ident,
+            "detail": "%s; sha256 %s; %s; %s. Stateless requests, cache_prompt=false; no fallback to the stub: %s" % (
+                ident["model_file"] or d.get("model"), ident["model_sha256_prefix"] or "not declared", ident["inference_server"], ident["reachability"],
+                "a run whose endpoint is unreachable at start fails closed" if up else "the endpoint is unreachable now, so a run started now fails closed")}
+
+
+def _run_mode(rec_dir) -> tuple:
+    """(mode label, model identity or None) of a lab run, from ITS frozen manifest (what answered it), not from the current settings."""
+    man = store.read_json(rec_dir / "manifest.json") if (rec_dir / "manifest.json").exists() else {}
+    m = man.get("model") or {}
+    if m.get("backend", "stub") == "stub":
+        return STUB_MODE, None
+    return REAL_MODE, model_identity(m)
 
 
 def _lab_runs() -> list:
@@ -388,7 +439,7 @@ def status():
         "mode_reason": None if podman.get("available") else podman.get("reason"),
         "demo_identities": os.environ.get("AEGIS_DEMO_MODE") == "1",
         "identity_model": "operator session (loopback launch link, HttpOnly cookie, CSRF token); role tokens stay on the server",
-        "execution_modes": {"live": "LIVE SANDBOX / STUB MODEL" if podman.get("available") else "UNAVAILABLE",
+        "execution_modes": {"live": (REAL_MODE if _model_status().get("backend") == "openai_compatible" else STUB_MODE) if podman.get("available") else "UNAVAILABLE",
                             "replay": "REPLAY / RECORDED", "experiments": "PRECOMPUTED REAL-MODEL"},
         "state_dir": _rel(store.VAR),
         "podman": podman,
@@ -642,7 +693,8 @@ def _run_view(run_id, trusted=True) -> dict:
     mon = runs.monitor_view(run, trusted)
     last = mon[-1] if mon else None
     counters = trusted or rec.get("state") in runs.CLOSED_STATES
-    return {"run": api.public_view(rec, trusted), "mode": "LIVE SANDBOX / STUB MODEL", "defence_profile": _lab_meta(run_id).get("defence_profile"),
+    mode, ident = _run_mode(run.dir)
+    return {"run": api.public_view(rec, trusted), "mode": mode, "model": ident, "defence_profile": _lab_meta(run_id).get("defence_profile"),
             "events": len(mon), "audit_entries": run.audit.seq if counters else None, "signed_upto": _signed_upto(run_id) if counters else None,
             "last_event": {k: last.get(k) for k in ("seq", "ts", "type", "actor", "summary", "decision")} if last else None,
             "bundle_exported": store.p("bundles", run_id).is_dir(),
@@ -1566,8 +1618,13 @@ def _experiments() -> dict:
     out = {}
     try:
         import check_claims
-        rows, claims = check_claims.phase3_rows()
-        p3 = check_claims.P3
+        p3, provenance = check_claims.latest_real_model()   # finale P3: the newest set of runs, labelled with where and when
+        current = p3 != check_claims.P3
+        if current:
+            rows, claims, comparison = check_claims.finale_p3_rows(False)
+            claims = {k[2:]: v for k, v in claims.items() if k.startswith("f_")} | {k: v for k, v in claims.items() if not k.startswith("f_")}
+        else:
+            (rows, claims), comparison = check_claims.phase3_rows(), []
         index = json.loads((p3 / "INDEX.json").read_text())
         latest = {}
         for e in index:
@@ -1585,15 +1642,24 @@ def _experiments() -> dict:
                  "E5_failure_handling": ("Model-service failure handling", ("e5",))}
         for exp, e in sorted(latest.items()):
             title, keys = names.get(exp, (exp, ()))
-            exps.append({"id": exp.split("_")[0], "experiment": exp, "title": title, "dir": "evidence/phase3_2026-10-23/llm/" + e["dir"],
+            exps.append({"id": exp.split("_")[0], "experiment": exp, "title": title, "dir": p3.relative_to(ROOT).as_posix() + "/" + e["dir"],
                          "timestamp_utc": e["timestamp_utc"], "classification": e["classification"],
                          "claims": [claims[k] for k in keys if k in claims]})
-        out["real_model"] = {"label": "PRECOMPUTED REAL-MODEL EVIDENCE", "model": mb, "experiments": exps, "limitations": lim,
+        out["real_model"] = {"label": "PRECOMPUTED REAL-MODEL EVIDENCE", "provenance": provenance, "current_code": current,
+                             "model": mb, "experiments": exps, "limitations": lim,
                              "recompute": {"label": "LIVE RECOMPUTATION", "checks": len(rows), "passed": sum(1 for r in rows if r[3]),
                                            "failed": [r[0] for r in rows if not r[3]][:10],
-                                           "what": "evaluation/check_claims.py phase3_rows(): result hashes vs INDEX, observation counts, source-file hashes, "
-                                                   "every figure recomputed from observations.jsonl"},
-                             "revalidation": [claims[k] for k in ("m_rc2", "m_p3") if k in claims]}
+                                           "what": ("evaluation/check_claims.py finale_p3_rows() (Part E): result hashes vs INDEX, observation counts, "
+                                                    "source-file hashes (no acknowledgement allowed), every figure recomputed from observations.jsonl, plus the "
+                                                    "hardened-server check, the real-model timing execution and the live console bundle" if current else
+                                                    "evaluation/check_claims.py phase3_rows(): result hashes vs INDEX, observation counts, source-file hashes, "
+                                                    "every figure recomputed from observations.jsonl")},
+                             "revalidation": [claims[k] for k in ("m_rc2", "m_p3", "m") if k in claims],
+                             "history": [{"figure": k, "recorded_23_oct": o, "remeasured_10_nov": n, "same": o == n} for k, o, n in comparison],
+                             "finale_p3": {k: claims[k] for k in ("hardening", "timing") if k in claims} | (
+                                 {"second_model": [v for k, v in claims.items() if k.startswith("s_e1") or k.startswith("s_e3")]} if any(k.startswith("s_") for k in claims) else {}),
+                             "live": {"label": "REAL MODEL · LIVE", "console": "scripts/start_real_model_console.sh", "demo": "scripts/real_model_demo.sh",
+                                      "what": "both start the hardened model server (scripts/start_model_server.sh) and answer with the real model now"}}
     except Exception as exc:  # noqa: BLE001 - a missing evidence tree degrades this section only
         out["real_model"] = {"available": False, "error": "real-model evidence could not be read (%s)" % type(exc).__name__}
     try:

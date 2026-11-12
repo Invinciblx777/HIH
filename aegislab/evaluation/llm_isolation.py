@@ -85,7 +85,7 @@ class Ctx:
                                "server_version": (ver.stderr or ver.stdout).strip().splitlines()[:1],
                                "server_binary_sha256": sha256_file(self.server_dir / "llama-server"),
                                "model_file": self.model.name, "model_sha256": sha256_file(self.model),
-                               "model_class": "Qwen2.5-0.5B-Instruct Q4_K_M (0.5B parameters)", "temperature": 0,
+                               "model_class": self.a.model_class, "temperature": 0,
                                "bind": "127.0.0.1 only, random port, random API key per server"}
         return self._model_sha
 
@@ -905,6 +905,8 @@ def main():
     ap.add_argument("--injection-runs", type=int, default=3)
     ap.add_argument("--kv-trials", type=int, default=30)
     ap.add_argument("--seed", type=int, default=3)
+    ap.add_argument("--model-class", default="Qwen2.5-0.5B-Instruct Q4_K_M (0.5B parameters)",
+                    help="human-readable model description recorded in each result (finale P3: a second model)")
     a = ap.parse_args()
     if not (Path(a.server_dir) / "llama-server").exists() or not Path(a.model).exists():
         print("llama-server or model missing: real-model experiments NOT run", file=sys.stderr)

@@ -177,7 +177,8 @@ def timing_rows(full):
 # equals an acknowledged new_sha256 for the recorded old_sha256 AND that acknowledgement says, with a reason, that the change
 # does not affect that experiment. A further edit, an unacknowledged change, or one acknowledged as affecting the measurement
 # still fails. The list of acknowledgement files is fixed here (this file is pinned by MANIFEST.sha256), not discovered.
-SOURCE_DRIFT_FILES = (ROOT / "evidence" / "finale_rebaseline_2026-11-10" / "SOURCE_DRIFT.json",)
+SOURCE_DRIFT_FILES = (ROOT / "evidence" / "finale_rebaseline_2026-11-10" / "SOURCE_DRIFT.json",
+                      ROOT / "evidence" / "finale_p3_2026-11-10" / "SOURCE_DRIFT.json")  # finale P3: keeps the 23 Oct runs checkable
 
 
 def source_drift_acks(files=None):
@@ -209,20 +210,22 @@ def source_drift(recorded, experiment, acks=None):
     return bad, ok
 
 
-def phase3_provenance():
+def phase3_provenance(base=None):
     """For the demos and checkers: per saved Phase 3 experiment, the revision it was recorded on and which of its sources
-    changed since (acknowledged or not). Nothing here is re-measured."""
+    changed since (acknowledged or not). Nothing here is re-measured. base: an INDEX.json directory (default the 23 Oct runs)."""
+    base = P3 if base is None else base
     out = []
-    if not (P3 / "INDEX.json").exists():
+    if not (base / "INDEX.json").exists():
         return out
     latest = {}
-    for e in json.loads((P3 / "INDEX.json").read_text()):
+    for e in json.loads((base / "INDEX.json").read_text()):
         latest[e["experiment"]] = e
     acks = source_drift_acks()
     for exp, e in sorted(latest.items()):
-        res = json.loads((P3 / e["dir"] / "result.json").read_text())
+        res = json.loads((base / e["dir"] / "result.json").read_text())
         bad, ok = source_drift(res["source_sha256"], exp, acks)
-        out.append({"experiment": exp, "dir": e["dir"], "recorded_utc": res["timestamp_utc"],
+        out.append({"experiment": exp, "dir": e["dir"], "base": base.relative_to(ROOT).as_posix() if base.is_relative_to(ROOT) else str(base),
+                    "recorded_utc": res["timestamp_utc"],
                     "recorded_tree": res["code_revision"]["tree_sha256"], "acknowledged": ok, "unacknowledged": bad,
                     "commits": sorted({a["commit"][:12] for k in ok for a in acks[k]})})
     return out
@@ -300,21 +303,27 @@ def _jsonl(path):
     return [json.loads(l) for l in Path(path).read_text().splitlines() if l.strip()]
 
 
-def phase3_rows():
-    """Returns (rows, claims). Each row: (claim, source, found, ok). Nothing here is typed in as a desired result."""
+def phase3_rows(base=None, report=None):
+    """Returns (rows, claims). Each row: (claim, source, found, ok). Nothing here is typed in as a desired result.
+    base: the INDEX.json directory (default: the 23 Oct runs, P3); report: the document (relative to the package root) that must
+    quote the recomputed figures verbatim (default PHASE3_LLM_SECURITY_REPORT.md). The M1-M6 revalidation rows belong to the
+    23 Oct directory only."""
+    old = base is None
+    base = P3 if base is None else base
+    report = P3_REPORT if report is None else report
     rows, claims = [], {}
-    if not (P3 / "INDEX.json").exists():
+    if not (base / "INDEX.json").exists():
         return [("Phase 3 LLM evidence present", "INDEX.json", "not present (skipped)", True)], claims
     sys.path.insert(0, str(HERE))
     from llm_common import auc_with_permutation, rate, sha256_file, source_hashes
-    index = json.loads((P3 / "INDEX.json").read_text())
+    index = json.loads((base / "INDEX.json").read_text())
     latest = {}
     for e in index:  # a later entry of the same experiment supersedes an earlier one; earlier runs stay on disk
         latest[e["experiment"]] = e
     runs_ = {}
     acks = source_drift_acks()
     for exp, e in sorted(latest.items()):
-        d = P3 / e["dir"]
+        d = base / e["dir"]
         res = json.loads((d / "result.json").read_text())
         obs = _jsonl(d / "observations.jsonl")
         runs_[exp] = (res, obs)
@@ -457,27 +466,172 @@ def phase3_rows():
         claims["e5_class"] = "E5 classification: %s" % res["classification"]
     # ---- P0 revalidation of the earlier model experiments on the Phase 2 and Phase 3 trees
     for label, rel in (("Phase 2 tree (unmodified rc2)", "revalidation_rc2_unmodified/model_experiments_rc2_unmodified.json"),
-                       ("Phase 3 tree", "revalidation_candidate_tree/model_experiments_phase3_tree.json")):
-        f = P3 / rel
+                       ("Phase 3 tree", "revalidation_candidate_tree/model_experiments_phase3_tree.json")) if old else ():
+        f = base / rel
         if not f.exists():
             rows.append(("M1-M6 revalidation on the %s present" % label, rel, "missing", False))
             continue
         m = json.loads(f.read_text())
-        m1_, m45_ = m["M1_canary_isolation"], m["M4_M5_access_and_monitoring"]
-        m6_ = m["M6_failure_behaviour"]
         key = "m_rc2" if "rc2" in rel else "m_p3"
-        claims[key] = "%s: canary leaks %d/%d and %d/%d, marker hits %d in %d responses, API key in run files: %d, failure cases ending FAILED with a verified terminal checkpoint: %d of 3" % (
-            label, m1_["cache_prompt_false"]["leaks"], m1_["cache_prompt_false"]["probe_trials"], m1_["cache_prompt_true"]["leaks"], m1_["cache_prompt_true"]["probe_trials"],
-            m45_["marker_hits"], m45_["responses_scanned"], len(m45_["api_key_found_in_run_files"]),
-            sum(m6_[c]["final_state"] == "FAILED" and m6_[c]["terminal_checkpoint_verified"] for c in ("timeout_50ms", "wrong_api_key", "server_down_before_run")))
+        claims[key] = m_claim(label, m)
         rows.append(("M1-M6 revalidation on the %s: raw file readable, tree hash recorded" % label, rel, m["code_revision"]["tree_sha256"][:19], True))
     # ---- the report must quote exactly these figures
-    rep = REL / P3_REPORT
+    rep = REL / report
     text = rep.read_text() if rep.exists() else None
     for k, v in sorted(claims.items()):
-        rows.append(("%s quotes: %s" % (P3_REPORT, v[:90]), "recomputed", "present" if text and v in text else ("report missing" if text is None else "NOT FOUND"), bool(text and v in text)))
+        rows.append(("%s quotes: %s" % (Path(report).name, v[:90]), "recomputed", "present" if text and v in text else ("report missing" if text is None else "NOT FOUND"), bool(text and v in text)))
     return rows, claims
 
+
+def m_claim(label, m):
+    m1_, m45_ = m["M1_canary_isolation"], m["M4_M5_access_and_monitoring"]
+    m6_ = m["M6_failure_behaviour"]
+    return "%s: canary leaks %d/%d and %d/%d, marker hits %d in %d responses, API key in run files: %d, failure cases ending FAILED with a verified terminal checkpoint: %d of 3" % (
+        label, m1_["cache_prompt_false"]["leaks"], m1_["cache_prompt_false"]["probe_trials"], m1_["cache_prompt_true"]["leaks"], m1_["cache_prompt_true"]["probe_trials"],
+        m45_["marker_hits"], m45_["responses_scanned"], len(m45_["api_key_found_in_run_files"]),
+        sum(m6_[c]["final_state"] == "FAILED" and m6_[c]["terminal_checkpoint_verified"] for c in ("timeout_50ms", "wrong_api_key", "server_down_before_run")))
+
+
+
+# ----------------------------------------------------------------------------------------------- finale P3 (Part E)
+# The Phase 3 experiments re-run with the restored real model on the P3 code (10 Nov 2026), plus the P3-only evidence: the
+# hardened model-server check, one real-model timing execution, the live real-model console bundle and a second model.
+# These are the CURRENT real-model figures; Part C keeps the 23 Oct runs checkable as history.
+P3F_DIR = ROOT / "evidence" / "finale_p3_2026-11-10"
+P3F = P3F_DIR / "llm"
+P3F_SECOND = P3F_DIR / "llm_qwen2.5-1.5b"
+P3F_README = "aegislab/evidence/finale_p3_2026-11-10/README.md"
+
+
+def latest_real_model():
+    """(INDEX directory, label) of the newest real-model experiment set: what demos and the console should quote."""
+    if (P3F / "INDEX.json").exists():
+        return P3F, "re-measured 10 Nov 2026 on the finale P3 code"
+    return P3, "recorded 23 Oct 2026"
+
+
+def _dir_run(base, prefix):
+    runs_ = sorted(d for d in base.iterdir() if d.is_dir() and d.name.startswith(prefix)) if base.exists() else []
+    return runs_[-1] if runs_ else None
+
+
+def finale_p3_rows(full=False):
+    """Part E. Returns (rows, claims, comparison). comparison: [(figure, 23 Oct, 10 Nov)] printed side by side, not pass/fail."""
+    rows, claims, comp = [], {}, []
+    if not (P3F / "INDEX.json").exists():
+        return [("finale P3 real-model evidence present", "finale_p3_2026-11-10/llm/INDEX.json", "not present (skipped)", True)], claims, comp
+    sys.path.insert(0, str(HERE))
+    from llm_common import auc_with_permutation, sha256_file, source_hashes
+    r, c = phase3_rows(P3F, P3F_README)
+    for row in r:  # the re-measured runs must not depend on any acknowledgement: their sources are the current ones
+        if "security-relevant sources unchanged" in row[0]:
+            row = (row[0] + " (no acknowledgement allowed)", row[1], row[2], row[3] and row[2] == "no drift")
+        rows.append(("10 Nov " + row[0], row[1], row[2], row[3]))
+    claims.update({"f_" + k: v for k, v in c.items()})
+    _, old = phase3_rows()
+    for k in sorted(c):
+        if k in old:
+            comp.append((k, old[k], c[k]))
+    if (P3F_SECOND / "INDEX.json").exists():
+        r2, c2 = phase3_rows(P3F_SECOND, P3F_README)
+        rows += [("1.5B " + x[0], x[1], x[2], x[3] and ("security-relevant" not in x[0] or x[2] == "no drift")) for x in r2]
+        claims.update({"s_" + k: "Qwen2.5-1.5B: " + v for k, v in c2.items()})
+    # M1-M6, unmodified script, on the P3 tree
+    mf = P3F_DIR / "model_experiments_M1_M6.json"
+    if mf.exists():
+        m = json.loads(mf.read_text())
+        claims["f_m"] = m_claim("finale P3 tree (10 Nov 2026)", m)
+        rows.append(("10 Nov M1-M6 on the finale P3 tree: raw file readable, tree hash recorded", mf.name, m["code_revision"]["tree_sha256"][:19], True))
+        oldm = json.loads((P3 / "revalidation_candidate_tree/model_experiments_phase3_tree.json").read_text())
+        comp.append(("M1-M6", m_claim("Phase 3 tree", oldm), claims["f_m"]))
+    # hardened model server (scripts/start_model_server.sh)
+    hd = _dir_run(P3F_DIR / "model_server_hardening", "P3H-")
+    if hd:
+        res = json.loads((hd / "result.json").read_text())
+        obs = _jsonl(hd / "observations.jsonl")
+        ok_hash = sha256_file(hd / "observations.jsonl") == res["observations_sha256"] and len(obs) == res["observation_count"]
+        drift = [k for k, h in res["source_sha256"].items() if (ROOT / k).exists() and sha256_file(ROOT / k) != h]
+        cells = {}
+        for o in obs:
+            cells.setdefault(o["cell"], []).append(o)
+        recomputed = {k: (sum(o["cached_tokens"] > 0 for o in v), auc_with_permutation([o["cached_tokens"] for o in v if o["guess_correct"]],
+                                                                                    [o["cached_tokens"] for o in v if not o["guess_correct"]], perms=1000)["auc"])
+                      for k, v in cells.items()}
+        stored = {x["cell"]: (x["trials_with_cached_tokens"], x["cached_tokens_oracle"]["auc"]) for x in res["cells"]}
+        closed = [k for k in recomputed if not k.startswith("control") and k.endswith(("/aegislab", "/field_absent"))]
+        rows += [("P3 hardened server: observation hash and count", hd.name, "%d observations" % len(obs), ok_hash),
+                 ("P3 hardened server: sources unchanged since the check (launcher, adapter, checker)", hd.name, "drift: %s" % (drift or "none"), not drift),
+                 ("P3 hardened server: per-cell cached-token counts and AUC recomputed", hd.name, "%d cells" % len(recomputed), recomputed == stored),
+                 ("P3 hardened server: 0 cached tokens for broker-style and field-absent requests, both modes", hd.name,
+                  ", ".join("%s %d" % (k, recomputed[k][0]) for k in closed), bool(closed) and all(recomputed[k][0] == 0 for k in closed)),
+                 ("P3 hardened server: every recorded check holds", hd.name, "%d/%d" % (sum(res["checks"].values()), len(res["checks"])),
+                  all(res["checks"].values()) and res["classification"] == "pass")]
+        n = 2 * res["trials_per_class"]
+        claims["f_hardening"] = ("hardened launcher: cached prompt tokens in %d of %d broker-style trials and %d of %d field-absent trials (host process and sandbox); "
+                                 "a client sending cache_prompt=true still gets them (AUC %s)" % (
+                                     sum(recomputed[k][0] for k in closed if k.endswith("/aegislab")), n * sum(k.endswith("/aegislab") for k in closed),
+                                     sum(recomputed[k][0] for k in closed if k.endswith("/field_absent")), n * sum(k.endswith("/field_absent") for k in closed),
+                                     "/".join("%.2f" % recomputed[k][1] for k in sorted(recomputed) if k.endswith("/client_true"))))
+    # one real-model timing execution
+    td = P3F_DIR / "timing_real_model"
+    if (td / "result.json").exists():
+        import random as _r
+        import timing_eval as te
+        res = json.loads((td / "result.json").read_text())
+        changed = [n for n, h in res["raw_files_sha256"].items() if sha(td / n) != h]
+        rows.append(("P3 real-model timing: raw files unchanged", "timing_real_model", "changed: %s" % (changed or "none"), not changed and res["status"] == "COMPLETE"))
+        if not changed:
+            meta = json.loads((td / "raw_runs.json").read_text())
+            bad = {m_["run_id"] for m_ in meta if "unusable" in m_}
+            raw = _jsonl(td / "raw_classification.jsonl")
+            ok, parts = True, []
+            for b in res["padding_intervals_ms"]:
+                rws = [(x["rep"], x["latency_ms"], x["refused"]) for x in raw if x["bucket_ms"] == b and x["run_id"] not in bad]
+                if full:
+                    a = te.analyse(rws, res["seed"])
+                    acc, pv = a["heldout_accuracy"], a["permutation_p"]
+                    ok &= acc == res["conditions"][str(b)]["heldout_accuracy"] and pv == res["conditions"][str(b)]["permutation_p"]
+                else:
+                    acc = round(te.score(te.grouped_cv(rws, 5, _r.Random(res["seed"])))[0], 3)
+                    pv = res["conditions"][str(b)]["permutation_p"]
+                    ok &= acc == res["conditions"][str(b)]["heldout_accuracy"]
+                parts.append((b, acc, res["conditions"][str(b)]["majority_baseline"], pv, len(rws)))
+            cal = res["calibration"]
+            calraw = _jsonl(td / "raw_calibration.jsonl")
+            ans = sorted(x["latency_ms"] for x in calraw if not x["refused"])
+            p99 = ans[round(0.99 * (len(ans) - 1))]
+            ok_cal = abs(p99 - cal["answered"]["p99_ms"]) < 0.01 and cal["p99_bucket_ms"] == int(-(-p99 // 100) * 100)
+            rows.append(("P3 real-model timing: calibration p99 and the p99 bucket recomputed from raw", "raw_calibration.jsonl",
+                         "p99 %.1f ms -> bucket %d ms" % (p99, cal["p99_bucket_ms"]), ok_cal))
+            rows.append(("P3 real-model timing: held-out accuracy recomputed%s" % (" and permutation p re-run" if full else ""), "raw_classification.jsonl",
+                         "; ".join("%d ms acc %.3f p %.4f" % (b, acc, pv) for b, acc, _, pv, _ in parts), ok))
+            claims["f_timing"] = ("real-model timing, ONE execution, 10 Nov 2026 (calibration: answered p50 %.0f ms, p99 %.0f ms): held-out accuracy %s (majority baseline %s)" % (
+                cal["answered"]["median_ms"], cal["answered"]["p99_ms"],
+                ", ".join("%.3f at %d ms (p=%.4f)" % (acc, b, pv) for b, acc, _, pv, _ in parts), "/".join("%.3f" % x[2] for x in parts)))
+    # the live real-model console bundle (exported by the reviewer release in the Playwright run)
+    lb = P3F_DIR / "live_console_bundle" / "LAB-001"
+    if lb.is_dir():
+        import subprocess
+        pr = subprocess.run([sys.executable, "-m", "aegis.verify_cli", "--bundle", str(lb), "--run-id", "LAB-001", "--expect-state", "RELEASED"],
+                            capture_output=True, text=True, cwd=ROOT)
+        try:
+            v = json.loads(pr.stdout)
+        except ValueError:
+            v = {}
+        audit = _jsonl(lb / "audit.jsonl")
+        so = next((e for e in audit if e["type"] == "model.session_opened"), {})
+        ident = ((so.get("data") or {}).get("backend") or {}).get("declared_identity") or {}
+        rows.append(("P3 live console run LAB-001 (real model): strict verification", "live_console_bundle/LAB-001", "exit %d, terminal_verified %s" % (pr.returncode, v.get("terminal_verified")),
+                     pr.returncode == 0 and v.get("ok") is True and v.get("terminal_verified") is True))
+        rows.append(("P3 live console run LAB-001: the signed log names the weights and the sandboxed server", "audit.jsonl",
+                     "%s %s %s" % (ident.get("model_file"), (ident.get("model_sha256") or "")[:12], ident.get("server_isolation")),
+                     (ident.get("model_sha256") or "").startswith("74a4da8c") and ident.get("server_isolation") == "rootless-podman-network-none"))
+    # the evidence README must quote every Part E figure verbatim
+    text = (REL / P3F_README).read_text() if (REL / P3F_README).exists() else None
+    for k, v in sorted(claims.items()):
+        if k.startswith(("f_hardening", "f_timing", "f_m")) or k.startswith("s_"):
+            rows.append(("README quotes: %s" % v[:90], "recomputed", "present" if text and v in text else ("README missing" if text is None else "NOT FOUND"), bool(text and v in text)))
+    return rows, claims, comp
 
 def main():
     full = "--full" in sys.argv[1:]
@@ -534,7 +688,18 @@ def main():
         print("%-4s %-100s %-26s %s" % ("ok" if ok else "FAIL", claim[:100], src[:26], found))
     dbad = sum(not r[3] for r in drows)
     print("\n%d/%d re-measured checks pass" % (len(drows) - dbad, len(drows)))
-    return 1 if (bad or tbad or pbad or dbad) else 0
+    erows, eclaims, comp = finale_p3_rows(full)
+    print("\nFINALE P3 (real model re-measured on the P3 code, evidence/finale_p3_2026-11-10): recomputed from the raw files")
+    for claim, src, found, ok in erows:
+        print("%-4s %-100s %-26s %s" % ("ok" if ok else "FAIL", claim[:100], src[:26], found))
+    ebad = sum(not r[3] for r in erows)
+    print("\n%d/%d finale P3 checks pass" % (len(erows) - ebad, len(erows)))
+    if comp:
+        print("\nreal-model figures, 23 Oct 2026 (Part C, historical) vs 10 Nov 2026 (Part E, current):")
+        for k, o, n in comp:
+            print("  %-9s 23 Oct: %s\n  %-9s 10 Nov: %s%s" % (k, o, "", n, "" if o.replace("Phase 3 tree", "") == n.replace("finale P3 tree (10 Nov 2026)", "") else "   <-- differs"))
+    print("finale P3 claims as they must be quoted: " + json.dumps(eclaims, ensure_ascii=False))
+    return 1 if (bad or tbad or pbad or dbad or ebad) else 0
 
 
 if __name__ == "__main__":

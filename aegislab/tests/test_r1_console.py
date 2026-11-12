@@ -347,11 +347,17 @@ def test_download_offers_only_genuine_bundles_with_allowlisted_files(client):
 # ------------------------------------------------------------------ experiments
 def test_experiment_figures_come_from_check_claims(client):
     import check_claims
-    rows, claims = check_claims.phase3_rows()
+    base, _ = check_claims.latest_real_model()   # finale P3: the console shows the newest real-model runs
+    if base == check_claims.P3:
+        rows, claims = check_claims.phase3_rows()
+    else:
+        rows, fclaims, _ = check_claims.finale_p3_rows(False)
+        claims = {k[2:]: v for k, v in fclaims.items() if k.startswith("f_")}
     trows, tclaims = check_claims.timing_rows(False)
     x = client.get("/api/lab/experiments").json()
     rm = x["real_model"]
     assert rm["label"] == "PRECOMPUTED REAL-MODEL EVIDENCE"
+    assert rm["experiments"] and all(e["dir"].startswith(base.relative_to(check_claims.ROOT).as_posix()) for e in rm["experiments"])
     assert rm["recompute"]["checks"] == len(rows) and rm["recompute"]["passed"] == sum(1 for r in rows if r[3]) == len(rows)
     e1 = next(e for e in rm["experiments"] if e["id"] == "E1")
     assert claims["e1_trials"] in e1["claims"]

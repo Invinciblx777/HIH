@@ -27,7 +27,8 @@ The demos print a label wherever a result is not produced live on your machine.
 | Label | Meaning |
 |---|---|
 | `[PASS]` / `[FAIL]` | Checked **live**, now, on this machine (real rootless containers, deterministic stub model) |
-| `[PRECOMPUTED]` | From saved real-model runs in `evidence/phase3_2026-10-23/llm/`; the figures are recomputed from the raw observation files on screen, but **no model runs** during the demo |
+| `[PRECOMPUTED]` | From saved real-model runs: the newest set, `evidence/finale_p3_2026-11-10/llm/` (re-measured 10 Nov 2026 on the current code), or the 23 Oct set `evidence/phase3_2026-10-23/llm/` if the newer one is absent. The figures are recomputed from the raw observation files on screen, but **no model runs** during the demo |
+| `LIVE REAL MODEL` | `scripts/real_model_demo.sh` and the real-model console: the model answers now, on this machine (section 6) |
 | `[HISTORICAL]` | A recorded result of an older version (for example the Phase 1 broker before a fix); not re-run |
 | `[LIMIT]` (security demo) | A documented limitation, demonstrated on purpose |
 | `NOT RUN` | A check could not run in this tree; the line says why |
@@ -71,9 +72,28 @@ A shipped tampered example must also fail: `evidence/validation_2026-10-22/bundl
 
 ## 5. Real-model evidence, next to controls that must leak (PRECOMPUTED)
 
-`judge_demo.sh` step 6. Model Qwen2.5-0.5B-Instruct Q4_K_M on CPU llama.cpp, loopback only. Expected lines include `0 of 1040 isolation trials leaked (0 of 104 sessions)`, positive controls `16 of 16` and `13 of 16` sessions, pipeline `0 of 26 isolation runs`, and `[PASS] saved LLM runs agree with their raw observations, hashes and source files: 48 checks`. That last check is live: it recomputes the figures from the raw files and compares source-file hashes. The model runs themselves are saved, not live.
+`judge_demo.sh` step 6. Model Qwen2.5-0.5B-Instruct Q4_K_M on CPU llama.cpp, loopback only. Expected lines include `0 of 1040 isolation trials leaked (0 of 104 sessions)`, positive controls `16 of 16` and `13 of 16` sessions, pipeline `0 of 26 isolation runs`, and `[PASS] saved LLM runs agree with their raw observations, hashes and source files: 89 checks` (48 before the 10 Nov re-measurement). That last check is live: it recomputes the figures from the raw files and compares source-file hashes. The model runs themselves are saved, not live.
 
-Re-running them is possible but slow and needs assets that are not in the repository: a local llama.cpp `llama-server` binary and the GGUF file, then `evaluation/llm_isolation.py` (about 3.5 hours on CPU). See `evidence/phase3_2026-10-23/README.md`.
+The step prints where and when the figures were recorded. Since 10 Nov 2026 that is the re-measurement on the current code (`evidence/finale_p3_2026-11-10/`), with the same E1 figures as 23 Oct. Re-running the experiments needs assets that are not in the repository: a local llama.cpp `llama-server` binary and the GGUF file, then `evaluation/llm_isolation.py` (32 minutes on 10 Nov). See `evidence/finale_p3_2026-11-10/README.md`.
+
+## 6. The real model, live (optional; needs the model files)
+
+If `llama-server` (llama.cpp b11819, CPU) and `qwen2.5-0.5b-instruct-q4_k_m.gguf` are on the machine (default `../../../_models/` from `aegislab/`, or `AEGIS_MODELS_DIR`):
+
+```bash
+bash scripts/real_model_demo.sh          # about 30 s, offline; header and footer say LIVE REAL MODEL
+```
+
+One `PASS`/`FAIL` line per check, under four headings:
+
+- **(a)** independent sessions are stateless: no session recovers another one's canary, and the server reports 0 cached prompt tokens;
+- **(b)** a positive control that deliberately shares history does leak, so the probe can see a leak;
+- **(c)** the same leak sent through the full pipeline is withheld by the broker, with a `canary.leak` audit entry;
+- **(d)** the run's exported bundle verifies strictly, and a tampered copy is rejected.
+
+The model server runs in rootless Podman with `--network none` and is reached over a UNIX socket. The script refuses to start if either file's sha256 differs from the one the evidence was recorded with. Nothing falls back to the stub.
+
+For the console with the real model: `bash scripts/start_real_model_console.sh` (port 8410), then open the launch link. Every run shows "REAL MODEL · LIVE", the model file, its sha256 prefix, "llama.cpp CPU" and "loopback".
 
 ## The longer demonstration and the numbers
 

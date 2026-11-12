@@ -1,0 +1,309 @@
+{
+  "cells": [
+    {
+      "cached_tokens_max": 0,
+      "cached_tokens_oracle": {
+        "auc": 0.5,
+        "n_neg": 30,
+        "n_pos": 30,
+        "p_value": 1.0,
+        "permutations": 1000
+      },
+      "cell": "host-process/aegislab",
+      "request_fields": {
+        "cache_prompt": false
+      },
+      "trials_per_class": 30,
+      "trials_with_cached_tokens": 0
+    },
+    {
+      "cached_tokens_max": 0,
+      "cached_tokens_oracle": {
+        "auc": 0.5,
+        "n_neg": 30,
+        "n_pos": 30,
+        "p_value": 1.0,
+        "permutations": 1000
+      },
+      "cell": "host-process/field_absent",
+      "request_fields": {},
+      "trials_per_class": 30,
+      "trials_with_cached_tokens": 0
+    },
+    {
+      "cached_tokens_max": 84,
+      "cached_tokens_oracle": {
+        "auc": 1.0,
+        "n_neg": 30,
+        "n_pos": 30,
+        "p_value": 0.001,
+        "permutations": 1000
+      },
+      "cell": "host-process/client_true",
+      "request_fields": {
+        "cache_prompt": true
+      },
+      "trials_per_class": 30,
+      "trials_with_cached_tokens": 60
+    },
+    {
+      "cached_tokens_max": 0,
+      "cached_tokens_oracle": {
+        "auc": 0.5,
+        "n_neg": 30,
+        "n_pos": 30,
+        "p_value": 1.0,
+        "permutations": 1000
+      },
+      "cell": "sandbox/aegislab",
+      "request_fields": {
+        "cache_prompt": false
+      },
+      "trials_per_class": 30,
+      "trials_with_cached_tokens": 0
+    },
+    {
+      "cached_tokens_max": 0,
+      "cached_tokens_oracle": {
+        "auc": 0.5,
+        "n_neg": 30,
+        "n_pos": 30,
+        "p_value": 1.0,
+        "permutations": 1000
+      },
+      "cell": "sandbox/field_absent",
+      "request_fields": {},
+      "trials_per_class": 30,
+      "trials_with_cached_tokens": 0
+    },
+    {
+      "cached_tokens_max": 84,
+      "cached_tokens_oracle": {
+        "auc": 1.0,
+        "n_neg": 30,
+        "n_pos": 30,
+        "p_value": 0.001,
+        "permutations": 1000
+      },
+      "cell": "sandbox/client_true",
+      "request_fields": {
+        "cache_prompt": true
+      },
+      "trials_per_class": 30,
+      "trials_with_cached_tokens": 60
+    },
+    {
+      "cached_tokens_max": 84,
+      "cached_tokens_oracle": {
+        "auc": 1.0,
+        "n_neg": 30,
+        "n_pos": 30,
+        "p_value": 0.001,
+        "permutations": 1000
+      },
+      "cell": "control_no_launcher_flags/field_absent",
+      "request_fields": {},
+      "trials_per_class": 30,
+      "trials_with_cached_tokens": 60
+    }
+  ],
+  "checks": {
+    "control_default_server_caches_when_field_absent": true,
+    "every_endpoint_but_health_needs_key": true,
+    "key_on_no_command_line": true,
+    "metrics_disabled": true,
+    "no_cached_tokens_with_aegislab_requests": true,
+    "no_cached_tokens_with_field_absent_under_launcher": true,
+    "no_prompt_text_in_any_endpoint": true,
+    "props_post_disabled": true,
+    "residual_client_true_still_caches_under_launcher": true,
+    "sandbox_model_and_binary_read_only": true,
+    "sandbox_network_none_lo_only_no_egress": true,
+    "sandbox_readonly_capdrop_nonewprivs_limits": true,
+    "slot_save_restore_disabled": true,
+    "slots_disabled": true
+  },
+  "classification": "pass",
+  "code_revision": {
+    "files": 74,
+    "note": "not a git repository; hash over aegis/ sandbox/ evaluation/ scripts/ tests/ samples/ (*.py, *.sh, *.json)",
+    "tree_sha256": "sha256:7d0bd4728ff3b5bb1e8ee2a97c3cf45fe165b6dca3b01a0cd48d9a54f15de8df"
+  },
+  "environment": {
+    "cpu": "AMD Ryzen 7 7735HS with Radeon Graphics",
+    "cpus": 16,
+    "gpu_used": false,
+    "hostname_recorded": false,
+    "kernel": "7.2.15-300.fc45.x86_64",
+    "platform": "Linux-7.2.15-300.fc45.x86_64-x86_64-with-glibc2.44",
+    "podman": "podman version 6.1.3",
+    "python": "3.15.0"
+  },
+  "experiment": "P3_model_server_hardening",
+  "model_backend": {
+    "inference_server": "llama.cpp b11819 CPU",
+    "model_file": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
+    "model_sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+    "server_binary_sha256": "17d2573dede0314fe681f3c2c821a9a44818949e1073200292353efb21c426bb"
+  },
+  "modes": {
+    "host-process": {
+      "command_flags": "-m /home/v0idsai/Projects/Hack On Hills/_models/qwen2.5-0.5b-instruct-q4_k_m.gguf -c 4096 -np 1 -t 6 --threads-http 4 -a local -to 120 --no-webui --no-agent --offline --api-key-file /run/user/1000/aegis-model.VJvUOC/key --no-cache-prompt --cache-ram 0 --no-cache-idle-slots --no-kv-unified --ctx-checkpoints 0 --cache-reuse 0 --no-context-shift --no-slots --cors-origins localhost --no-cors-credentials",
+      "endpoints": {
+        "GET /health": {
+          "contains_planted_marker": false,
+          "contains_prompt_text": false,
+          "with_key": 200,
+          "without_key": 200
+        },
+        "GET /metrics": {
+          "contains_planted_marker": false,
+          "contains_prompt_text": false,
+          "with_key": 501,
+          "without_key": 401
+        },
+        "GET /props": {
+          "contains_planted_marker": false,
+          "contains_prompt_text": false,
+          "with_key": 200,
+          "without_key": 401
+        },
+        "GET /slots": {
+          "contains_planted_marker": false,
+          "contains_prompt_text": false,
+          "with_key": 501,
+          "without_key": 401
+        },
+        "GET /v1/models": {
+          "contains_planted_marker": false,
+          "contains_prompt_text": false,
+          "with_key": 200,
+          "without_key": 401
+        },
+        "POST /props": {
+          "with_key": 501
+        },
+        "POST /slots/0?action=restore": {
+          "with_key": 501
+        },
+        "POST /slots/0?action=save": {
+          "with_key": 501
+        }
+      },
+      "key_in_launch_json": false,
+      "key_in_model_env": false,
+      "key_on_process_cmdline_pids": [],
+      "launch": {
+        "bind": "127.0.0.1:44939",
+        "inference_server": "llama.cpp CPU b11819",
+        "mode": "host-process",
+        "model_file": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
+        "model_sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+        "pid": 301840,
+        "server_binary_sha256": "17d2573dede0314fe681f3c2c821a9a44818949e1073200292353efb21c426bb",
+        "transport": "tcp"
+      }
+    },
+    "sandbox": {
+      "command_flags": "-m /models/model.gguf -c 4096 -np 1 -t 6 --threads-http 4 -a local -to 120 --no-webui --no-agent --offline --api-key-file <keyfile> --no-cache-prompt --cache-ram 0 --no-cache-idle-slots --no-kv-unified --ctx-checkpoints 0 --cache-reuse 0 --no-context-shift --no-slots --cors-origins localhost --no-cors-credentials --host /run/aegis-model/llama.sock",
+      "endpoints": {
+        "GET /health": {
+          "contains_planted_marker": false,
+          "contains_prompt_text": false,
+          "with_key": 200,
+          "without_key": 200
+        },
+        "GET /metrics": {
+          "contains_planted_marker": false,
+          "contains_prompt_text": false,
+          "with_key": 501,
+          "without_key": 401
+        },
+        "GET /props": {
+          "contains_planted_marker": false,
+          "contains_prompt_text": false,
+          "with_key": 200,
+          "without_key": 401
+        },
+        "GET /slots": {
+          "contains_planted_marker": false,
+          "contains_prompt_text": false,
+          "with_key": 501,
+          "without_key": 401
+        },
+        "GET /v1/models": {
+          "contains_planted_marker": false,
+          "contains_prompt_text": false,
+          "with_key": 200,
+          "without_key": 401
+        },
+        "POST /props": {
+          "with_key": 501
+        },
+        "POST /slots/0?action=restore": {
+          "with_key": 501
+        },
+        "POST /slots/0?action=save": {
+          "with_key": 501
+        }
+      },
+      "key_in_launch_json": false,
+      "key_in_model_env": false,
+      "key_on_process_cmdline_pids": [],
+      "launch": {
+        "container": "aegis-model-server-igmyze",
+        "inference_server": "llama.cpp CPU b11819",
+        "libgomp_sha256": "2380ddc4427d9fde812406bfdbbf28f3cceecca77c4ad5fa88a7692b7cfade53",
+        "mode": "sandbox",
+        "model_file": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
+        "model_sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+        "network": "none",
+        "server_binary_sha256": "17d2573dede0314fe681f3c2c821a9a44818949e1073200292353efb21c426bb",
+        "transport": "unix_socket"
+      },
+      "sandbox": {
+        "args_contain_key_file_path_only": true,
+        "cap_add": [],
+        "cap_dropped": 11,
+        "inside_capeff_nonewprivs": "['0000000000000000', '1']",
+        "inside_connect_1_1_1_1_errno": "101",
+        "inside_interfaces": "['lo']",
+        "inside_rootfs": "rootfs-readonly 30",
+        "memory_bytes": 3221225472,
+        "mounts": [
+          "/models/model.gguf:ro",
+          "/opt/hostlib:ro",
+          "/opt/llama:ro",
+          "/run/aegis-key/key:ro",
+          "/run/aegis-model:rw"
+        ],
+        "nano_cpus": 6000000000,
+        "network_mode": "none",
+        "pids_limit": 64,
+        "readonly_rootfs": true,
+        "security_opt": [
+          "no-new-privileges"
+        ]
+      }
+    }
+  },
+  "observation_count": 420,
+  "observations_sha256": "cf5e318a1192e8b2f37988fff1618d5537637a92413de5b514872523744cb729",
+  "run_id": "P3H-20261110T132637Z",
+  "source_sha256": {
+    "aegis/model_client.py": "a10d60f8cac13594e27f2aedb2844c1556487e2af6a120696eb4201e789187d8",
+    "evaluation/llm_common.py": "1a84ab5ffaedf1643ae8e61f5f29bd10e76776e651881c1276450dcd55db904f",
+    "evaluation/model_server_hardening.py": "dc9f0325a736ab95613434c3aa8510a13ecc222a789939d9ca6c6d95df5b3451",
+    "scripts/start_model_server.sh": "ee2df8641c64a768e86a8331eb6b774a86a19815067bdf9cda9071476faa5bae"
+  },
+  "timestamp_utc": "2026-11-10T13:26:37Z",
+  "trials_per_class": 30,
+  "wall_clock_s": 222.9,
+  "what_is_not_closed": [
+    "cache_prompt=true sent by a client still reuses the slot KV prefix: --no-cache-prompt only sets the default in b11819; closed only because the broker is the only client and refuses to send it",
+    "GET /props cannot be disabled (needs the key; shows defaults and the model path, no prompt text)",
+    "the live KV cells of the single slot between requests, CPU caches, memory bandwidth and timing",
+    "GPU / accelerator memory: CPU build only",
+    "other inference servers and builds"
+  ]
+}
