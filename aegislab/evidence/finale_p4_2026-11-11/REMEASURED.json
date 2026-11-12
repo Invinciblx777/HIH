@@ -1,0 +1,55 @@
+{
+  "schema": "aegislab-remeasured/1",
+  "created": "2026-11-11",
+  "code_commit": "e048ad908c985291c779debb99fdfa677baf4e39",
+  "code_revision": {
+    "files": 90,
+    "note": "not a git repository; hash over aegis/ sandbox/ evaluation/ scripts/ tests/ samples/ (*.py, *.sh, *.json)",
+    "tree_sha256": "sha256:832dd7cbc6ed9372aec1acfed3648a462f6ba78161483d8013cce2e9dedd56e4"
+  },
+  "host": "Fedora 45 (kernel 7.2.15-300.fc45.x86_64), Python 3.15, rootless Podman 6.1.3, crun 1.30.1, SELinux enforcing",
+  "measurements": [
+    {
+      "what": "audit tamper / truncation suite and the API isolation matrix, on the F4 runtime (--userns auto, --user 900:900); publishes bundles/VAL-001 and bundles/VAL-001_TAMPERED_truncated_last3",
+      "command": "AEGIS_VAR=<scratch>/validation .venv/bin/python evaluation/run_validation.py --out evidence/finale_p4_2026-11-11/validation --runs 30 --seed 1",
+      "needs": "rootless Podman (30 real runs, stub model)",
+      "wall_clock_s": 152,
+      "files": [
+        "validation/isolation_matrix.json",
+        "validation/audit_tamper.json"
+      ],
+      "recorded_before": "evidence/finale_rebaseline_2026-11-10/validation/"
+    },
+    {
+      "what": "Phase 2 extended role x operation x state matrix (560 attempts), with the P4 capability-token and anomaly code in the API",
+      "command": "AEGIS_VAR=<scratch>/phase2 .venv/bin/python evaluation/phase2_matrix.py --out evidence/finale_p4_2026-11-11/role_matrix_extended.json",
+      "needs": "nothing (container-free)",
+      "wall_clock_s": 4,
+      "files": [
+        "role_matrix_extended.json"
+      ],
+      "recorded_before": "evidence/finale_rebaseline_2026-11-10/role_matrix_extended.json"
+    },
+    {
+      "what": "E1-E9 harness (stub model, real sandboxes on the F4 runtime)",
+      "command": "AEGIS_VAR=<scratch>/e1e9 .venv/bin/python evaluation/run_evaluation.py --runs 10 --out evidence/finale_p4_2026-11-11/e1_e9_rerun",
+      "needs": "rootless Podman",
+      "wall_clock_s": 205,
+      "files": [
+        "e1_e9_rerun/results.json",
+        "e1_e9_rerun/RESULTS.md"
+      ],
+      "recorded_before": "evidence/finale_rebaseline_2026-11-10/e1_e9_rerun/"
+    }
+  ],
+  "raw_files_sha256": {
+    "validation/isolation_matrix.json": "2ca784ce2df8bdf76b65f08e24e6527ac0dfd80c5bf010ada19cb3d3b2a6bcc2",
+    "validation/audit_tamper.json": "d939c94f7c3e0879ba2b5db0ca19a8551f8229645b21bcacb1f117d1903d8db2",
+    "role_matrix_extended.json": "51ab5b9369fc00736af6cca0136aa10d08efd8f54b0da9a3262feb473264b502",
+    "e1_e9_rerun/results.json": "cbcf87ac27d3c0f1eb101e268439ebf054f1613612396676aef7ac596c7656b7",
+    "e1_e9_rerun/RESULTS.md": "03390af288ee27c0a2aa1fa482f797297df639a4c6f769b4d498cc48ed3bc254"
+  },
+  "after_the_measurement": {
+    "032eb84": "the real-model timing default (runs.default_timing). It applies only to a run created without a timing choice AND with a real-model backend. These three measurements use the stub model and either pass an explicit timing_bucket_ms or get the stub default, 250 ms buckets, as before; the policy recorded in every run they create is byte-identical. Not re-run for that reason; the real-model experiments it could affect (E1-E5) and the F4 proof were re-run on 032eb84 (llm_final/, userns_proof_final/)."
+  }
+}

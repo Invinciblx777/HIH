@@ -703,7 +703,7 @@ function drawRunBox() {
       <div class="row">${profileSel("prof2", v && v.defence_profile)}<button class="btn lg" type="button" data-step="defence" ${off}>Submit as blue</button></div>
       <p class="lbl">Step 3 · Freeze</p><div class="row"><button class="btn solid lg" type="button" data-step="freeze" ${off}>${icon("shield")} Freeze configuration</button></div>`;
   } else if (rec && rec.state === "FROZEN") {
-    ctl = `<p class="lbl">Step 4 · Start</p><p class="small muted">Launches three hardened rootless containers and the broker. About 5 s with no padding, about 10 s with 250 ms buckets.</p>
+    ctl = `<p class="lbl">Step 4 · Start</p><p class="small muted">Launches three hardened rootless containers and the broker. About 5 s with no padding, about 10 s with 250 ms buckets; with a real model and deadline release, about 1.4 s per attack.</p>
       <div class="row"><button class="btn solid lg" type="button" data-step="start" ${off || (running ? "disabled" : "")}>${icon("play")} Start the run</button></div>`;
   } else if (rec && rec.state === "RUNNING") {
     ctl = `<p class="lbl">Step 5 · Observe</p><div class="loading" role="status"><i aria-hidden="true"><b></b><b></b><b></b></i>${esc(rec.evaluated ?? 0)} of ${esc(rec.attack_count ?? "?")} attacks evaluated</div>
@@ -724,7 +724,7 @@ function drawRunBox() {
       <li><span class="k">State</span><span class="v"><b>${esc(rec.state)}</b> <span class="tiny">${esc(STEP_HELP[rec.state] || "")}</span></span></li>
       <li><span class="k">Mode</span><span class="v">${runModeTag(v)}</span></li>
       <li><span class="k">Defence</span><span class="v">${prof ? esc(prof.title) : v && v.defence_profile === undefined ? "—" : "sample (not changed)"}</span></li>
-      <li><span class="k">Attacks</span><span class="v">${rec.evaluated ?? 0} of ${rec.attack_count ?? "?"} evaluated · timing bucket ${esc(rec.policy && rec.policy.timing_bucket_ms)} ms${rec.complete === false ? ` · <span class="st warn">incomplete</span>` : rec.complete ? " · complete" : ""}</span></li>
+      <li><span class="k">Attacks</span><span class="v">${rec.evaluated ?? 0} of ${rec.attack_count ?? "?"} evaluated · ${rec.policy && rec.policy.timing_mode === "deadline" ? `deadline release at t0 + ${esc(rec.policy.timing_deadline_ms)} ms` : `timing bucket ${esc(rec.policy && rec.policy.timing_bucket_ms)} ms`}${rec.complete === false ? ` · <span class="st warn">incomplete</span>` : rec.complete ? " · complete" : ""}</span></li>
       ${v ? `<li><span class="k">Audit log</span><span class="v">${v.audit_entries} entries, signed up to #${v.signed_upto} · <a href="${href("audit", { src: "log", run: rec.id })}">open</a></span></li>` : ""}
       ${rec.state === "RELEASED" && rec.outcomes ? `<li><span class="k">Outcomes</span><span class="v">${Object.entries(rec.outcomes).map(([k, n]) => `${esc(k)} ${n}`).join(" · ")}</span></li>` : ""}
       ${v && v.next_actions.length ? `<li><span class="k">Next</span><span class="v">${v.next_actions.map((a) => esc(a.label)).join("<br>")}</span></li>` : ""}
@@ -737,7 +737,7 @@ function drawRunBox() {
       ${ctl}
       <p class="lbl">${rec ? "New run" : "Step 1 · Create a run"}</p>
       <div class="row">
-        <label class="field">Timing padding<select id="bucket"><option value="250">250 ms buckets (default policy)</option><option value="0">none (faster)</option></select></label>
+        <label class="field">Timing padding<select id="bucket"><option value="">default policy (stub: 250 ms buckets; real model: deadline release)</option><option value="250">250 ms buckets</option><option value="0">none (faster)</option></select></label>
         ${profileSel("prof1")}
         <button class="btn ${rec && rec.state !== "RELEASED" && rec.state !== "FAILED" ? "" : "solid"} lg" id="start-run" type="button" ${off || (running ? "disabled" : "")}>${icon("plus")} Create run</button>
       </div>
@@ -771,8 +771,10 @@ async function labPost(btn, path, body, ok, idem) {
 /* One key per click: a retried or duplicated create request returns the run it already created instead of a second one. */
 const idemKey = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), (x) => x.toString(16).padStart(2, "0")).join("");
 async function startRun(ev) {
-  const bucket = $("#bucket") ? Number($("#bucket").value) : 250, prof = $("#prof1") ? $("#prof1").value : "sample";
-  await labPost(ev.currentTarget, "/api/lab/runs", { timing_bucket_ms: bucket, defence_profile: prof, stop_after: "created" },
+  const bv = $("#bucket") ? $("#bucket").value : "", prof = $("#prof1") ? $("#prof1").value : "sample";
+  const body = { defence_profile: prof, stop_after: "created" };
+  if (bv !== "") body.timing_bucket_ms = Number(bv);  // omitted: the control plane's default policy (finale P4)
+  await labPost(ev.currentTarget, "/api/lab/runs", body,
     (b) => `${b.run_id} created by the operator; defence submitted by the blue participant`, idemKey());
 }
 async function runStep(step, btn) {
@@ -813,7 +815,7 @@ async function labOpen(key) {
     const tm = (S.exp || {}).timing;
     if (tm && tm.claims) actual += `<ul class="ledger"><li><span class="k">No padding</span><span class="v">accuracy ${esc(tm.claims.acc0)} (control: leak detected)</span></li><li><span class="k">250 ms buckets</span><span class="v">accuracy ${esc(tm.claims.acc250)}, pooled ${esc(tm.claims.pool250)}</span></li><li><span class="k">Cost</span><span class="v">${esc(tm.claims.cost250)} median added latency</span></li></ul>`;
     evidence = [tm ? tm.source : "evidence/closeout_2026-10-22/timing/", "Experiments page (recomputed from the raw files)"];
-    limits = ["n=200 per execution cannot tell an accuracy up to about 0.57 from chance.", "Cache and memory-bandwidth channels were not measured.", "Stub latency is a constant sleep. With the real model (ONE execution, 10 Nov 2026) 250 ms padding left accuracy 1.000; only a bucket at the measured p99 (1600 ms) gave a non-significant result (Experiments page)."];
+    limits = ["n=200 per execution cannot tell an accuracy up to about 0.57 from chance.", "Cache and memory-bandwidth channels were not measured.", "Stub latency is a constant sleep. With the real model (three executions, 11 Nov 2026) 250 ms padding left accuracy 0.945-0.960; deadline release, the real-model default, gave 0.495-0.575 against baselines 0.515-0.540, no leak detected (Experiments page)."];
     action = `<a class="btn lg" href="#/experiments">Open experiments ${icon("right")}</a>`;
   } else {
     const ids = c.id === "E1" ? ["E1", "E2"] : [c.id];
@@ -958,7 +960,7 @@ const TOPO = {
       trust: "Untrusted. Assumed hostile: may plant links, FIFOs or oversized messages in its own mailbox.",
       allow: ["Write requests into its own mailbox (spool/out)", "Read the broker's replies (spool/in)", "Read its own attack pack, read-only"],
       deny: ["Any network connection (no interfaces besides loopback)", "Reaching the defence runner or model worker directly", "Reading the frozen defence config or sealed results", "Claiming another tenant's identity in a message"],
-      controls: ["--network none, --read-only, --cap-drop ALL, no-new-privileges", "--userns keep-id (non-root), pids/memory/CPU limits", "Private SELinux label per container (:Z)"], flags: "red", test: ["sandbox-containment", "cross-role-isolation"] },
+      controls: ["--network none, --read-only, --cap-drop ALL, no-new-privileges", "--userns auto --user 900:900 (its own subordinate host UID, never the key owner), pids/memory/CPU limits", "Private SELinux label per container (:Z)"], flags: "red", test: ["sandbox-containment", "cross-role-isolation"] },
     blue: { x: 40, y: 262, w: 190, h: 60, t: "Blue-team workload", s: "defence runner, frozen config", mc: "var(--cobalt)",
       role: "Applies the blue team's frozen input and output rules to every attack and model answer.",
       trust: "A peer, not trusted: anything other than a clear allow or block verdict is treated as block.",
@@ -1453,6 +1455,7 @@ async function auditLog(q, persp) {
   A.run = q.run && lr.some((r) => r.id === q.run) ? q.run : (lr[0] || {}).id || null;
   render(`${persp}<div class="intro"><p>The run's hash-chained audit log, entry by entry: sequence, actor, operation, decision, the entry's hash and whether a signed checkpoint covers it. Metadata only: payloads, model outputs, defence rules and the digests of team inputs never leave the server; attack outcomes appear once the run is released.</p>${labelTag("live")}</div>
     ${canAct() ? "" : `<div class="note">${esc(noSession())} The signed log is readable only in the operator session; the monitoring stream stays public.</div>`}
+    <div id="l-anom"></div>
     <div class="row" id="l-filters"></div>
     <div class="meta-row"><span id="l-meta" role="status" aria-live="polite"></span><label class="switch"><input type="checkbox" id="l-live" ${A.live ? "checked" : ""}> Update every 2 s</label></div>
     <div id="l-table">${A.run ? loading("Reading the audit log…") : `<div class="empty"><strong>No lab run yet</strong><a href="#/lab">Create one in the lab</a>; its audit log appears here.</div>`}</div>`);
@@ -1476,15 +1479,30 @@ async function fetchLog(first) {
     const sig = [d.total, d.matched, d.signed_upto, A.off].join(":");
     const changed = !A.log || sig !== A.logSig;
     A.log = d; A.logSig = sig;
-    if (first || changed) drawLog();
+    if (first || changed) { drawLog(); fetchAnom(); }
     else $("#l-meta").textContent = $("#l-meta").textContent.replace(/updated .*/, "updated " + new Date().toLocaleTimeString());
   } catch (e) { const m = $("#l-meta"); if (m) m.innerHTML = `<span class="st fail">Could not read the audit log: ${esc(e.message)}</span> <span class="muted">(showing the last data received)</span>`; }
+}
+/* finale P4: the broker's anomaly detectors for the selected run (operator / reviewer only, like the signed log) */
+async function fetchAnom() {
+  const A = S.audit, el = $("#l-anom"); if (!el || !A.run) return;
+  try {
+    const d = await get(`/api/lab/runs/${encodeURIComponent(A.run)}/anomalies`);
+    const n = d.alerts.length;
+    el.innerHTML = `<details class="note mt" id="anom" ${n ? "open" : ""}><summary><b>Anomaly detectors</b> · ${n ? `<span class="st alert">${fmt(n)} alert${n === 1 ? "" : "s"}</span>` : `<span class="st ok">no alert</span>`} · ${d.sealed_summary ? "summary sealed" : "run open: live to operator and reviewer only"}</summary>
+      <div class="table-wrap"><table><thead><tr><th>Detector</th><th>Threshold</th><th>Fired</th><th>Rationale</th></tr></thead><tbody>
+      ${d.detectors.map((x) => `<tr><td class="nw">${esc(x.name)}</td><td>${esc(x.threshold)}</td><td>${x.fired ? `<span class="st alert">${x.fired}</span>` : "0"}</td><td class="small">${esc(x.rationale)}</td></tr>`).join("")}
+      </tbody></table></div>
+      ${n ? `<ul class="small">${d.alerts.map((a) => `<li>Audit entry <b>#${a.seq}</b> ${clock(a.ts)} · ${esc(a.detector)} · ${esc(JSON.stringify(a.observed))} · <span class="hash">${short(a.hash, 12)}</span> ${a.signed ? `<span class="st ok">signed</span>` : `<span class="muted">pending</span>`}</li>`).join("")}</ul>` : ""}
+      <p class="tiny">${esc(d.note)}</p></details>`;
+    wrapTables(el);
+  } catch (e) { el.innerHTML = `<p class="small st fail">Could not read the anomaly detectors: ${esc(e.message)}</p>`; }
 }
 function drawLog() {
   const A = S.audit, d = A.log, el = $("#l-table"); if (!el || !d) return;
   const sel = (key, label, vals) => `<label class="field">${label}<select data-lf="${key}"><option value="">all</option>${vals.map((v) => `<option ${A.lf[key] === v ? "selected" : ""}>${esc(v)}</option>`).join("")}</select></label>`;
   $("#l-filters").innerHTML = `<label class="field">Run<select id="l-run">${labRuns().map((r) => `<option ${r.id === A.run ? "selected" : ""}>${esc(r.id)}</option>`).join("")}</select></label>
-    ${sel("type", "Event type", d.facets.type)}${sel("actor", "Actor", d.facets.actor)}${sel("decision", "Decision", ["denied", "allowed", "failed", "ok", "info"])}`;
+    ${sel("type", "Event type", d.facets.type)}${sel("actor", "Actor", d.facets.actor)}${sel("decision", "Decision", ["denied", "allowed", "alert", "failed", "ok", "info"])}`;
   $("#l-run").addEventListener("change", (e) => { setQuery({ run: e.target.value, open: null }); A.run = e.target.value; A.off = 0; A.lf = { type: "", actor: "", decision: "" }; fetchLog(true); });
   $$("[data-lf]").forEach((x) => x.addEventListener("change", () => { A.lf[x.dataset.lf] = x.value; A.off = 0; fetchLog(true); }));
   $("#l-meta").textContent = `${d.run_id} · ${d.state} · ${fmt(d.matched)} of ${fmt(d.total)} entries · signed up to #${d.signed_upto} by ${d.checkpoints} checkpoints${d.terminal_anchor ? " · terminal anchor written" : ""} · updated ${new Date().toLocaleTimeString()}`;
@@ -1698,7 +1716,7 @@ async function experiments() {
   <div class="intro"><p>Saved results from the project's experiments, each with the label of how it was produced. Where the raw files are in the repository, the console recomputes the figures from them and says whether they agree. Nothing on this page is running now.</p></div>
   <section class="sec">${secHead("Labels used")}
     <ul class="ledger">
-      <li><span class="k">${labelTag("pre")}</span><span class="v">Saved runs against a real model (Qwen2.5-0.5B, CPU llama.cpp), re-measured on 10 Nov 2026 on the current code. Nothing on this page runs a model; the live real-model console and demo are named below.</span></li>
+      <li><span class="k">${labelTag("pre")}</span><span class="v">Saved runs against a real model (Qwen2.5-0.5B, CPU llama.cpp), re-measured on the current code (the date is shown with the runs). Nothing on this page runs a model; the live real-model console and demo are named below.</span></li>
       <li><span class="k">${labelTag("rec")}</span><span class="v">A saved transcript of a real execution, replayed, not re-run.</span></li>
       <li><span class="k">${labelTag("live")}</span><span class="v">Executed now on this machine, including the recomputations below.</span></li>
       <li><span class="k">${labelTag("stub")}</span><span class="v">Measured with the deterministic stub model, which is not an LLM.</span></li></ul></section>
@@ -1711,7 +1729,7 @@ async function experiments() {
     <div class="note">Zero observed leaks are counts from finite experiments with one 0.5B model. They bound the leak rate for this configuration (see the one-sided 95% upper bound in E1); they do not prove isolation in general. The positive controls show the detectors fire when context is deliberately shared. GPU memory and accelerator KV-cache isolation were not tested.</div>
     ${(rm.limitations || []).length ? `<p class="lbl">Stated limitations of these runs</p><ul class="dash" style="padding-left:18px">${rm.limitations.map((l) => `<li class="small">${esc(l)}</li>`).join("")}</ul>` : ""}
     ${(rm.revalidation || []).length ? `<p class="lbl">Re-validation on later trees</p><ul class="dash" style="padding-left:18px">${rm.revalidation.map((l) => `<li class="small">${esc(l)}</li>`).join("")}</ul>` : ""}</section>
-  ${rm.live ? `<section class="sec">${secHead("Real model live (finale P3)", `<span class="label sandbox real">${esc(rm.live.label)}</span>`)}
+  ${rm.live ? `<section class="sec">${secHead("Real model live", `<span class="label sandbox real">${esc(rm.live.label)}</span>`)}
     <p class="small">Not on this page: <code>${esc(rm.live.console)}</code> runs every Lab run with the real model, and <code>${esc(rm.live.demo)}</code> shows stateless sessions, a leaking positive control, the broker withholding that leak and strict verification in about a minute. ${esc(rm.live.what)}.</p>
     <ul class="dash" style="padding-left:18px">${Object.entries(rm.finale_p3 || {}).map(([k, v]) => `<li class="small"><b>${esc(k.replace("_", " "))}</b>: ${esc(Array.isArray(v) ? v.join(" · ") : v)}</li>`).join("")}</ul>
     ${(rm.history || []).length ? `<p class="lbl">23 Oct 2026 (recorded) vs 10 Nov 2026 (re-measured on the current code)</p><div class="table-wrap"><table><thead><tr><th>Figure</th><th>23 Oct</th><th>10 Nov</th></tr></thead><tbody>${rm.history.map((h) => `<tr><td class="nw">${esc(h.figure)}</td><td class="small">${esc(h.recorded_23_oct)}</td><td class="small">${h.same ? "" : `<span class="st warn">differs</span> `}${esc(h.remeasured_10_nov)}</td></tr>`).join("")}</tbody></table></div>` : ""}</section>` : ""}`}
@@ -1720,7 +1738,7 @@ async function experiments() {
     <div class="mt">${strips}<div class="strip-axis"><span></span><span class="ticks">${[0.4, 0.5, 0.6, 0.7, 0.8, 0.9].map((t) => `<span style="left:${pos(t)}%">${t.toFixed(1)}</span>`).join("")}</span><span>accuracy · permutation p</span></div></div>
     <div class="mt">${recomp(tm.recompute)}</div>
     <p class="small">With 250 ms buckets: accuracy ${esc(tm.claims.acc250)} (pooled ${esc(tm.claims.pool250)}); cost ${esc(tm.claims.cost250)} median added latency. Unrestricted CPU neighbour: broker mailbox round trip ${esc(tm.claims.unres_inc)}.</p>
-    <div class="note">With the stub model, padding weakened this classifier to chance level in these runs. With the real model it did not at 250 ms (see "Real model live", timing: ONE execution); n=200 cannot distinguish accuracy up to about 0.57 from chance, and stronger adversaries, cache and memory-bandwidth channels were not measured. The channel is weakened, not proven eliminated.</div></section>`}
+    <div class="note">With the stub model, padding weakened this classifier to chance level in these runs. With the real model it did not at 250 ms; deadline release, the real-model default, showed no leak in three executions (see "Real model live"); n=200 cannot distinguish accuracy up to about 0.57 from chance, and stronger adversaries, cache and memory-bandwidth channels were not measured. The channel is weakened, not proven eliminated.</div></section>`}
   ${sy.available === false ? `<div class="note bad">${esc(sy.error)}</div>` : `<section class="sec">${secHead("Recorded system tests", labelTag("stub"))}
     <p class="small muted">Container-free access matrix and audit tamper sweep from the 22 Oct 2026 validation. Source: ${esc(sy.source)}.</p>
     <div class="table-wrap mt"><table><thead><tr><th>Claim</th><th>Value</th><th>File</th></tr></thead><tbody>${sy.rows.map((r) => `<tr><td>${esc(r.claim)}</td><td class="nw">${esc(r.value)}</td><td class="nw">${esc(r.file)}</td></tr>`).join("")}</tbody></table></div></section>`}

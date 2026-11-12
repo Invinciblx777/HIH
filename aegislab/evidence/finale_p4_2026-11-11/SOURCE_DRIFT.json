@@ -1,0 +1,273 @@
+{
+  "schema": "aegislab-source-drift/1",
+  "created": "2026-11-11",
+  "phase": "finale P4",
+  "what": "Acknowledgements for the 23 Oct Phase 3 runs, the 10 Nov finale P3 runs (Qwen2.5-0.5B and 1.5B) and the P3 hardening check after the finale P4 changes. Two kinds: 'affects': false with a reason (E1, E3: the changed code does not run in them), and 'affects': true with 'superseded_by' (E2, E4, E5, the hardening check): accepted by evaluation/check_claims.py only while that directory holds a re-measurement of the experiment whose recorded sources equal the current files. The acknowledged state is the final P4 code (commit change_commit, after the real-model timing default); E2, E4 and E5 were re-measured on it in evidence/finale_p4_2026-11-11/llm_final. The first pass on e048ad9 (evidence/finale_p4_2026-11-11/llm) is kept as recorded and superseded.",
+  "base_commit": "4b82814c07aaf155e0654f44fc85a4d1ceb6660b",
+  "change_commit": "032eb84634727ab789b446b099a35c55799c5f53",
+  "recorded_runs": [
+    "evidence/phase3_2026-10-23/llm",
+    "evidence/finale_p3_2026-11-10/llm",
+    "evidence/finale_p3_2026-11-10/llm_qwen2.5-1.5b",
+    "evidence/finale_p3_2026-11-10/model_server_hardening/P3H-20261110T132637Z"
+  ],
+  "changes": [
+    {
+      "path": "aegis/api.py",
+      "old_sha256": "44b13b067e58ba03c14e3f5eee456f49d9fc600c1785cf96f0a36e6468a9315c",
+      "new_sha256": "33a1ae2f03ab650b8e2e03726b309d7f871877a63ee9b396c17b3f39b59b16d1",
+      "commit": "e048ad908c985291c779debb99fdfa677baf4e39",
+      "reason": "finale P4: CreateReq timing_deadline_ms / shadow_model_on_refusal (task 1); signed, expiring, run-scoped capability tokens accepted on run endpoints, POST /api/runs/{id}/capabilities (SHOULD 6).",
+      "claims": {
+        "E1_canary_matrix": {
+          "affects": false,
+          "why": "E1 and E3 call the model adapter directly (llm_common / aegis.model_client over TCP to a llama-server host process that llm_isolation starts itself); no code in aegis/runs.py, aegis/api.py or aegis/evidence.py runs in them."
+        },
+        "E3_kv_cache_oracle": {
+          "affects": false,
+          "why": "E1 and E3 call the model adapter directly (llm_common / aegis.model_client over TCP to a llama-server host process that llm_isolation starts itself); no code in aegis/runs.py, aegis/api.py or aegis/evidence.py runs in them."
+        },
+        "E2_pipeline_canary": {
+          "affects": true,
+          "why": "E2 runs the broker's attack path: P4 changes what it withholds (re-encoded canaries, incomplete scans), when it writes (before the reply) and adds detector and quota entries to the audit log. The claim is re-measured on the P4 code.",
+          "superseded_by": "evidence/finale_p4_2026-11-11/llm_final"
+        },
+        "E4_injection_output_isolation": {
+          "affects": true,
+          "why": "E4 runs the broker's attack path and replays model text against the API gate: P4 changes the withholding rules, the audit log contents and the API's token handling (capability tokens). Re-measured on the P4 code.",
+          "superseded_by": "evidence/finale_p4_2026-11-11/llm_final"
+        },
+        "E5_failure_handling": {
+          "affects": true,
+          "why": "E5 runs broker runs against a failing or killed backend and calls the API: P4 restructures Broker.attack and generate() (cut-off handling, writes before the reply) and changes the API. Re-measured on the P4 code.",
+          "superseded_by": "evidence/finale_p4_2026-11-11/llm_final"
+        }
+      }
+    },
+    {
+      "path": "aegis/api.py",
+      "old_sha256": "c5c4b4b4976df7420c3c89af20950eaf4e22f5cddbad14fb2af3c4a41eac718e",
+      "new_sha256": "33a1ae2f03ab650b8e2e03726b309d7f871877a63ee9b396c17b3f39b59b16d1",
+      "commit": "e048ad908c985291c779debb99fdfa677baf4e39",
+      "reason": "finale P4: CreateReq timing_deadline_ms / shadow_model_on_refusal (task 1); signed, expiring, run-scoped capability tokens accepted on run endpoints, POST /api/runs/{id}/capabilities (SHOULD 6).",
+      "claims": {
+        "E1_canary_matrix": {
+          "affects": false,
+          "why": "E1 and E3 call the model adapter directly (llm_common / aegis.model_client over TCP to a llama-server host process that llm_isolation starts itself); no code in aegis/runs.py, aegis/api.py or aegis/evidence.py runs in them."
+        },
+        "E3_kv_cache_oracle": {
+          "affects": false,
+          "why": "E1 and E3 call the model adapter directly (llm_common / aegis.model_client over TCP to a llama-server host process that llm_isolation starts itself); no code in aegis/runs.py, aegis/api.py or aegis/evidence.py runs in them."
+        },
+        "E2_pipeline_canary": {
+          "affects": true,
+          "why": "E2 runs the broker's attack path: P4 changes what it withholds (re-encoded canaries, incomplete scans), when it writes (before the reply) and adds detector and quota entries to the audit log. The claim is re-measured on the P4 code.",
+          "superseded_by": "evidence/finale_p4_2026-11-11/llm_final"
+        },
+        "E4_injection_output_isolation": {
+          "affects": true,
+          "why": "E4 runs the broker's attack path and replays model text against the API gate: P4 changes the withholding rules, the audit log contents and the API's token handling (capability tokens). Re-measured on the P4 code.",
+          "superseded_by": "evidence/finale_p4_2026-11-11/llm_final"
+        },
+        "E5_failure_handling": {
+          "affects": true,
+          "why": "E5 runs broker runs against a failing or killed backend and calls the API: P4 restructures Broker.attack and generate() (cut-off handling, writes before the reply) and changes the API. Re-measured on the P4 code.",
+          "superseded_by": "evidence/finale_p4_2026-11-11/llm_final"
+        }
+      }
+    },
+    {
+      "path": "aegis/evidence.py",
+      "old_sha256": "4856f990620cfb63f285e19666efc4fead87f729a73200941425a98b27d927e5",
+      "new_sha256": "70e4016772d4faf6028eeeb161df5f072cdba4e378ca502b5f179340f4287e37",
+      "commit": "e048ad908c985291c779debb99fdfa677baf4e39",
+      "reason": "finale P4: export_bundle also writes reviewer_countersignature.json and reviewer_public_key.b64 when the release wrote a countersignature (SHOULD 7).",
+      "claims": {
+        "E1_canary_matrix": {
+          "affects": false,
+          "why": "E1 and E3 call the model adapter directly (llm_common / aegis.model_client over TCP to a llama-server host process that llm_isolation starts itself); no code in aegis/runs.py, aegis/api.py or aegis/evidence.py runs in them."
+        },
+        "E3_kv_cache_oracle": {
+          "affects": false,
+          "why": "E1 and E3 call the model adapter directly (llm_common / aegis.model_client over TCP to a llama-server host process that llm_isolation starts itself); no code in aegis/runs.py, aegis/api.py or aegis/evidence.py runs in them."
+        },
+        "E2_pipeline_canary": {
+          "affects": true,
+          "why": "E2 runs the broker's attack path: P4 changes what it withholds (re-encoded canaries, incomplete scans), when it writes (before the reply) and adds detector and quota entries to the audit log. The claim is re-measured on the P4 code.",
+          "superseded_by": "evidence/finale_p4_2026-11-11/llm_final"
+        },
+        "E4_injection_output_isolation": {
+          "affects": true,
+          "why": "E4 runs the broker's attack path and replays model text against the API gate: P4 changes the withholding rules, the audit log contents and the API's token handling (capability tokens). Re-measured on the P4 code.",
+          "superseded_by": "evidence/finale_p4_2026-11-11/llm_final"
+        },
+        "E5_failure_handling": {
+          "affects": true,
+          "why": "E5 runs broker runs against a failing or killed backend and calls the API: P4 restructures Broker.attack and generate() (cut-off handling, writes before the reply) and changes the API. Re-measured on the P4 code.",
+          "superseded_by": "evidence/finale_p4_2026-11-11/llm_final"
+        }
+      }
+    },
+    {
+      "path": "aegis/model_client.py",
+      "old_sha256": "3a0beaec5ab2816cb0fd0579581c7d8ca959d2f3ed7b6a3bca988f9b408ae2a1",
+      "new_sha256": "4b357838fc05a0751cd31af4aa3af266be7ef541380d6c1a71147ccea9742791",
+      "commit": "e048ad908c985291c779debb99fdfa677baf4e39",
+      "reason": "finale P4: optional per-call timeout_s (deadline mode, task 1); UNIX-socket owner must equal the expected mapped UID, AEGIS_MODEL_UNIX_SOCKET_OWNER_UID (task 2, F4).",
+      "claims": {
+        "E1_canary_matrix": {
+          "affects": false,
+          "why": "E1 and E3 call the adapter directly over TCP. The P4 change adds an optional timeout_s argument to generate()/_request() (default None keeps the configured timeout: the request body, the cache guard, the watchdog and the error mapping are unchanged), and an expected-owner check for the UNIX-socket transport (AEGIS_MODEL_UNIX_SOCKET_OWNER_UID), inactive over TCP; describe() returns the same keys when the new variable is unset (tests/test_finale_p3_model_client.py, tests/test_finale_p4_userns.py P4U05-P4U07)."
+        },
+        "E3_kv_cache_oracle": {
+          "affects": false,
+          "why": "E1 and E3 call the adapter directly over TCP. The P4 change adds an optional timeout_s argument to generate()/_request() (default None keeps the configured timeout: the request body, the cache guard, the watchdog and the error mapping are unchanged), and an expected-owner check for the UNIX-socket transport (AEGIS_MODEL_UNIX_SOCKET_OWNER_UID), inactive over TCP; describe() returns the same keys when the new variable is unset (tests/test_finale_p3_model_client.py, tests/test_finale_p4_userns.py P4U05-P4U07)."
+        },
+        "E2_pipeline_canary": {
+          "affects": true,
+          "why": "E2 runs the broker's attack path: P4 changes what it withholds (re-encoded canaries, incomplete scans), when it writes (before the reply) and adds detector and quota entries to the audit log. The claim is re-measured on the P4 code.",
+          "superseded_by": "evidence/finale_p4_2026-11-11/llm_final"
+        },
+        "E4_injection_output_isolation": {
+          "affects": true,
+          "why": "E4 runs the broker's attack path and replays model text against the API gate: P4 changes the withholding rules, the audit log contents and the API's token handling (capability tokens). Re-measured on the P4 code.",
+          "superseded_by": "evidence/finale_p4_2026-11-11/llm_final"
+        },
+        "E5_failure_handling": {
+          "affects": true,
+          "why": "E5 runs broker runs against a failing or killed backend and calls the API: P4 restructures Broker.attack and generate() (cut-off handling, writes before the reply) and changes the API. Re-measured on the P4 code.",
+          "superseded_by": "evidence/finale_p4_2026-11-11/llm_final"
+        }
+      }
+    },
+    {
+      "path": "aegis/model_client.py",
+      "old_sha256": "a10d60f8cac13594e27f2aedb2844c1556487e2af6a120696eb4201e789187d8",
+      "new_sha256": "4b357838fc05a0751cd31af4aa3af266be7ef541380d6c1a71147ccea9742791",
+      "commit": "e048ad908c985291c779debb99fdfa677baf4e39",
+      "reason": "finale P4: optional per-call timeout_s (deadline mode, task 1); UNIX-socket owner must equal the expected mapped UID, AEGIS_MODEL_UNIX_SOCKET_OWNER_UID (task 2, F4).",
+      "claims": {
+        "E1_canary_matrix": {
+          "affects": false,
+          "why": "E1 and E3 call the adapter directly over TCP. The P4 change adds an optional timeout_s argument to generate()/_request() (default None keeps the configured timeout: the request body, the cache guard, the watchdog and the error mapping are unchanged), and an expected-owner check for the UNIX-socket transport (AEGIS_MODEL_UNIX_SOCKET_OWNER_UID), inactive over TCP; describe() returns the same keys when the new variable is unset (tests/test_finale_p3_model_client.py, tests/test_finale_p4_userns.py P4U05-P4U07)."
+        },
+        "E3_kv_cache_oracle": {
+          "affects": false,
+          "why": "E1 and E3 call the adapter directly over TCP. The P4 change adds an optional timeout_s argument to generate()/_request() (default None keeps the configured timeout: the request body, the cache guard, the watchdog and the error mapping are unchanged), and an expected-owner check for the UNIX-socket transport (AEGIS_MODEL_UNIX_SOCKET_OWNER_UID), inactive over TCP; describe() returns the same keys when the new variable is unset (tests/test_finale_p3_model_client.py, tests/test_finale_p4_userns.py P4U05-P4U07)."
+        },
+        "E2_pipeline_canary": {
+          "affects": true,
+          "why": "E2 runs the broker's attack path: P4 changes what it withholds (re-encoded canaries, incomplete scans), when it writes (before the reply) and adds detector and quota entries to the audit log. The claim is re-measured on the P4 code.",
+          "superseded_by": "evidence/finale_p4_2026-11-11/llm_final"
+        },
+        "E4_injection_output_isolation": {
+          "affects": true,
+          "why": "E4 runs the broker's attack path and replays model text against the API gate: P4 changes the withholding rules, the audit log contents and the API's token handling (capability tokens). Re-measured on the P4 code.",
+          "superseded_by": "evidence/finale_p4_2026-11-11/llm_final"
+        },
+        "E5_failure_handling": {
+          "affects": true,
+          "why": "E5 runs broker runs against a failing or killed backend and calls the API: P4 restructures Broker.attack and generate() (cut-off handling, writes before the reply) and changes the API. Re-measured on the P4 code.",
+          "superseded_by": "evidence/finale_p4_2026-11-11/llm_final"
+        },
+        "model_server_hardening": {
+          "affects": true,
+          "why": "The hardening check starts scripts/start_model_server.sh in both modes and talks to it through the adapter: P4 changes how the sandboxed server runs (user namespace, UID, socket ownership, libgomp) and the adapter's socket check. Re-measured on the P4 code with --trials 30.",
+          "superseded_by": "evidence/finale_p4_2026-11-11/model_server_hardening"
+        }
+      }
+    },
+    {
+      "path": "aegis/runs.py",
+      "old_sha256": "30805d932220057831adc152769c8d40377746234eea1d1faa3b297d2940cd6a",
+      "new_sha256": "2e48dc26f7b55c4ca777db7b912783112447e9442709be56d4464e60fce9592e",
+      "commit": "e048ad908c985291c779debb99fdfa677baf4e39",
+      "reason": "finale P4: deadline release mode with cut-offs and the optional shadow call, every decision-dependent write before the reply (task 1); tenant files renamed when undeletable, replies 0644, podman-unshare cleanup (task 2, F4); re-encoded canary detection and withholding, canary.scan_incomplete (task 3); anomaly detectors (task 4); reviewer countersignature on release (SHOULD 7); per-tenant mailbox quotas (SHOULD 8).",
+      "claims": {
+        "E1_canary_matrix": {
+          "affects": false,
+          "why": "E1 and E3 call the model adapter directly (llm_common / aegis.model_client over TCP to a llama-server host process that llm_isolation starts itself); no code in aegis/runs.py, aegis/api.py or aegis/evidence.py runs in them."
+        },
+        "E3_kv_cache_oracle": {
+          "affects": false,
+          "why": "E1 and E3 call the model adapter directly (llm_common / aegis.model_client over TCP to a llama-server host process that llm_isolation starts itself); no code in aegis/runs.py, aegis/api.py or aegis/evidence.py runs in them."
+        },
+        "E2_pipeline_canary": {
+          "affects": true,
+          "why": "E2 runs the broker's attack path: P4 changes what it withholds (re-encoded canaries, incomplete scans), when it writes (before the reply) and adds detector and quota entries to the audit log. The claim is re-measured on the P4 code.",
+          "superseded_by": "evidence/finale_p4_2026-11-11/llm_final"
+        },
+        "E4_injection_output_isolation": {
+          "affects": true,
+          "why": "E4 runs the broker's attack path and replays model text against the API gate: P4 changes the withholding rules, the audit log contents and the API's token handling (capability tokens). Re-measured on the P4 code.",
+          "superseded_by": "evidence/finale_p4_2026-11-11/llm_final"
+        },
+        "E5_failure_handling": {
+          "affects": true,
+          "why": "E5 runs broker runs against a failing or killed backend and calls the API: P4 restructures Broker.attack and generate() (cut-off handling, writes before the reply) and changes the API. Re-measured on the P4 code.",
+          "superseded_by": "evidence/finale_p4_2026-11-11/llm_final"
+        }
+      }
+    },
+    {
+      "path": "aegis/runs.py",
+      "old_sha256": "8206266bd137269475f793fd1a55f42e5f5ac3d88af32f2f56fd89693b12c5af",
+      "new_sha256": "2e48dc26f7b55c4ca777db7b912783112447e9442709be56d4464e60fce9592e",
+      "commit": "e048ad908c985291c779debb99fdfa677baf4e39",
+      "reason": "finale P4: deadline release mode with cut-offs and the optional shadow call, every decision-dependent write before the reply (task 1); tenant files renamed when undeletable, replies 0644, podman-unshare cleanup (task 2, F4); re-encoded canary detection and withholding, canary.scan_incomplete (task 3); anomaly detectors (task 4); reviewer countersignature on release (SHOULD 7); per-tenant mailbox quotas (SHOULD 8).",
+      "claims": {
+        "E1_canary_matrix": {
+          "affects": false,
+          "why": "E1 and E3 call the model adapter directly (llm_common / aegis.model_client over TCP to a llama-server host process that llm_isolation starts itself); no code in aegis/runs.py, aegis/api.py or aegis/evidence.py runs in them."
+        },
+        "E3_kv_cache_oracle": {
+          "affects": false,
+          "why": "E1 and E3 call the model adapter directly (llm_common / aegis.model_client over TCP to a llama-server host process that llm_isolation starts itself); no code in aegis/runs.py, aegis/api.py or aegis/evidence.py runs in them."
+        },
+        "E2_pipeline_canary": {
+          "affects": true,
+          "why": "E2 runs the broker's attack path: P4 changes what it withholds (re-encoded canaries, incomplete scans), when it writes (before the reply) and adds detector and quota entries to the audit log. The claim is re-measured on the P4 code.",
+          "superseded_by": "evidence/finale_p4_2026-11-11/llm_final"
+        },
+        "E4_injection_output_isolation": {
+          "affects": true,
+          "why": "E4 runs the broker's attack path and replays model text against the API gate: P4 changes the withholding rules, the audit log contents and the API's token handling (capability tokens). Re-measured on the P4 code.",
+          "superseded_by": "evidence/finale_p4_2026-11-11/llm_final"
+        },
+        "E5_failure_handling": {
+          "affects": true,
+          "why": "E5 runs broker runs against a failing or killed backend and calls the API: P4 restructures Broker.attack and generate() (cut-off handling, writes before the reply) and changes the API. Re-measured on the P4 code.",
+          "superseded_by": "evidence/finale_p4_2026-11-11/llm_final"
+        }
+      }
+    },
+    {
+      "path": "evaluation/model_server_hardening.py",
+      "old_sha256": "dc9f0325a736ab95613434c3aa8510a13ecc222a789939d9ca6c6d95df5b3451",
+      "new_sha256": "f4f0ced9d9bf6b9066e9a6ed93180594fb7266c27c6dc97aa003121ffac8442a",
+      "commit": "e048ad908c985291c779debb99fdfa677baf4e39",
+      "reason": "finale P4: passes the expected socket owner UID to the adapter's UNIX-socket connection (F4).",
+      "claims": {
+        "model_server_hardening": {
+          "affects": true,
+          "why": "The hardening check starts scripts/start_model_server.sh in both modes and talks to it through the adapter: P4 changes how the sandboxed server runs (user namespace, UID, socket ownership, libgomp) and the adapter's socket check. Re-measured on the P4 code with --trials 30.",
+          "superseded_by": "evidence/finale_p4_2026-11-11/model_server_hardening"
+        }
+      }
+    },
+    {
+      "path": "scripts/start_model_server.sh",
+      "old_sha256": "ee2df8641c64a768e86a8331eb6b774a86a19815067bdf9cda9071476faa5bae",
+      "new_sha256": "7a688763a104e39549be72ad5fcbdf716c092e67a6fa1b619ee220b01bc007bb",
+      "commit": "e048ad908c985291c779debb99fdfa677baf4e39",
+      "reason": "finale P4: --userns auto:size=1024 --user 900:900 instead of keep-id, key copy chowned to the mapped UID, socket directory ACL, process UID check, vendored libgomp with a pinned sha256, run directory removed on refusal (tasks 2 and 5).",
+      "claims": {
+        "model_server_hardening": {
+          "affects": true,
+          "why": "The hardening check starts scripts/start_model_server.sh in both modes and talks to it through the adapter: P4 changes how the sandboxed server runs (user namespace, UID, socket ownership, libgomp) and the adapter's socket check. Re-measured on the P4 code with --trials 30.",
+          "superseded_by": "evidence/finale_p4_2026-11-11/model_server_hardening"
+        }
+      }
+    }
+  ]
+}

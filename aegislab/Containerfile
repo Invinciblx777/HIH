@@ -1,6 +1,11 @@
-# AegisLab sandbox image: one image for red sandbox, defence runner and model worker.
-# Standard library only. Pin the base by digest in production builds.
-FROM docker.io/library/python:3.12-slim
+# AegisLab sandbox image: one image for red sandbox, defence runner and model worker (and the sandboxed model server's root).
+# Standard library only. The base is pinned by digest (finale P4): the digest of the python:3.12-slim image the prototype was
+# built and measured with (pulled 21 Oct 2026; podman image inspect docker.io/library/python:3.12-slim --format '{{.Digest}}').
+# A different base needs a deliberate edit here, and aegis/runtime.py BASE_IMAGE records the same reference in every manifest.
+FROM docker.io/library/python@sha256:e8a38829209aea82774882e5157e1f7c3e8c8393ff53a697b3580896e57f345c
 COPY sandbox/ /app/
 WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+# Non-root by default (finale P4, F4). Every container also gets --user 900:900 and --userns auto (aegis/runtime.py), so UID 900
+# inside is a subordinate UID on the host, never the broker's UID that owns the signing key.
+USER 900:900

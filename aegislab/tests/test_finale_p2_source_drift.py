@@ -91,9 +91,11 @@ def test_a_missing_acknowledgement_file_acknowledges_nothing(tree, tmp_path):
 
 
 def test_the_acknowledgement_files_are_fixed_in_the_pinned_checker():
-    # finale P3 added its own dated file (the P2 file is unchanged history); the list is still fixed here, never discovered
+    # finale P3 and P4 each added their own dated file (the earlier files are unchanged history); the list is still fixed
+    # here, never discovered
     assert [p.relative_to(ROOT).as_posix() for p in check_claims.SOURCE_DRIFT_FILES] == [
-        "evidence/finale_rebaseline_2026-11-10/SOURCE_DRIFT.json", "evidence/finale_p3_2026-11-10/SOURCE_DRIFT.json"]
+        "evidence/finale_rebaseline_2026-11-10/SOURCE_DRIFT.json", "evidence/finale_p3_2026-11-10/SOURCE_DRIFT.json",
+        "evidence/finale_p4_2026-11-11/SOURCE_DRIFT.json"]
 
 
 def test_on_this_tree_the_saved_runs_fail_without_the_acknowledgement_and_pass_with_it(monkeypatch):

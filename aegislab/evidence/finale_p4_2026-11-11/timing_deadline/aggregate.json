@@ -1,0 +1,376 @@
+{
+ "deadline_ms": [
+  1300,
+  1400,
+  1300
+ ],
+ "dirs": [
+  "exec1_seed20261121",
+  "exec2_seed20261122",
+  "exec3_seed20261123"
+ ],
+ "executions": [
+  "TD-20261111T044719Z-a4790c",
+  "TD-20261111T051029Z-83b3b6",
+  "TD-20261111T053443Z-1e652e"
+ ],
+ "settings": {
+  "0": {
+   "added_median_latency_for_answered_requests_ms": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "added_median_wall_clock_per_run_s": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "baseline_adjusted_accuracy": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "cut_off_rate": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "cut_offs": [
+    0,
+    0,
+    0
+   ],
+   "heldout_accuracy": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "majority_baseline": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "model_server_cpu_s_per_run_median": [
+    20887.96,
+    21082.72,
+    20554.99
+   ],
+   "n_answered": [
+    100,
+    100,
+    100
+   ],
+   "n_per_execution": [
+    200,
+    200,
+    200
+   ],
+   "n_refused": [
+    100,
+    100,
+    100
+   ],
+   "overruns": [
+    0,
+    0,
+    0
+   ],
+   "path_label_accuracy": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "path_label_p": [
+    0.001,
+    0.001,
+    0.001
+   ],
+   "payload_in_both_classes": [
+    true,
+    true,
+    true
+   ],
+   "permutation_p": [
+    0.001,
+    0.001,
+    0.001
+   ],
+   "reached_model": [
+    100,
+    100,
+    100
+   ],
+   "verdict": "(control)"
+  },
+  "250": {
+   "added_median_latency_for_answered_requests_ms": [
+    217.32,
+    217.58,
+    228.34
+   ],
+   "added_median_wall_clock_per_run_s": [
+    1.93,
+    2.08,
+    1.99
+   ],
+   "baseline_adjusted_accuracy": [
+    0.445,
+    0.46,
+    0.45
+   ],
+   "cut_off_rate": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "cut_offs": [
+    0,
+    0,
+    0
+   ],
+   "heldout_accuracy": [
+    0.945,
+    0.96,
+    0.95
+   ],
+   "majority_baseline": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "model_server_cpu_s_per_run_median": [
+    20672.57,
+    22776.98,
+    20595.05
+   ],
+   "n_answered": [
+    100,
+    100,
+    100
+   ],
+   "n_per_execution": [
+    200,
+    200,
+    200
+   ],
+   "n_refused": [
+    100,
+    100,
+    100
+   ],
+   "overruns": [
+    0,
+    0,
+    0
+   ],
+   "path_label_accuracy": [
+    0.95,
+    0.96,
+    0.95
+   ],
+   "path_label_p": [
+    0.001,
+    0.001,
+    0.001
+   ],
+   "payload_in_both_classes": [
+    true,
+    true,
+    true
+   ],
+   "permutation_p": [
+    0.001,
+    0.001,
+    0.001
+   ],
+   "reached_model": [
+    100,
+    100,
+    100
+   ],
+   "verdict": "leak detected"
+  },
+  "deadline": {
+   "added_median_latency_for_answered_requests_ms": [
+    518.9,
+    620.87,
+    529.23
+   ],
+   "added_median_wall_clock_per_run_s": [
+    9.44,
+    10.39,
+    9.47
+   ],
+   "baseline_adjusted_accuracy": [
+    -0.02,
+    0.005,
+    0.06
+   ],
+   "cut_off_rate": [
+    0.03,
+    0.08,
+    0.03
+   ],
+   "cut_offs": [
+    3,
+    8,
+    3
+   ],
+   "heldout_accuracy": [
+    0.495,
+    0.545,
+    0.575
+   ],
+   "majority_baseline": [
+    0.515,
+    0.54,
+    0.515
+   ],
+   "model_server_cpu_s_per_run_median": [
+    20716.93,
+    21896.76,
+    20516.55
+   ],
+   "n_answered": [
+    97,
+    92,
+    97
+   ],
+   "n_per_execution": [
+    200,
+    200,
+    200
+   ],
+   "n_refused": [
+    103,
+    108,
+    103
+   ],
+   "overruns": [
+    0,
+    0,
+    0
+   ],
+   "path_label_accuracy": [
+    0.475,
+    0.53,
+    0.575
+   ],
+   "path_label_p": [
+    0.7083,
+    0.3087,
+    0.0649
+   ],
+   "payload_in_both_classes": [
+    true,
+    true,
+    true
+   ],
+   "permutation_p": [
+    0.5604,
+    0.1968,
+    0.044
+   ],
+   "reached_model": [
+    100,
+    100,
+    100
+   ],
+   "verdict": "no leak detected (inconclusive as to absence)"
+  },
+  "deadline+shadow": {
+   "added_median_latency_for_answered_requests_ms": [
+    519.05,
+    620.27,
+    529.16
+   ],
+   "added_median_wall_clock_per_run_s": [
+    9.43,
+    10.37,
+    9.49
+   ],
+   "baseline_adjusted_accuracy": [
+    -0.065,
+    -0.03,
+    0.045
+   ],
+   "cut_off_rate": [
+    0.04,
+    0.07,
+    0.03
+   ],
+   "cut_offs": [
+    4,
+    7,
+    3
+   ],
+   "heldout_accuracy": [
+    0.455,
+    0.505,
+    0.56
+   ],
+   "majority_baseline": [
+    0.52,
+    0.535,
+    0.515
+   ],
+   "model_server_cpu_s_per_run_median": [
+    25165.51,
+    27218.3,
+    24861.02
+   ],
+   "n_answered": [
+    96,
+    93,
+    97
+   ],
+   "n_per_execution": [
+    200,
+    200,
+    200
+   ],
+   "n_refused": [
+    104,
+    107,
+    103
+   ],
+   "overruns": [
+    0,
+    0,
+    0
+   ],
+   "path_label_accuracy": [
+    0.495,
+    0.48,
+    0.515
+   ],
+   "path_label_p": [
+    0.5584,
+    0.6743,
+    0.3786
+   ],
+   "payload_in_both_classes": [
+    true,
+    true,
+    true
+   ],
+   "permutation_p": [
+    0.8302,
+    0.4715,
+    0.1179
+   ],
+   "reached_model": [
+    100,
+    100,
+    100
+   ],
+   "verdict": "no leak detected (inconclusive as to absence)"
+  }
+ },
+ "status": [
+  "COMPLETE",
+  "COMPLETE",
+  "COMPLETE"
+ ]
+}

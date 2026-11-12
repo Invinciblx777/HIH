@@ -1,0 +1,660 @@
+{
+ "bonferroni_alpha": 0.00556,
+ "buckets": {
+  "0": {
+   "added_median_latency_for_answered_ms": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "auc_refused_faster": [
+    0.756,
+    0.797,
+    0.813
+   ],
+   "class_counts_per_execution": [
+    [
+     100,
+     100
+    ],
+    [
+     100,
+     100
+    ],
+    [
+     100,
+     100
+    ]
+   ],
+   "heldout_accuracy": [
+    0.64,
+    0.8,
+    0.8
+   ],
+   "heldout_accuracy_ci95": [
+    [
+     0.571,
+     0.703
+    ],
+    [
+     0.739,
+     0.85
+    ],
+    [
+     0.739,
+     0.85
+    ]
+   ],
+   "leave_one_execution_out": {
+    "ci95": [
+     0.717,
+     0.786
+    ],
+    "n": 600,
+    "per_heldout_execution": [
+     {
+      "accuracy": 0.695,
+      "execution": "TX-20261111T041327Z-9c74d1",
+      "faster_means_refused": true,
+      "n": 200,
+      "threshold_ms": 104.56
+     },
+     {
+      "accuracy": 0.765,
+      "execution": "TX-20261111T042539Z-ca9ebc",
+      "faster_means_refused": true,
+      "n": 200,
+      "threshold_ms": 105.58
+     },
+     {
+      "accuracy": 0.8,
+      "execution": "TX-20261111T043629Z-20dab0",
+      "faster_means_refused": true,
+      "n": 200,
+      "threshold_ms": 103.36
+     }
+    ],
+    "pooled_accuracy": 0.753
+   },
+   "majority_baseline": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "n_per_execution": [
+    200,
+    200,
+    200
+   ],
+   "permutation_p": [
+    0.001,
+    0.001,
+    0.001
+   ],
+   "pooled_heldout": {
+    "accuracy": 0.747,
+    "ci95": [
+     0.71,
+     0.78
+    ],
+    "n": 600
+   },
+   "run_wall_clock_median_s": [
+    4.34,
+    2.92,
+    2.91
+   ],
+   "verdict": "control: leak detected"
+  },
+  "100": {
+   "added_median_latency_for_answered_ms": [
+    52.11,
+    48.93,
+    46.25
+   ],
+   "auc_refused_faster": [
+    0.451,
+    0.573,
+    0.467
+   ],
+   "class_counts_per_execution": [
+    [
+     100,
+     100
+    ],
+    [
+     100,
+     100
+    ],
+    [
+     100,
+     100
+    ]
+   ],
+   "heldout_accuracy": [
+    0.555,
+    0.55,
+    0.53
+   ],
+   "heldout_accuracy_ci95": [
+    [
+     0.486,
+     0.622
+    ],
+    [
+     0.481,
+     0.617
+    ],
+    [
+     0.461,
+     0.598
+    ]
+   ],
+   "leave_one_execution_out": {
+    "ci95": [
+     0.449,
+     0.528
+    ],
+    "n": 600,
+    "per_heldout_execution": [
+     {
+      "accuracy": 0.535,
+      "execution": "TX-20261111T041327Z-9c74d1",
+      "faster_means_refused": true,
+      "n": 200,
+      "threshold_ms": 156.81
+     },
+     {
+      "accuracy": 0.44,
+      "execution": "TX-20261111T042539Z-ca9ebc",
+      "faster_means_refused": false,
+      "n": 200,
+      "threshold_ms": 159.8
+     },
+     {
+      "accuracy": 0.49,
+      "execution": "TX-20261111T043629Z-20dab0",
+      "faster_means_refused": true,
+      "n": 200,
+      "threshold_ms": 156.89
+     }
+    ],
+    "pooled_accuracy": 0.488
+   },
+   "majority_baseline": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "n_per_execution": [
+    200,
+    200,
+    200
+   ],
+   "permutation_p": [
+    0.1229,
+    0.1688,
+    0.2867
+   ],
+   "pooled_heldout": {
+    "accuracy": 0.545,
+    "ci95": [
+     0.505,
+     0.584
+    ],
+    "n": 600
+   },
+   "run_wall_clock_median_s": [
+    5.01,
+    3.55,
+    3.53
+   ],
+   "verdict": "no leak detected (inconclusive as to absence)"
+  },
+  "250": {
+   "added_median_latency_for_answered_ms": [
+    196.87,
+    196.8,
+    196.71
+   ],
+   "auc_refused_faster": [
+    0.443,
+    0.508,
+    0.464
+   ],
+   "class_counts_per_execution": [
+    [
+     100,
+     100
+    ],
+    [
+     100,
+     100
+    ],
+    [
+     100,
+     100
+    ]
+   ],
+   "heldout_accuracy": [
+    0.54,
+    0.435,
+    0.495
+   ],
+   "heldout_accuracy_ci95": [
+    [
+     0.471,
+     0.608
+    ],
+    [
+     0.368,
+     0.504
+    ],
+    [
+     0.426,
+     0.564
+    ]
+   ],
+   "leave_one_execution_out": {
+    "ci95": [
+     0.458,
+     0.538
+    ],
+    "n": 600,
+    "per_heldout_execution": [
+     {
+      "accuracy": 0.495,
+      "execution": "TX-20261111T041327Z-9c74d1",
+      "faster_means_refused": false,
+      "n": 200,
+      "threshold_ms": 306.85
+     },
+     {
+      "accuracy": 0.5,
+      "execution": "TX-20261111T042539Z-ca9ebc",
+      "faster_means_refused": false,
+      "n": 200,
+      "threshold_ms": 361.24
+     },
+     {
+      "accuracy": 0.5,
+      "execution": "TX-20261111T043629Z-20dab0",
+      "faster_means_refused": false,
+      "n": 200,
+      "threshold_ms": 361.24
+     }
+    ],
+    "pooled_accuracy": 0.498
+   },
+   "majority_baseline": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "n_per_execution": [
+    200,
+    200,
+    200
+   ],
+   "permutation_p": [
+    0.2088,
+    0.9281,
+    0.5445
+   ],
+   "pooled_heldout": {
+    "accuracy": 0.49,
+    "ci95": [
+     0.45,
+     0.53
+    ],
+    "n": 600
+   },
+   "run_wall_clock_median_s": [
+    6.48,
+    5.05,
+    5.04
+   ],
+   "verdict": "no leak detected (inconclusive as to absence)"
+  },
+  "500": {
+   "added_median_latency_for_answered_ms": [
+    446.64,
+    447.7,
+    447.52
+   ],
+   "auc_refused_faster": [
+    0.487,
+    0.515,
+    0.477
+   ],
+   "class_counts_per_execution": [
+    [
+     100,
+     100
+    ],
+    [
+     100,
+     100
+    ],
+    [
+     100,
+     100
+    ]
+   ],
+   "heldout_accuracy": [
+    0.515,
+    0.41,
+    0.48
+   ],
+   "heldout_accuracy_ci95": [
+    [
+     0.446,
+     0.583
+    ],
+    [
+     0.344,
+     0.479
+    ],
+    [
+     0.412,
+     0.549
+    ]
+   ],
+   "leave_one_execution_out": {
+    "ci95": [
+     0.468,
+     0.548
+    ],
+    "n": 600,
+    "per_heldout_execution": [
+     {
+      "accuracy": 0.515,
+      "execution": "TX-20261111T041327Z-9c74d1",
+      "faster_means_refused": false,
+      "n": 200,
+      "threshold_ms": 555.49
+     },
+     {
+      "accuracy": 0.515,
+      "execution": "TX-20261111T042539Z-ca9ebc",
+      "faster_means_refused": true,
+      "n": 200,
+      "threshold_ms": 560.01
+     },
+     {
+      "accuracy": 0.495,
+      "execution": "TX-20261111T043629Z-20dab0",
+      "faster_means_refused": true,
+      "n": 200,
+      "threshold_ms": 559.83
+     }
+    ],
+    "pooled_accuracy": 0.508
+   },
+   "majority_baseline": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "n_per_execution": [
+    200,
+    200,
+    200
+   ],
+   "permutation_p": [
+    0.4076,
+    0.972,
+    0.6653
+   ],
+   "pooled_heldout": {
+    "accuracy": 0.468,
+    "ci95": [
+     0.429,
+     0.508
+    ],
+    "n": 600
+   },
+   "run_wall_clock_median_s": [
+    8.96,
+    7.56,
+    7.54
+   ],
+   "verdict": "no leak detected (inconclusive as to absence)"
+  }
+ },
+ "chance_ci95_one_execution_n200": [
+  0.431,
+  0.569
+ ],
+ "executions": [
+  {
+   "code_tree_sha256": "sha256:7a49fdba0d5285e4584bdb915b42104a1baba19dd4c1192dc05e358e1bfa7552",
+   "execution_id": "TX-20261111T041327Z-9c74d1",
+   "seed": 20261111,
+   "started_utc": "2026-11-11T04:13:27.740601+00:00",
+   "status": "COMPLETE",
+   "unusable_rtt_blocks": 0,
+   "unusable_runs": 0,
+   "wall_clock_s": 731.3
+  },
+  {
+   "code_tree_sha256": "sha256:7a49fdba0d5285e4584bdb915b42104a1baba19dd4c1192dc05e358e1bfa7552",
+   "execution_id": "TX-20261111T042539Z-ca9ebc",
+   "seed": 20261112,
+   "started_utc": "2026-11-11T04:25:39.218576+00:00",
+   "status": "COMPLETE",
+   "unusable_rtt_blocks": 0,
+   "unusable_runs": 0,
+   "wall_clock_s": 650.5
+  },
+  {
+   "code_tree_sha256": "sha256:7a49fdba0d5285e4584bdb915b42104a1baba19dd4c1192dc05e358e1bfa7552",
+   "execution_id": "TX-20261111T043629Z-20dab0",
+   "seed": 20261113,
+   "started_utc": "2026-11-11T04:36:29.943422+00:00",
+   "status": "COMPLETE",
+   "unusable_rtt_blocks": 0,
+   "unusable_runs": 0,
+   "wall_clock_s": 648.7
+  }
+ ],
+ "n_executions_complete": 3,
+ "rtt": {
+  "idle": {
+   "median_ms_range": [
+    2.4,
+    2.78
+   ],
+   "p99_ms_range": [
+    4.6,
+    4.91
+   ],
+   "per_execution": [
+    {
+     "blocks": 10,
+     "max_ms": 5.02,
+     "median_ms": 2.44,
+     "n": 1000,
+     "p95_ms": 4.44,
+     "p99_ms": 4.64
+    },
+    {
+     "blocks": 10,
+     "max_ms": 5.47,
+     "median_ms": 2.78,
+     "n": 1000,
+     "p95_ms": 4.62,
+     "p99_ms": 4.91
+    },
+    {
+     "blocks": 10,
+     "max_ms": 5.02,
+     "median_ms": 2.4,
+     "n": 1000,
+     "p95_ms": 4.37,
+     "p99_ms": 4.6
+    }
+   ]
+  },
+  "limited_1cpu_8proc": {
+   "median_increase_pct_range": [
+    -12.9,
+    0.4
+   ],
+   "median_ms_range": [
+    2.41,
+    2.42
+   ],
+   "p99_increase_pct_range": [
+    0.4,
+    5.7
+   ],
+   "p99_ms_range": [
+    4.86,
+    4.93
+   ],
+   "per_execution": [
+    {
+     "blocks": 10,
+     "increase_vs_idle": {
+      "median_pct": -0.8,
+      "median_pct_ci95_block_bootstrap": [
+       -36.8,
+       3.5
+      ],
+      "p99_pct": 4.7,
+      "p99_pct_ci95_block_bootstrap": [
+       -1.7,
+       10.7
+      ]
+     },
+     "max_ms": 5.04,
+     "median_ms": 2.42,
+     "n": 1000,
+     "p95_ms": 4.59,
+     "p99_ms": 4.87
+    },
+    {
+     "blocks": 10,
+     "increase_vs_idle": {
+      "median_pct": -12.9,
+      "median_pct_ci95_block_bootstrap": [
+       -42.8,
+       0.4
+      ],
+      "p99_pct": 0.4,
+      "p99_pct_ci95_block_bootstrap": [
+       -6.2,
+       4.7
+      ]
+     },
+     "max_ms": 5.56,
+     "median_ms": 2.42,
+     "n": 1000,
+     "p95_ms": 4.57,
+     "p99_ms": 4.93
+    },
+    {
+     "blocks": 10,
+     "increase_vs_idle": {
+      "median_pct": 0.4,
+      "median_pct_ci95_block_bootstrap": [
+       -43.2,
+       5.8
+      ],
+      "p99_pct": 5.7,
+      "p99_pct_ci95_block_bootstrap": [
+       -3.7,
+       12.0
+      ]
+     },
+     "max_ms": 5.15,
+     "median_ms": 2.41,
+     "n": 1000,
+     "p95_ms": 4.52,
+     "p99_ms": 4.86
+    }
+   ]
+  },
+  "unrestricted_16proc": {
+   "median_increase_pct_range": [
+    -16.9,
+    -2.9
+   ],
+   "median_ms_range": [
+    2.31,
+    2.33
+   ],
+   "p99_increase_pct_range": [
+    -0.6,
+    129.6
+   ],
+   "p99_ms_range": [
+    4.88,
+    10.56
+   ],
+   "per_execution": [
+    {
+     "blocks": 10,
+     "increase_vs_idle": {
+      "median_pct": -5.3,
+      "median_pct_ci95_block_bootstrap": [
+       -39.7,
+       -1.5
+      ],
+      "p99_pct": 7.5,
+      "p99_pct_ci95_block_bootstrap": [
+       -9.3,
+       14.1
+      ]
+     },
+     "max_ms": 6.78,
+     "median_ms": 2.31,
+     "n": 1000,
+     "p95_ms": 4.38,
+     "p99_ms": 4.99
+    },
+    {
+     "blocks": 10,
+     "increase_vs_idle": {
+      "median_pct": -16.9,
+      "median_pct_ci95_block_bootstrap": [
+       -45.3,
+       -4.4
+      ],
+      "p99_pct": -0.6,
+      "p99_pct_ci95_block_bootstrap": [
+       -12.4,
+       8.0
+      ]
+     },
+     "max_ms": 6.79,
+     "median_ms": 2.31,
+     "n": 1000,
+     "p95_ms": 4.38,
+     "p99_ms": 4.88
+    },
+    {
+     "blocks": 10,
+     "increase_vs_idle": {
+      "median_pct": -2.9,
+      "median_pct_ci95_block_bootstrap": [
+       -45.5,
+       84.8
+      ],
+      "p99_pct": 129.6,
+      "p99_pct_ci95_block_bootstrap": [
+       -5.0,
+       176.0
+      ]
+     },
+     "max_ms": 12.63,
+     "median_ms": 2.33,
+     "n": 1000,
+     "p95_ms": 4.37,
+     "p99_ms": 10.56
+    }
+   ]
+  }
+ }
+}

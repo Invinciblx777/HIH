@@ -20,7 +20,14 @@ Lifecycle: `CREATED → FROZEN → RUNNING → SEALED → RELEASED` (or `FAILED`
 | Frozen config: manifest digests and defence-runner attestation | `aegis/runs.py` (`freeze`), `sandbox/defence_runner.py` |
 | Attack commitments `SHA-256(nonce ‖ 0x00 ‖ payload)`, 128-bit nonce | `sandbox/red_agent.py`, `aegis/crypto.py` |
 | Fresh model worker container per run; canary plant and probe | `aegis/runs.py`, `samples/attack_pack.json` |
-| Timing buckets: red only gets answers on 250 ms boundaries | `aegis/runs.py` (`Broker.attack`) |
+| Timing buckets: red only gets answers on 250 ms boundaries (default with the stub model) | `aegis/runs.py` (`Broker.attack`) |
+| Deadline release (finale P4): every reply leaves at exactly t0 + D, the model is cut off before D; the default with a real model (D = 1400 ms, `AEGIS_TIMING_DEADLINE_MS`) | `aegis/runs.py` (`default_timing`, `Broker.attack`) |
+| Containers never run as the key owner (finale P4): `--userns auto --user 900:900`, a POSIX ACL grant to the one mapped host UID on exactly the shared directories | `aegis/userns.py`, `aegis/runtime.py`, `scripts/start_model_server.sh` |
+| Re-encoded canary detection (base64, hex, rot13, reversed, split, spelled), bounded, fail-closed | `aegis/canary_scan.py` |
+| Six anomaly detectors, alerts in the signed audit log, no content or timing channel to red | `aegis/anomaly.py` |
+| Run-scoped, expiring capability tokens on a separate key | `aegis/captoken.py`, `POST /api/runs/{id}/capabilities` |
+| Reviewer countersignature of the terminal checkpoint; `verify_cli --require-countersignature` | `aegis/countersign.py`, `aegis/verify_cli.py` |
+| Per-tenant mailbox quotas (messages, rate, bytes, entries) | `aegis/runs.py` (`MailboxQuota`) |
 | Hash-chained audit log; chained Ed25519 checkpoints; signed **terminal checkpoint** (run id, final state, final seq/hash, event count, previous checkpoint) in the reviewer vault and a separate anchor store; fail-closed verifier | `aegis/audit.py`, `aegis/runs.py`, `aegis/store.py` |
 | Optional real-model adapter (stateless requests, loopback only, key never logged); stub stays default | `aegis/model_client.py` |
 | Result gate: SEALED, audit verifies, commitments verify, reviewer identity | `aegis/runs.py` (`release`) |
@@ -30,7 +37,7 @@ Lifecycle: `CREATED → FROZEN → RUNNING → SEALED → RELEASED` (or `FAILED`
 
 ## Run it locally
 
-Requirements: Linux with rootless Podman (tested: Fedora, kernel 7.2, Podman 5.8.9, crun 1.28, cgroups v2, SELinux enforcing; the 15 Oct numbers were measured on kernel 6.19 / Podman 5.8.1), Python 3.11+ (tested 3.14), network access to PyPI and, the first time, to Docker Hub for `python:3.12-slim`.
+Requirements: Linux with rootless Podman (tested: Fedora, kernel 7.2, Podman 5.8.9, crun 1.28, cgroups v2, SELinux enforcing; the 15 Oct numbers were measured on kernel 6.19 / Podman 5.8.1), Python 3.12+ (`pyproject.toml`; CI 3.14, Vercel 3.12, tested 3.14 and 3.15), network access to PyPI and, the first time, to Docker Hub for `python:3.12-slim` (pulled by the digest pinned in `Containerfile`).
 
 **One command** (venv, dependencies, sandbox image, tests, DEMO-001, independent verification, with a PASS/FAIL line per stage; nonzero exit if any security test fails):
 
@@ -46,9 +53,9 @@ Step by step:
 ```bash
 python -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt
-podman pull docker.io/library/python:3.12-slim
+podman pull docker.io/library/python@sha256:e8a38829209aea82774882e5157e1f7c3e8c8393ff53a697b3580896e57f345c   # python:3.12-slim, pinned by digest
 
-pytest -q tests                                   # 551 tests (10 Nov 2026; 13 need Podman and are skipped without it); includes the security regression suites, the Phase 2 attack tests and the finale P2 tests
+pytest -q tests                                   # 699 tests (11 Nov 2026; 16 need Podman and are skipped without it, 2 need Playwright: scripts/run_browser_tests.sh); includes the security regression suites, the Phase 2 attack tests and the finale P2-P4 tests
 AEGIS_VAR=var/mine python scripts/demo_run.py DEMO-001 --bundle-dir var/mine/bundles/DEMO-001
 python -m aegis.verify_cli --bundle var/mine/bundles/DEMO-001
 scripts/security_demo.sh                          # judge-facing demonstration (a few seconds once the image is built), fresh temp state, exits 0 only if every check behaves
@@ -101,12 +108,12 @@ Needs `llama-server` (llama.cpp b11819, CPU) and `qwen2.5-0.5b-instruct-q4_k_m.g
 
 ```bash
 bash scripts/start_model_server.sh --sandbox        # prints the run directory; --stop <dir> stops it
-bash scripts/real_model_demo.sh                     # four live checks, one PASS/FAIL line each, about 30 s
+bash scripts/real_model_demo.sh                     # thirteen live checks, one PASS/FAIL line each, under a minute
 bash scripts/start_real_model_console.sh            # the console with the real model (port 8410)
 ```
 
 - `scripts/start_model_server.sh` checks both files against the sha256 the evidence was recorded with. It writes the API key to a 0600 file passed with `--api-key-file`, so the key is on no command line. It turns off every cross-request state the build allows: `--no-cache-prompt --cache-ram 0 --no-cache-idle-slots --no-kv-unified --ctx-checkpoints 0 --cache-reuse 0 --no-context-shift --no-slots`, with no `--slot-save-path`, `--metrics` or `--props`.
-- `--sandbox` runs the server in rootless Podman with `--network none --read-only --cap-drop ALL --security-opt no-new-privileges`, pids, memory and CPU limits, and read-only mounts of the binary and model. It listens only on a UNIX socket in a 0700 directory under `$XDG_RUNTIME_DIR`. The adapter (`AEGIS_MODEL_UNIX_SOCKET`) refuses a socket or directory that another user owns or can open.
+- `--sandbox` runs the server in rootless Podman with `--network none --read-only --cap-drop ALL --security-opt no-new-privileges --userns auto --user 900:900` (finale P4: never as the host UID that owns the keys), pids, memory and CPU limits, and read-only mounts of the binary and model. It listens only on a UNIX socket in a 0700 directory under `$XDG_RUNTIME_DIR`. The adapter (`AEGIS_MODEL_UNIX_SOCKET`) refuses a socket or directory that another user owns or can open.
 - `--host-process` runs the same flags on `127.0.0.1`, random port.
 - What the flags cannot close: a client that sends `cache_prompt: true` still reuses the prompt cache in this build (`--no-cache-prompt` sets only the default). The broker is the only client and refuses to send it. `GET /props` cannot be turned off; it needs the key and shows no prompt text. Measurements: `THREAT_MODEL.md` section 9 and `evidence/finale_p3_2026-11-10/`.
 
@@ -147,12 +154,12 @@ Identity header: `X-Aegis-Token`.
 ### What it does not protect against, and when guarantees fail
 
 - **Broker, host kernel, runtime or signing-key compromise.** The broker sees everything and signs checkpoints; a compromised broker can read sealed artifacts and write false entries before signing. A hash chain cannot detect lies told at write time.
-- **Kernel or container-runtime escape.** Containers share the host kernel. MicroVMs (Kata, Firecracker) or gVisor are the next step.
+- **Kernel or container-runtime escape.** Containers share the host kernel. Since finale P4 an escaped process is a subordinate UID that cannot read the 0600 signing key (`THREAT_MODEL.md` section 10.2); a kernel exploit that also gains the host user still can. MicroVMs (Kata, Firecracker) or gVisor are the next step (gVisor not tried: not installed on the test host).
 - **Shared-hardware side channels.** Last-level cache, memory bandwidth, scheduling and power remain shared. CPU quotas apply; per-tenant cpusets were *not* applied on the test host because the cpuset controller is not delegated to rootless users.
-- **Defence inference through authorised outputs.** Red legitimately sees refusals. On the 15 Oct in-sample measure, 250 ms buckets reduced a simple classifier from 0.80 to 0.57. The 22 Oct held-out analysis (three complete executions, n=200 per setting each, raw data kept in `evidence/closeout_2026-10-22/timing/`) found: no padding 0.795–0.800 (p=0.001 each), 100 ms 0.510–0.545, 250 ms 0.495–0.555, 500 ms 0.495–0.510, none significantly above chance (smallest p 0.136); 250 ms adds +198 to +201 ms to answered requests. Not distinguishable from chance at this n is not proof of absence.
-- **Model cache and cleanup on real inference servers.** Only the stub was tested. GPU KV-cache, CUDA contexts and prefix caching need their own boundary.
+- **Defence inference through authorised outputs.** Red legitimately sees refusals. On the 15 Oct in-sample measure, 250 ms buckets reduced a simple classifier from 0.80 to 0.57. The 22 Oct held-out analysis (three complete executions, n=200 per setting each, raw data kept in `evidence/closeout_2026-10-22/timing/`) found: no padding 0.795–0.800 (p=0.001 each), 100 ms 0.510–0.545, 250 ms 0.495–0.555, 500 ms 0.495–0.510, none significantly above chance (smallest p 0.136); 250 ms adds +198 to +201 ms to answered requests. Not distinguishable from chance at this n is not proof of absence. **With a real model** (finale P4, three executions, 11 Nov 2026) 250 ms buckets leak (accuracy 0.945–0.960) and deadline release does not show a leak (0.495–0.575 against baselines 0.515–0.540), at +519 to +621 ms per answered request; deadline release is therefore the real-model default (`THREAT_MODEL.md` section 10.1).
+- **Model cache and cleanup on real inference servers.** Tested on CPU llama.cpp only (Qwen2.5-0.5B, and 1.5B reduced); see `THREAT_MODEL.md` sections 7, 9 and 10. GPU KV-cache, CUDA contexts and prefix caching need their own boundary.
 - **Monitoring metadata.** Content is redacted, but event timing and counts are visible.
-- **Audit: what still defeats it.** The 15 Oct gap (reviewer keeps only the freeze checkpoint: 0/30 detected) is closed by the terminal checkpoint and the fail-closed verifier (30/30). Still undetected: an attacker who holds the signing key and replaces every retained copy (vault, anchor store, exported bundle); a compromised verifier or pinned key; a broker that signs false entries.
+- **Audit: what still defeats it.** The 15 Oct gap (reviewer keeps only the freeze checkpoint: 0/30 detected) is closed by the terminal checkpoint and the fail-closed verifier (30/30). Still undetected: an attacker who holds the signing key and replaces every retained copy (vault, anchor store, exported bundle), unless the reviewer's countersignature is required and the reviewer key is off the host (finale P4); a compromised verifier or pinned key; a broker that signs false entries.
 - **Finite testing.** No leakage in these tests is evidence for this configuration, not proof of confidentiality.
 
 ### GPU inference boundary (proposed, not implemented)
