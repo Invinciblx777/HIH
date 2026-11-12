@@ -62,7 +62,7 @@ already exist.
 3. `source DEST/kit.env`, then `bash DEST/HIH/tools/venue/preflight.sh --offline --models KIT/models --media KIT/media`.
    - The sandbox image ID line passes, because `podman load` keeps the ID.
    - The browser-profile line fails until a stage profile exists. Use any Chromium-based browser profile there and
-     edit `STAGE_PROFILE_DIR` in `tools/venue/expected.env`.
+     edit `STAGE_PROFILE_DIR` in `tools/venue/expected.conf`.
 4. Playwright's Chromium needs the usual shared libraries. On Fedora they are already present. On Debian or Ubuntu
    without network, they must come from the distribution media.
 5. **The deadline D = 1400 ms was calibrated on this laptop.** On another machine, `real_model_demo.sh` still checks

@@ -11,7 +11,7 @@
 set -uo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd); REPO=$(cd "$HERE/../.." && pwd); APP="$REPO/aegislab"
 # shellcheck disable=SC1091
-. "$HERE/expected.env"
+. "$HERE/expected.conf"
 DRY=0; [ "${1:-}" = --dry-run ] && DRY=1
 run() { echo "  \$ $*"; [ "$DRY" = 1 ] || "$@"; }
 

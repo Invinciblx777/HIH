@@ -17,7 +17,7 @@ git clone -q -b "$REF" "$B" "$DEST/HIH"
 echo "   HEAD $(git -C "$DEST/HIH" rev-parse HEAD)  (kit: $(grep "^$REF=" "$KIT/repo/COMMIT.txt"))"
 (cd "$DEST/HIH" && sha256sum --quiet -c MANIFEST.sha256) && echo "   MANIFEST.sha256 OK"
 step "3. container images"
-. "$DEST/HIH/tools/venue/expected.env" 2>/dev/null || SANDBOX_IMAGE=localhost/aegislab-sandbox:0.1
+. "$DEST/HIH/tools/venue/expected.conf" 2>/dev/null || SANDBOX_IMAGE=localhost/aegislab-sandbox:0.1
 if [ "$LOAD" = 1 ] || ! podman image exists "$SANDBOX_IMAGE"; then podman load -q -i "$KIT/images/aegislab-sandbox.tar"; fi
 if [ "$LOAD" = 1 ] || ! podman image exists "${BASE_IMAGE:-x}"; then podman load -q -i "$KIT/images/python-3.12-slim-pinned.tar"; fi
 echo "   sandbox $(podman image inspect "$SANDBOX_IMAGE" --format '{{.Id}}' | cut -c1-12) (kit: $(sed -n 's/^sandbox_image_id=//p' "$KIT/images/IMAGES.txt" | cut -c1-12))"
