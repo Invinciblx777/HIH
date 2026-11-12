@@ -116,7 +116,9 @@ pass verify "genuine bundle accepted; truncated copy rejected"
 
 # 8 --------------------------------------------------------------------------------- console
 echo "[8/8] console"
-CMD="AEGIS_VAR=\"$AEGIS_VAR\" AEGIS_DEMO_MODE=1 .venv/bin/uvicorn aegis.console:app --host 127.0.0.1 --port $PORT"
+# The console has its own launcher: it refuses AEGIS_DEMO_MODE=1 (that flag would hand every role token to any local page),
+# uses its own state directory var/console and prints a one-time launch link for the operator session.
+CMD="scripts/start_prototype.sh --port $PORT"
 pass console "not started automatically"
 summary
 echo
@@ -130,6 +132,6 @@ import socket, sys
 s = socket.socket(); s.settimeout(0.5)
 sys.exit(0 if s.connect_ex(("127.0.0.1", int(sys.argv[1]))) else 1)
 PY
-  echo "Serving on http://127.0.0.1:$PORT (demo identities enabled, loopback only). Ctrl-C to stop."
-  AEGIS_DEMO_MODE=1 exec .venv/bin/uvicorn aegis.console:app --host 127.0.0.1 --port "$PORT"
+  echo "Starting the console with $CMD (loopback only; open the launch link it prints). Ctrl-C to stop."
+  exec scripts/start_prototype.sh --port "$PORT"
 fi

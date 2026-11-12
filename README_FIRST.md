@@ -21,7 +21,7 @@ This folder is a **candidate**, not promoted. Earlier candidates (`release_2026-
 | 8 | Prototype, evidence and tests | `aegislab/` (start with `aegislab/README.md`, `aegislab/THREAT_MODEL.md`) |
 | 9 | Deck and video build sources | `presentation_src/` |
 | — | Earlier reports | `PHASE2_SECURITY_REPORT.md`, `PHASE3_LLM_SECURITY_REPORT.md`, `VALIDATION_ADDENDUM_2026-10-22.md`, `RELEASE_READINESS_REPORT.md`, `PROTOTYPE_REPORT.md` (historical; figures in them are those of their date) |
-| — | Hosted website URL | **Not deployed.** No public URL exists. |
+| — | Hosted website URL | https://aegislab.vercel.app: a **read-only** public demo of the console. It has no login, no operator session, no containers and no model. A visitor can verify the shipped evidence bundles and tamper with a disposable copy, and nothing else (rate-limited). The live console runs only on your own machine, on loopback (`aegislab/scripts/start_prototype.sh`). |
 
 ## Live demonstration (judge-ready path) and fallback
 
@@ -42,13 +42,15 @@ bash scripts/security_demo.sh         # the original, longer demonstration (unch
 
 ```bash
 cd aegislab
-python evaluation/check_claims.py              # recomputes quoted figures from raw files (14 / 14, 72 / 72, 48 / 48: 134 / 134 checks; `--full` runs 84 timing checks)
+python evaluation/check_claims.py              # recomputes quoted figures from raw files (14 / 14, 72 / 72, 48 / 48: 134 / 134 checks as validated for this package; since the finale re-baseline it also prints 10 / 10 checks re-measured on the changed code; `--full` runs 84 timing checks)
 python evaluation/check_claims.py --full       # also recomputes the timing permutation tests (about 7 minutes)
 python evaluation/check_presentation.py        # deck, notes, voice-over, captions, storyboard, README, Q&A against the matrix and the raw evidence
 python -m aegis.verify_cli --bundle evidence/closeout_2026-10-22/DEMO-001_released --run-id DEMO-001 --expect-state RELEASED   # strict, exit 0
 ```
 
 Validation of this release (one host, Fedora, rootless Podman 5.8.9): 345 tests passed; quickstart 8 / 8; security demo 34 / 34 plus one documented limit; judge demo 17 / 17; presentation and claims checkers pass. Commands, exit codes and anything skipped: `PHASE4_PRESENTATION_REPORT.md`.
+
+**Finale update (10 Nov 2026).** The prototype changed after this package was built: the monitoring stream became role-aware (it no longer carries red-chosen strings or per-attack alerts to anyone but the operator and reviewer while a run is open), `cache_prompt=true` became an explicit, recorded unsafe-experiment opt-in, and a tenant-storage race and a release-consistency bug were fixed. The container-free and container-only measurements were re-run on the changed code with identical results (`aegislab/evidence/finale_rebaseline_2026-11-10/`); the real-model and timing figures were recorded before the change, and `check_claims.py` says so per experiment. Test counts in this package (345) are those of the package date.
 
 ## What the deck and video claim, and what they do not
 
