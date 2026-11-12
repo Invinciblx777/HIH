@@ -269,3 +269,40 @@ def test_evidence_actions_fit_a_phone_screen(server, browser, width):
     no_overflow(page)
     assert not errors, errors
     ctx.close()
+
+
+@pytest.mark.parametrize("width", [320, 390])
+def test_rate_limit_toast_is_readable_on_a_phone(server, browser, width):
+    """Finale P6 7a regression: on the public demo a rate-limited Verify showed its HTTP 429 message in a toast with a pill
+    radius (999px). On a phone the long message wrapped to several lines, the pill became a red circle and the circle clipped
+    the text. The 429 label also said "too many concurrent requests", which is wrong for the rate limit. The 429 here comes
+    from a routed response, so the test does not depend on public mode or on timing."""
+    detail = ("public demo rate limit reached: the verifier runs a limited number of times per minute; try again in a minute")
+    ctx = browser.new_context(viewport={"width": width, "height": 844}, device_scale_factor=2, is_mobile=True, has_touch=True)
+    page = ctx.new_page()
+    errors = watch(page)
+    page.route("**/api/lab/bundles/*/verify", lambda route: route.fulfill(
+        status=429, content_type="application/json", headers={"Retry-After": "60"}, body='{"detail": "%s"}' % detail))
+    go(page, server["base"], "#/evidence?open=DEMO-001-RELEASED")
+    page.click("#do-verify")
+    toast = page.locator("#toast")
+    expect(toast).to_contain_text("Too many requests (HTTP 429)", timeout=15_000)
+    expect(toast).to_contain_text("rate limit reached")
+    expect(toast).not_to_contain_text("concurrent")
+    g = toast.evaluate("""el => {
+        const cs = getComputedStyle(el), b = el.getBoundingClientRect(), r = document.createRange();
+        r.selectNodeContents(el);
+        const lines = Array.from(r.getClientRects()).map(x => ({l: x.left, r: x.right, t: x.top, b: x.bottom}));
+        return {radius: parseFloat(cs.borderTopLeftRadius), box: {l: b.left, r: b.right, t: b.top, b: b.bottom, h: b.height},
+                lines, lineHeight: parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2};
+    }""")
+    box, rad = g["box"], g["radius"]
+    assert len({round(x["t"]) for x in g["lines"]}) >= 2, "the message should wrap on a %d px phone: %s" % (width, g)
+    assert rad <= 20, "toast radius %s px: a pill radius turns a wrapped toast into a circle" % rad
+    assert box["l"] >= 0 and box["r"] <= width + 1, "toast runs off the screen: %s" % box
+    assert box["r"] - box["l"] >= width - 40, "toast uses only %d of %d px (left: 50%% shrink-to-fit)" % (box["r"] - box["l"], width)
+    for ln in g["lines"]:  # every line of text sits inside the box, clear of the rounded corners
+        assert ln["l"] >= box["l"] + rad / 2 - 1 and ln["r"] <= box["r"] - rad / 2 + 1, (ln, box, rad)
+        assert ln["t"] >= box["t"] - 1 and ln["b"] <= box["b"] + 1, (ln, box)
+    assert not errors, errors
+    ctx.close()

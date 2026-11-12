@@ -108,7 +108,7 @@ function classify(status) {
   if (status === 404) return { kind: "invalid", text: "Not found (HTTP 404)" };
   if (status === 409) return { kind: "denied", text: "Refused by the lifecycle gate (HTTP 409)" };
   if (status === 400 || status === 422) return { kind: "invalid", text: "Malformed request rejected (HTTP " + status + ")" };
-  if (status === 429) return { kind: "invalid", text: "Busy: too many concurrent requests (HTTP 429)" };
+  if (status === 429) return { kind: "invalid", text: "Too many requests (HTTP 429)" };  // concurrency cap or public rate limit: the detail says which
   if (status === 503) return { kind: "error", text: "Unavailable: a runtime dependency is missing (HTTP 503)" };
   return { kind: "error", text: "Backend failure (HTTP " + status + "): this is not a security result" };
 }
