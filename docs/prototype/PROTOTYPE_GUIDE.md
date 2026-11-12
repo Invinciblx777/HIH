@@ -4,7 +4,7 @@ The prototype console is an interactive web app on top of the existing AegisLab 
 
 It runs on your own machine and answers on loopback only. The live console is a local demonstration tool, not a hosted service.
 
-A **read-only public demo** of the same console runs on Render at RENDER_URL, with a secondary copy at https://aegislab.vercel.app (see [Public read-only demo](#public-read-only-demo) below). It can browse, replay, run the real verifier and tamper with copies. It cannot start live runs and has no operator session. The live lab still needs a Linux machine with rootless Podman.
+A **read-only public demo** of the same console runs on Render at https://aegislab-demo.onrender.com, with a secondary copy at https://aegislab.vercel.app (see [Public read-only demo](#public-read-only-demo) below). It can browse, replay, run the real verifier and tamper with copies. It cannot start live runs and has no operator session. The live lab still needs a Linux machine with rootless Podman.
 
 ![Overview page](screenshots/01_overview.jpg)
 
@@ -110,7 +110,7 @@ Each result shows every request, its expected and observed HTTP status, the poli
 
 ## Public read-only demo
 
-RENDER_URL (Render, primary, from the repo-root `render.yaml`) and https://aegislab.vercel.app (Vercel, secondary, redeployed by hand) both run `aegislab/app.py`, which forces `AEGIS_PUBLIC_DEMO=1` and keeps state in `/tmp`. In that mode (Finale P1, `aegis/console.py`, `aegis/lab_session.py`):
+https://aegislab-demo.onrender.com (Render, primary, from the repo-root `render.yaml`) and https://aegislab.vercel.app (Vercel, secondary, redeployed by hand) both run `aegislab/app.py`, which forces `AEGIS_PUBLIC_DEMO=1` and keeps state in `/tmp`. In that mode (Finale P1, `aegis/console.py`, `aegis/lab_session.py`):
 
 - **Can do:** browse every page, play the recorded replay, run the independent verifier on the shipped bundles (`POST /api/lab/bundles/{id}/verify`), and tamper with a disposable copy (`POST /api/lab/bundles/{id}/tamper`). Tamper results are returned to the browser only. Nothing is written to the journal or the results list.
 - **Cannot do:** start live runs; live mode is forced off even on a host with Podman. No launch code is issued or accepted: `/session/start` answers 403, and no operator session can exist. Every other state-changing request answers 403 with a message that starts `public read-only demo:`. This covers runs, defence, freeze, start, scenarios, probe, tamper suite, session end and the mounted control plane.

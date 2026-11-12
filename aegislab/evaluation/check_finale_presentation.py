@@ -47,7 +47,7 @@ DECK = PKG + "/Tech_Mavericks_AegisLab_Finale.pptx"
 TEXT_DOCS = [PKG + "/FINALE_SCRIPT.md", PKG + "/FINALE_JUDGE_QA.md", PKG + "/HANDOUT.md",
              PKG + "/captions/AegisLab_Finale_Judge_Cut.srt", PKG + "/captions/AegisLab_Finale_Walkthrough.srt", "RC4_PACKAGE_HISTORICAL.md"]
 README_BLOCK = ("README.md", "<!-- finale:start -->", "<!-- finale:end -->")
-PRESENTED = "finale/p4-hardening 9145592 (P1-P4 not merged into origin/main)"
+PRESENTED = "main (finale P1-P5 merged 12 Nov 2026; screenshots and recordings made on 9145592)"
 D11, D10, D12 = "2026-11-11", "2026-11-10", "2026-11-12"
 P4F = "aegislab/evidence/finale_p4_2026-11-11"
 P3F = "aegislab/evidence/finale_p3_2026-11-10"

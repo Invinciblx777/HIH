@@ -21,7 +21,7 @@ A host-user compromise still reaches the signing key (the reviewer countersignat
 ## Try it
 
 - Code and evidence: **https://github.com/Invinciblx777/HIH**
-- Read-only public demo (verify a real bundle, watch a tampered copy fail): **https://aegislab.vercel.app**. It serves `main`; the finale code (branch `finale/p4-hardening`, commit `9145592`) reaches it when merged.
+- Read-only public demo (verify a real bundle, watch a tampered copy fail): **https://aegislab-demo.onrender.com**. It runs on Render and serves `main`, where the finale code is merged.
 - `cd aegislab && bash scripts/quickstart.sh && bash scripts/judge_demo.sh`
 
 Abdul Munaf Z (solution architect & integration engineer) · Likhith Sai N (sandbox security & infrastructure engineer) · Sreeram Rajesh (product interface & evaluation engineer)
