@@ -27,6 +27,7 @@ evidence.py and model_client.py are deliberately not modified (their hashes are 
 import dataclasses
 import hashlib
 import io
+import ipaddress
 import json
 import os
 import re
@@ -232,14 +233,45 @@ def _public_refusal(request: Request):
     return None
 
 
+# Finale P6 (Render). Which request header carries the client address for the per-client limit. Unset: the P1 behaviour
+# (X-Real-IP, then the first X-Forwarded-For entry), right only where the proxy overwrites both (Vercel). Set it to a header
+# name the hosting proxy always overwrites (Render: CF-Connecting-IP; X-Forwarded-For there is appended to, so a client
+# controls its first entry), or to "peer" for the TCP peer. A missing or malformed value never falls back to another header:
+# such requests share one bucket, and the global limit backs every bucket.
+CLIENT_IP_HEADER_ENV = "AEGIS_CLIENT_IP_HEADER"
+_HEADER_NAME = re.compile(r"[a-z0-9][a-z0-9-]{0,63}")
+NO_CLIENT_IP = "no-client-ip"
+
+
+def _client_ip_header():
+    """The configured client-IP header in lower case, "peer", or None (unset: the P1 header chain). A malformed name is
+    treated as "peer" (one bucket per proxy connection source), never as a header a client could choose."""
+    v = os.environ.get(CLIENT_IP_HEADER_ENV, "").strip().lower()
+    if not v:
+        return None
+    return v if v == "peer" or _HEADER_NAME.fullmatch(v) else "peer"
+
+
 def _client_ip(request: Request) -> str:
-    """Client address for the per-client limit. Behind the hosting proxy the TCP peer is the proxy, which sets X-Real-IP and
-    X-Forwarded-For; a client could forge them where no proxy rewrites them, which is why a global limit backs this one."""
+    """Client address for the per-client limit. Behind the hosting proxy the TCP peer is the proxy. Unset
+    AEGIS_CLIENT_IP_HEADER: X-Real-IP, then X-Forwarded-For, as P1 (Vercel overwrites both; a client could forge them where
+    no proxy rewrites them, which is why a global limit backs this one). Set: only that header, and only if it holds exactly
+    one IP address; anything else lands in the shared NO_CLIENT_IP bucket."""
+    configured = _client_ip_header()
+    peer = request.client.host if request.client else "unknown"
+    if configured == "peer":
+        return peer
+    if configured:
+        v = request.headers.get(configured, "").strip()
+        try:
+            return str(ipaddress.ip_address(v))
+        except ValueError:
+            return NO_CLIENT_IP
     for h in ("x-real-ip", "x-forwarded-for"):
         v = request.headers.get(h)
         if v and v.split(",")[0].strip():
             return v.split(",")[0].strip()[:64]
-    return request.client.host if request.client else "unknown"
+    return peer
 
 
 def _public_rate_ok(ip: str) -> bool:
@@ -463,7 +495,8 @@ def _public_status() -> dict:
             "public_demo_allows": ["browse", "replay", "verify bundles with the independent verifier", "tamper with disposable copies"],
             "public_demo_refuses": ["live runs", "operator session", "every other state-changing request"],
             "public_demo_rate_limit": {"per_client": {"requests": PUBLIC_RATE_CLIENT[0], "seconds": PUBLIC_RATE_CLIENT[1]},
-                                       "global": {"requests": PUBLIC_RATE_GLOBAL[0], "seconds": PUBLIC_RATE_GLOBAL[1]}}}
+                                       "global": {"requests": PUBLIC_RATE_GLOBAL[0], "seconds": PUBLIC_RATE_GLOBAL[1]},
+                                       "client_ip_from": _client_ip_header() or "x-real-ip, then x-forwarded-for"}}
 
 
 def _shipped_status(ref) -> dict:
