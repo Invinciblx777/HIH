@@ -304,8 +304,9 @@ main:focus { outline: none; }
 .card:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
 .card.auto { min-height: 0; cursor: default; }
 .card.auto:hover { transform: none; }
-.card .top { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; padding-bottom: 12px; border-bottom: var(--rule) solid var(--mc); }
-.card h3 { flex: 1 1 0; min-width: 0; font-size: var(--fs-title); font-weight: 500; line-height: 1.2; color: var(--mc); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+/* finale P6 (projector check): the badge sits above the title, so the title gets the full card width and is not cut off */
+.card .top { display: flex; flex-direction: column-reverse; align-items: flex-start; gap: 8px; padding-bottom: 12px; border-bottom: var(--rule) solid var(--mc); }
+.card h3 { flex: none; width: 100%; min-width: 0; font-size: var(--fs-title); font-weight: 500; line-height: 1.2; color: var(--mc); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; overflow-wrap: break-word; }
 .card .badge { --bc: var(--mc); }
 .card .meta { font-size: var(--fs-read); font-style: italic; color: var(--mc); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card .mark { display: flex; align-items: center; gap: 6px; font-size: var(--fs-tag); font-weight: 500; color: var(--mc); }

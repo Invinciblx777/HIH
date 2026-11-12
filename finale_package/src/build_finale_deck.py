@@ -147,7 +147,6 @@ def s2(sl):
     box(sl, 1.0, 7.9, 4.8, 1.5, "Model under test", ["session state · prompt cache"], line=SLATE, tsize=21, ssize=16)
     arrow(sl, [(3.4, 5.4), (3.4, 5.95)], RED, 3, dash=True, both=True)
     circle(sl, 3.17, 5.44, 0.46, "F1", RED, size=13)
-    circle(sl, 5.55, 7.65, 0.46, "F3", RED, size=13)
     frame(sl, 6.9, 3.0, 5.2, 7.45, NAVY, fill=MIST)
     text(sl, 7.1, 3.1, 4.8, 0.4, "TRUSTED CONTROL PLANE (HOST)", size=15, bold=True, color=NAVY, font=HEAD)
     box(sl, 7.2, 4.0, 4.6, 2.3, "Trusted broker", ["identity = which mailbox", "checks commitments", "withholds foreign canaries"], fill=ORANGE_SOFT, line=ORANGE, line_w=3, tsize=21, ssize=16)
@@ -156,6 +155,7 @@ def s2(sl):
     arrow(sl, [(5.8, 4.7), (7.2, 4.7)], GREEN, 3, both=True)
     arrow(sl, [(5.8, 6.65), (6.55, 6.65), (6.55, 5.4), (7.2, 5.4)], GREEN, 3, both=True)
     arrow(sl, [(5.8, 8.65), (6.55, 8.65), (6.55, 5.9), (7.2, 5.9)], GREEN, 3, both=True)
+    circle(sl, 6.32, 7.2, 0.46, "F3", RED, size=13)   # P6: on the vertical model-to-broker arrow, clear of the model box; drawn after the arrows
     text(sl, 5.85, 4.2, 1.3, 0.4, "mailbox", size=14, bold=True, color=GREEN, align="c", fill=WHITE, shape=MSO_SHAPE.RECTANGLE)
     arrow(sl, [(9.5, 6.3), (9.5, 6.8)], NAVY, 3)
     arrow(sl, [(5.8, 9.9), (7.2, 9.5)], RED, 3, dash=True)
@@ -207,7 +207,7 @@ def s3(sl):
     box(sl, 5.3, 8.7, 4.8, 0.9, "Capability tokens", ["run-scoped, separate key"], line=SLATE, tsize=15, ssize=13)
     for yy, col in ((3.67, RED), (5.32, BLUE), (6.97, SLATE), (8.8, NAVY)):
         arrow(sl, [(4.3, yy), (4.65, yy), (4.65, 4.5), (5.3, 4.5)], col, 2.5, both=True)
-    text(sl, 4.05, 3.18, 1.3, 0.35, "mailbox / socket", size=11, bold=True, color=NAVY, align="c")
+    text(sl, 4.3, 3.0, 0.7, 0.62, [[("mailbox /", {})], [("socket", {})]], size=9.5, bold=True, color=NAVY, align="c")   # P6: clear of the frame
     arrow(sl, [(6.45, 5.45), (6.45, 5.8)], NAVY, 3)
     arrow(sl, [(7.6, 6.5), (7.8, 6.5)], GREEN, 3)
     box(sl, 10.9, 3.0, 2.8, 1.45, "Reviewer", ["countersigns the", "terminal checkpoint"], line=GREEN, tcol=GREEN, tsize=17, ssize=13)
@@ -425,14 +425,14 @@ def s8(sl):
              ("Monitor side channel closed", ["participants see run-level events only until SEALED; no red-chosen string in the stream", "cache guard: cache_prompt=true refused unless an explicit unsafe opt-in"], SLATE)]
     x, y = 0.7, 3.0
     for i, (t1, b, col) in enumerate(items):
-        card(sl, x, y, 6.0, 2.2, t1, b, col=col, tsize=16, bsize=13)
+        card(sl, x, y, 6.0, 2.0, t1, b, col=col, tsize=16, bsize=13)
         x += 6.3
         if i % 3 == 2:
-            x, y = 0.7, y + 2.4
+            x, y = 0.7, y + 2.15
     p = term("t4_f4_table.png")
-    pw, ph = pic_fit(sl, p, 0.7, 7.75, 9.0, 2.55, border=NAVY)
-    text(sl, 0.7, 7.75 + ph + 0.04, 9.0, 0.35, [[("LIVE ", {"bold": True, "color": GREEN}), ("recorded transcript, 12 Nov 2026: the F4 proof table (evaluation/p4_userns_proof.py)", {"color": SLATE})]], size=12)
-    text(sl, 10.0, 7.85, 9.3, 2.7, [[("Also pinned: ", {"bold": True, "color": NAVY}), ("the sandbox base image by digest; pyproject and uv.lock corrected.", {})],
+    pw, ph = pic_fit(sl, p, 0.7, 7.35, 9.0, 2.55, border=NAVY)   # P6: up 0.4 in, caption clear of the footer
+    text(sl, 0.7, 7.35 + ph + 0.04, 9.0, 0.35, [[("LIVE ", {"bold": True, "color": GREEN}), ("recorded transcript, 12 Nov 2026: the F4 proof table (evaluation/p4_userns_proof.py)", {"color": SLATE})]], size=12)
+    text(sl, 10.0, 7.45, 9.3, 2.7, [[("Also pinned: ", {"bold": True, "color": NAVY}), ("the sandbox base image by digest; pyproject and uv.lock corrected.", {})],
                                      [("Not done: ", {"bold": True, "color": RED}), ("gVisor or Kata (runsc not installed on the test host); key in a KMS or HSM.", {})],
                                      [("Anomaly panel: ", {"bold": True, "color": GREEN}), ("the Audit page of a real-model lab run shows each detector, its threshold and its rationale (walkthrough video).", {"color": SLATE})]],
          size=14, spacing=6)
@@ -489,8 +489,9 @@ def s10(sl):
              ("Coverage", "one host; one model at full scale (0.5B) plus a reduced 1.5B run; CPU only; GPU and accelerator KV-cache isolation untested.")]
     x, y = 0.7, 3.0
     for i, (t1, t2) in enumerate(risks):
-        text(sl, x, y, 9.1, 1.68, [[(t1, {"bold": True, "font": HEAD, "size": 17, "color": RED})], [(t2, {"size": 15})]], size=15,
-             fill=RED_SOFT if i in (0, 2) else WHITE, line=RED if i in (0, 2) else LINE, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.06, margin=0.14)
+        text(sl, x, y, 9.1, 1.68, [[(t1, {"bold": True, "font": HEAD, "size": 18.5, "color": RED})], [(t2, {"size": 16.5})]], size=16.5,
+             fill=RED_SOFT if i in (0, 2) else WHITE, line=RED if i in (0, 2) else LINE, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.06, margin=0.14,
+             anchor="m")   # P6: larger and centred; the cards had empty space at the bottom
         y += 1.82
         if i == 3:
             x, y = 10.2, 3.0
@@ -513,8 +514,8 @@ def s11(sl):
              ("Multi-party operation", "token revocation, TLS and SSO, reviewer on a separate machine by default", "closes: tokens, Partial countersignature", GREEN)]
     x, y = 0.7, 3.0
     for i, (t1, t2, t3, col) in enumerate(items):
-        text(sl, x, y, 9.1, 2.0, [[(t1, {"bold": True, "font": HEAD, "size": 18, "color": col})], [(t2, {"size": 14.5})], [(t3, {"size": 13, "color": SLATE, "italic": True})]],
-             size=14, fill=WHITE, line=LINE, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.06, margin=0.16, spacing=3)
+        text(sl, x, y, 9.1, 2.0, [[(t1, {"bold": True, "font": HEAD, "size": 20, "color": col})], [(t2, {"size": 17})], [(t3, {"size": 15, "color": SLATE, "italic": True})]],
+             size=17, fill=WHITE, line=LINE, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.06, margin=0.16, spacing=4, anchor="m")   # P6: larger, centred
         y += 2.2
         if i == 2:
             x, y = 10.2, 3.0
