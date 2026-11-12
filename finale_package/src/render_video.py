@@ -183,7 +183,7 @@ def card_title(seg):
         f = sans(28, 700)
         d.text((295 - d.textlength(tag, font=f) / 2, yy + 11), tag, font=f, fill=(255, 255, 255))
         d.text((480, yy + 12), txt, font=sans(29, 400), fill=(226, 232, 240))
-    d.text((140, 760), "Code: branch finale/p4-hardening, commit %s (not yet merged into main) · narration: synthetic voice (Piper)" % COMMIT,
+    d.text((140, 760), "Code: main (finale P1-P5 merged 12 Nov 2026) · recorded on commit %s · narration: synthetic voice (Piper)" % COMMIT,
            font=sans(26, 400), fill=(148, 163, 184))
     return img
 
@@ -192,7 +192,7 @@ def card_end(seg):
     img = Image.new("RGB", (W, H), BG)
     d = ImageDraw.Draw(img)
     d.text((140, 170), "github.com/Invinciblx777/HIH", font=sans(76, 700), fill=(255, 255, 255))
-    d.text((140, 275), "Read-only demo: https://aegislab.vercel.app", font=sans(44, 500), fill=(203, 213, 225))
+    d.text((140, 275), "Read-only demo: https://aegislab-demo.onrender.com", font=sans(44, 500), fill=(203, 213, 225))
     d.text((140, 345), "cd aegislab && bash scripts/quickstart.sh && bash scripts/judge_demo.sh", font=ImageFont.truetype(str(FONTS / "IBMPlexMono-Regular.ttf"), 32), fill=(203, 213, 225))
     d.text((140, 470), "AegisLab · Team Tech Mavericks", font=sans(44, 650), fill=(255, 255, 255))
     d.text((140, 535), "Abdul Munaf Z · Likhith Sai N · Sreeram Rajesh", font=sans(34, 500), fill=(148, 163, 184))

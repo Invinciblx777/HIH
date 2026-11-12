@@ -2,7 +2,7 @@
 
 Team Tech Mavericks · Hack in Hills '26 · Track 04 (Bayora). Built from the rc4 `Judge_QA.md` (23 Oct 2026, now historical) plus everything finale P1–P4 changed.
 
-- **Code:** `finale/p4-hardening`, commit `9145592`, **not merged into `origin/main`** yet.
+- **Code:** `main`, with finale P1–P5 merged on 12 Nov 2026. Screenshots and terminal recordings were made on commit `9145592`.
 - **Figures:** every figure comes from `finale_package/claims_used_for_finale.json` and carries its type: **LIVE** (produced by the presented code when it runs; the number is the 12 Nov rehearsal's), **RE-MEASURED <date>** (measured again on the finale code) or **RECORDED <date>** (not re-run). `aegislab/evaluation/check_finale_presentation.py` checks this file against the claims file.
 - **Evidence paths** are relative to the repository root unless they start with `docs/finale/`, which is in the team workspace next to the repository.
 
@@ -45,7 +45,7 @@ No. 6 detectors (LIVE) have fixed thresholds chosen from the scripted agent's be
 Not yet. Tokens are run-scoped, operation-scoped and expire within an hour; only the reviewer issues reviewer tokens, so the operator cannot mint the right to release; there are no delegation chains. There is no revocation list, and the API has no TLS (it is loopback-only). Evidence: `aegislab/aegis/captoken.py`, `docs/finale/P4_REPORT.md` SHOULD 6.
 
 **13. Why is the public demo read-only?**
-A live operator console on a public URL would hand run control (create, start, release) to anyone with the link. So https://aegislab.vercel.app runs with `AEGIS_PUBLIC_DEMO=1` forced in `aegislab/app.py`: no launch link, no session, every write refused except bundle verify and tamper on a disposable copy, live execution off, rate-limited per client and overall. Visitors can verify a real bundle and watch a tampered copy fail. Status: the hosted site serves `origin/main`, where Verify still fails with HTTP 403; the fix (P1) goes live when the finale branches are merged. Evidence: `docs/finale/P1_REPORT.md`, `aegislab/tests/test_finale_p1_public_demo.py`.
+A live operator console on a public URL would hand run control (create, start, release) to anyone with the link. So https://aegislab-demo.onrender.com runs with `AEGIS_PUBLIC_DEMO=1` forced in `aegislab/app.py`: no launch link, no session, every write refused except bundle verify and tamper on a disposable copy, live execution off, rate-limited per client and overall. Visitors can verify a real bundle and watch a tampered copy fail. It runs on Render from `main` (P1 fix included). The per-client limit trusts only `CF-Connecting-IP`, which Render's edge sets; a forged `X-Forwarded-For` does not open a new allowance. The older copy at https://aegislab.vercel.app is secondary and can lag `main`. Evidence: `docs/finale/P1_REPORT.md`, `docs/finale/P6_REPORT.md`, `aegislab/tests/test_finale_p1_public_demo.py`, `aegislab/tests/test_finale_p6_render.py`.
 
 **14. Is the real model really live in the demo?**
 Yes. `scripts/real_model_demo.sh` and the console started with `scripts/start_real_model_console.sh` use llama.cpp in a rootless container with no network, and nothing falls back to the stub: 13/13 checks and the browser run 21/21 browser checks (LIVE). The run card shows "REAL MODEL · LIVE" with the model file and its sha256 prefix. Transcripts: `finale_package/terminal/t1_real_model_demo.txt`, `finale_package/terminal/t6_real_model_console_check.txt`.

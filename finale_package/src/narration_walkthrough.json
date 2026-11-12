@@ -173,8 +173,8 @@
     ],
     "what": "public read-only mode"
    },
-   "caption": "The public demo is read-only by design: anyone can verify a bundle, nobody can run anything. The hosted site serves main until the finale branches are merged.",
-   "say": "The public demo is read-only by design: anyone can verify a bundle, nobody can run anything. The hosted site serves main until the finale branches are merged."
+   "caption": "The public demo is read-only by design: anyone can verify a bundle, nobody can run anything. It runs on Render, from main.",
+   "say": "The public demo is read-only by design: anyone can verify a bundle, nobody can run anything. It runs on Render, from main."
   },
   {
    "key": "w18",
