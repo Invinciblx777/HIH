@@ -1,0 +1,41 @@
+{
+  "block_hash": "0xf88a1da57a6f676f9f996c13b3098f398dbc33733a5621895682277899a657c0",
+  "block_number": 60073297,
+  "block_timestamp": 1795205035,
+  "cost_check": {
+    "balance_wei": 33076901668397,
+    "l1_quote_wei": 25625414654,
+    "l2_max_wei": 281013783680,
+    "message": "balance 33076901668397 wei (0.00003308 ETH) covers estimated worst case 313045551997 wei (0.00000031 ETH) = L2 gas 25504 x maxFee 11018420 wei (281013783680 wei) + 1.25 x L1 data fee 25625414654 wei",
+    "need_wei": 313045551997,
+    "ok": true
+  },
+  "digest": "5dff04cba2c592437d79349b3896e9001ac574d52ee3b6a29360624f5fde7486",
+  "effective_gas_price": 6000000,
+  "fee_wei": 154301393444,
+  "from": "0xDbba805310adB5b20e1418EA6C690f7698638483",
+  "gas_limit": 25504,
+  "gas_used": 22850,
+  "l1_fee_wei": 17201393444,
+  "max_fee_per_gas": 11018420,
+  "max_priority_fee_per_gas": 1000000,
+  "nonce": 0,
+  "posted_at": 1795205034.53,
+  "raw_tx": null,
+  "record": {
+    "chain_id": 8453,
+    "cp_seq": 3,
+    "event_count": 20,
+    "head": "sha256:8d44422979196d11c8d6c2dd172c01be2bb2e2d7fb8fa560e8938093bef045d7",
+    "key_id": "sha256:8df46a909bb956fd",
+    "nonce": "5c5f4f16b75225f92398578fede82635841ac4dfe6b2328c2c6b49cf3342c7e3",
+    "pubkey_b64": "g5WRfSVvpTyWSRkLTXhnnOkaXnCZl9fLyD4HbsGjXdM=",
+    "run_id_hash": "2db02ab7f353fe0bf2175b17c724b2152417451426411dfa4f2a52d258280885",
+    "state": "RELEASED",
+    "terminal_hash": "sha256:02cb64fc7048469760be09e441699e69234530acffeb2df0bc6c150164e523f7",
+    "v": 1
+  },
+  "rpc": "https://mainnet.base.org",
+  "status": "confirmed",
+  "tx_hash": "0xb1d568e2bef36402bb8d43ab43b0b4253d93a402f16fbef0fc3ac65b3095daf5"
+}

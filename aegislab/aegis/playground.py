@@ -96,6 +96,55 @@ def _verdict(v):
     return s
 
 
+def _ms(v):
+    return round(float(v), 1) if isinstance(v, (int, float)) and not isinstance(v, bool) else None
+
+
+def stages(a, red_ms=None):
+    """Finale P17: the request's path through the range, stage by stage, from the run's sealed artifact only (no new timing).
+    Each stage: {"id", "label", "status": pass|block|skip, "ms", "derived", "note"}. "ms" is a measured field of the artifact; "derived"
+    marks the two values computed from measured fields (regex = input check minus guard; output checks = compute minus input minus model)."""
+    vin = a.get("verdict_in") or {}
+    g = vin.get("guard") or {}
+    rx = vin.get("regex") if isinstance(vin.get("regex"), dict) else (None if g else vin)
+    din, gms, mms, cms = _ms(a.get("defence_in_ms")), _ms(g.get("ms")), _ms(a.get("model_ms")), _ms(a.get("compute_ms"))
+    blocked_in = vin.get("verdict") == "block"
+    called = a.get("model_output") is not None and not blocked_in
+    rx_block = bool(rx) and rx.get("verdict") == "block"
+    out = [{"id": "red", "label": "Red sandbox", "status": "pass", "ms": None, "derived": False, "note": "sends the attack through its mailbox"},
+           {"id": "broker_in", "label": "Broker", "status": "pass", "ms": None, "derived": False, "note": "checks the commitment, forwards"}]
+    if rx is None:
+        out.append({"id": "regex", "label": "Regex input check", "status": "skip", "ms": None, "derived": False, "note": "not in this mode"})
+    else:
+        rms, der = (din, False) if not g else ((round(din - gms, 1), True) if din is not None and gms is not None else (None, False))
+        out.append({"id": "regex", "label": "Regex input check", "status": "block" if rx_block else "pass", "ms": rms, "derived": der,
+                    "note": "rule %s" % rx.get("rule") if rx.get("rule") else ("blocked" if rx_block else "no rule matched")})
+    if not g:
+        out.append({"id": "guard", "label": "Qwen3Guard input check", "status": "skip", "ms": None, "derived": False, "note": "guard off"})
+    else:
+        gblock = blocked_in and not rx_block and g.get("safety") != "Safe"
+        cats = g.get("categories") or []
+        cats = cats if isinstance(cats, list) else [str(cats)]
+        out.append({"id": "guard", "label": "Qwen3Guard input check", "status": "block" if gblock else "pass", "ms": gms, "derived": False,
+                    "note": "%s%s%s" % (g.get("safety") or "?", (": " + ", ".join(map(str, cats))) if cats else "",
+                                        " (guard error %s: fail closed)" % g["error"] if g.get("error") else "")})
+    out.append({"id": "model", "label": "Model (sandboxed)", "status": "pass" if called else "skip", "ms": mms if called else None, "derived": False,
+                "note": "answered" if called else "never called"})
+    vout = (a.get("verdict_out") or {}).get("verdict")
+    oms = round(cms - din - mms, 1) if called and None not in (cms, din, mms) else None
+    out.append({"id": "output", "label": "Output checks", "status": "skip" if vout in (None, "skipped") else ("block" if vout == "block" else "pass"),
+                "ms": oms, "derived": oms is not None, "note": "not needed: nothing to check" if vout in (None, "skipped") else vout})
+    leaks = a.get("canary_leaks") or []
+    out.append({"id": "canary", "label": "Canary scan", "status": "skip" if not called else ("block" if leaks else "pass"), "ms": None, "derived": False,
+                "note": ("%d hit(s), withheld" % len(leaks)) if leaks else ("no hits" if called else "nothing to scan")})
+    rel = a.get("release") or {}
+    out.append({"id": "broker_out", "label": "Broker release", "status": "pass", "ms": _ms(a.get("answered_ms")), "derived": False,
+                "note": "fixed deadline %s ms%s" % (rel.get("deadline_ms", "?"), " · CUT OFF" if rel.get("cut_off") else "")})
+    out.append({"id": "red_rx", "label": "Red receives", "status": "pass", "ms": _ms(red_ms), "derived": False,
+                "note": "uniform refusal" if a.get("final_output") == runs.UNIFORM_REFUSAL else "model text after output checks"})
+    return out
+
+
 def _jsonl(p):
     try:
         return [json.loads(l) for l in Path(p).read_text().splitlines() if l.strip()]
@@ -144,7 +193,7 @@ def _stream_run(job, rid, label):
 
 def _work(job):
     from llm_isolation import make_pack  # evaluation/ (added to sys.path below)
-    res = {"runs": {}, "prompt": job.prompt}
+    res = {"runs": {}, "prompt": job.prompt, "deadline_ms": DEADLINE_MS}
     work = Path(tempfile.mkdtemp(prefix="aegis-try-"))
     try:
         job.emit("-", "sandbox", "model: %s · sha256 %s · llama.cpp CPU · %s" % (
@@ -184,6 +233,8 @@ def _work(job):
                                                              "uniform_refusal": a.get("final_output") == runs.UNIFORM_REFUSAL,
                                                              "red_ms": lat.get(a["attack_id"]) if lat.get(a["attack_id"]) is not None else a.get("answered_ms")}
                                             for a in arts}}
+            for a in arts:  # finale P17: the per-stage pipeline the Lab card draws
+                res["runs"][label]["items"][a["attack_id"]]["stages"] = stages(a, lat.get(a["attack_id"]))
         rid, label = plan[-1][0], plan[-1][1]
         rel = runs.release(rid)
         job.emit(label, "release", "%s released by the reviewer · terminal hash %s" % (rid, str(rel.get("terminal_hash", "")).replace("sha256:", "")[:12]))
