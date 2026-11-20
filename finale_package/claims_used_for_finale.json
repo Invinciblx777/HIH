@@ -4,7 +4,8 @@
  "types": {
   "LIVE": "produced by the presented code when it runs (a demo re-run on stage, a checker, a code constant); the number is the P5 rehearsal's, the stage run must reproduce it",
   "RE-MEASURED": "measured again on the finale P4 code",
-  "RECORDED": "measured earlier, not re-run on the final code"
+  "RECORDED": "measured earlier, not re-run on the final code",
+  "MEASURED": "finale P16: measured on the P16 code (features OFF by default), first measurement"
  },
  "check_claims_parts": {
   "A": "14/14",
@@ -512,6 +513,82 @@
     "finale_package/evidence/p5_gate_counts.txt"
    ],
    "source": "P5 gate run, see docs/finale/P5_REPORT.md"
+  },
+  "p16_guard_detection": {
+   "forms": {
+    "gandalf_guard": "61 of 112 Gandalf attacks",
+    "gandalf_regex": "15 of 112 with regex",
+    "gandalf_both": "63 of 112 with both",
+    "jbb_guard": "99 of 100 JailbreakBench harmful goals",
+    "jbb_regex": "0 of 100 with regex"
+   },
+   "type": "MEASURED",
+   "date": "2026-11-20",
+   "label": "MEASURED 20 Nov 2026",
+   "evidence": [
+    "aegislab/evidence/finale_p16_2026-11-20/guard_eval/result.json",
+    "aegislab/evidence/finale_p16_2026-11-20/guard_eval/verdicts.jsonl"
+   ],
+   "source": "guard_eval.py per_set (Lakera gandalf test split, JBB-Behaviors harmful)"
+  },
+  "p16_guard_false_positives": {
+   "forms": {
+    "hh": "3 of 200 HH-RLHF helpful prompts",
+    "jbb_benign": "59 of 100 JailbreakBench benign look-alikes"
+   },
+   "type": "MEASURED",
+   "date": "2026-11-20",
+   "label": "MEASURED 20 Nov 2026",
+   "evidence": [
+    "aegislab/evidence/finale_p16_2026-11-20/guard_eval/result.json",
+    "aegislab/evidence/finale_p16_2026-11-20/guard_eval/verdicts.jsonl"
+   ],
+   "source": "guard_eval.py per_set (HH-RLHF helpful-base seeded sample, JBB-Behaviors benign)"
+  },
+  "p16_guard_latency": {
+   "forms": {
+    "p50": "p50 602 ms",
+    "p95": "p95 726 ms",
+    "errors": "0 guard errors in 512 texts"
+   },
+   "type": "MEASURED",
+   "date": "2026-11-20",
+   "label": "MEASURED 20 Nov 2026",
+   "evidence": [
+    "aegislab/evidence/finale_p16_2026-11-20/guard_eval/result.json",
+    "aegislab/evidence/finale_p16_2026-11-20/guard_eval/verdicts.jsonl"
+   ],
+   "source": "guard_eval.py guard_latency_ms (one judge() call: slot reset + moderation)"
+  },
+  "p16_guard_timing": {
+   "forms": {
+    "unpadded": "accuracy 1.000 (baseline 0.800, p = 0.001)",
+    "deadline": "accuracy 0.395 (baseline 0.800, p = 0.846)",
+    "D": "D = 4000 ms",
+    "n": "200 requests per setting",
+    "cost": "+1516 ms",
+    "overruns": "0 overruns, 0 cut-offs"
+   },
+   "type": "MEASURED",
+   "date": "2026-11-20",
+   "label": "MEASURED 20 Nov 2026",
+   "evidence": [
+    "aegislab/evidence/finale_p16_2026-11-20/timing_guard/exec1_seed20261120/result.json"
+   ],
+   "source": "timing_guard.py (timing_deadline.py protocol, guard_mode both), one execution"
+  },
+  "p16_real_model_demo_guard": {
+   "forms": {
+    "checks": "17/17 checks with --guard"
+   },
+   "type": "LIVE",
+   "date": null,
+   "label": "LIVE",
+   "evidence": [
+    "finale_package/terminal/t7_real_model_demo_guard.txt",
+    "aegislab/scripts/real_model_demo.sh"
+   ],
+   "source": "recorded P16 run (real_model_demo.sh --guard)"
   }
  }
 }

@@ -1,0 +1,170 @@
+{
+  "name": "AegisLab incident relay (finale P16)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "aegis-incident",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "id": "5f1c0c1e-0001-4a3e-9d6e-ae9150000001",
+      "name": "Webhook (AegisLab sealed-run notice)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 300],
+      "webhookId": "7d0b8f3a-0a1e-4c1d-9e2f-0c1de0000001"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Verify X-Aegis-Signature = v1=HMAC-SHA256(secret, '<X-Aegis-Timestamp>.' + raw body) and reject timestamps older than\n// 300 s. The secret is a read-only file mounted by tools/n8n/start_n8n.sh; it never appears in the workflow or its executions.\nconst crypto = require('crypto');\nconst fs = require('fs');\nconst secret = fs.readFileSync('/run/aegis/hmac.secret', 'utf8').trim();\nconst item = $input.first();\nconst h = item.json.headers || {};\nconst ts = String(h['x-aegis-timestamp'] || '');\nconst sig = String(h['x-aegis-signature'] || '');\nlet raw;\nif (item.binary && item.binary.data) {\n  raw = await this.helpers.getBinaryDataBuffer(0, 'data');\n} else {\n  raw = Buffer.from(JSON.stringify(item.json.body || {}));\n}\nconst expected = 'v1=' + crypto.createHmac('sha256', secret).update(ts + '.').update(raw).digest('hex');\nconst age = Math.abs(Date.now() / 1000 - Number(ts));\nconst sigOk = sig.length === expected.length && crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));\nconst fresh = /^[0-9]+$/.test(ts) && age <= 300;\nlet notice = null;\nif (sigOk && fresh) {\n  try { notice = JSON.parse(raw.toString('utf8')); } catch (e) { notice = null; }\n}\nconst verified = Boolean(sigOk && fresh && notice);\nreturn [{ json: { verified, reason: verified ? 'ok' : (!fresh ? 'stale or missing timestamp' : 'bad signature'), notice: verified ? notice : null, received_at: new Date().toISOString() } }];\n"
+      },
+      "id": "5f1c0c1e-0002-4a3e-9d6e-ae9150000002",
+      "name": "Verify HMAC and timestamp",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "c0000001-ae91-4000-8000-000000000001",
+              "leftValue": "={{ $json.verified }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "5f1c0c1e-0003-4a3e-9d6e-ae9150000003",
+      "name": "Signature valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict"},
+                "conditions": [
+                  {"id": "a0000001-ae91-4000-8000-000000000001", "leftValue": "={{ $json.notice.severity }}", "rightValue": "high",
+                   "operator": {"type": "string", "operation": "equals"}}
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "high"
+            },
+            {
+              "conditions": {
+                "options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict"},
+                "conditions": [
+                  {"id": "a0000002-ae91-4000-8000-000000000002", "leftValue": "={{ $json.notice.severity }}", "rightValue": "medium",
+                   "operator": {"type": "string", "operation": "equals"}}
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "medium"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "low"
+        }
+      },
+      "id": "5f1c0c1e-0004-4a3e-9d6e-ae9150000004",
+      "name": "Route by severity",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [720, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// HIGH: incomplete run, anomaly detector fired, or an answer withheld (canary / secret / unscanned). Page-worthy.\nconst fs = require('fs');\nconst n = $input.first().json;\nconst line = JSON.stringify({ route: 'high', received_at: n.received_at, notice: n.notice }) + '\\n';\nfs.appendFileSync('/incidents/incidents.jsonl', line);\nfs.appendFileSync('/incidents/HIGH.jsonl', line);\nreturn [{ json: { ok: true, route: 'high', run_id: n.notice.run_id } }];\n"
+      },
+      "id": "5f1c0c1e-0005-4a3e-9d6e-ae9150000005",
+      "name": "High: incident log + HIGH queue",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 60]
+    },
+    {
+      "parameters": {
+        "jsCode": "// MEDIUM: the model produced unsafe output that the defence let through (a finding for the blue team).\nconst fs = require('fs');\nconst n = $input.first().json;\nfs.appendFileSync('/incidents/incidents.jsonl', JSON.stringify({ route: 'medium', received_at: n.received_at, notice: n.notice }) + '\\n');\nreturn [{ json: { ok: true, route: 'medium', run_id: n.notice.run_id } }];\n"
+      },
+      "id": "5f1c0c1e-0006-4a3e-9d6e-ae9150000006",
+      "name": "Medium: incident log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 220]
+    },
+    {
+      "parameters": {
+        "jsCode": "// LOW: sealed and complete, nothing withheld, no detector fired.\nconst fs = require('fs');\nconst n = $input.first().json;\nfs.appendFileSync('/incidents/incidents.jsonl', JSON.stringify({ route: 'low', received_at: n.received_at, notice: n.notice }) + '\\n');\nreturn [{ json: { ok: true, route: 'low', run_id: n.notice.run_id } }];\n"
+      },
+      "id": "5f1c0c1e-0007-4a3e-9d6e-ae9150000007",
+      "name": "Low: incident log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 380]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, route: $json.route }) }}",
+        "options": {"responseCode": 200}
+      },
+      "id": "5f1c0c1e-0008-4a3e-9d6e-ae9150000008",
+      "name": "Respond 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1200, 220]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: false, error: $json.reason }) }}",
+        "options": {"responseCode": 401}
+      },
+      "id": "5f1c0c1e-0009-4a3e-9d6e-ae9150000009",
+      "name": "Respond 401 (rejected)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [720, 440]
+    }
+  ],
+  "connections": {
+    "Webhook (AegisLab sealed-run notice)": {"main": [[{"node": "Verify HMAC and timestamp", "type": "main", "index": 0}]]},
+    "Verify HMAC and timestamp": {"main": [[{"node": "Signature valid?", "type": "main", "index": 0}]]},
+    "Signature valid?": {"main": [[{"node": "Route by severity", "type": "main", "index": 0}], [{"node": "Respond 401 (rejected)", "type": "main", "index": 0}]]},
+    "Route by severity": {"main": [[{"node": "High: incident log + HIGH queue", "type": "main", "index": 0}], [{"node": "Medium: incident log", "type": "main", "index": 0}], [{"node": "Low: incident log", "type": "main", "index": 0}]]},
+    "High: incident log + HIGH queue": {"main": [[{"node": "Respond 200", "type": "main", "index": 0}]]},
+    "Medium: incident log": {"main": [[{"node": "Respond 200", "type": "main", "index": 0}]]},
+    "Low: incident log": {"main": [[{"node": "Respond 200", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1", "saveDataSuccessExecution": "all", "saveDataErrorExecution": "all"},
+  "pinData": {},
+  "active": false,
+  "id": "aegisIncident001",
+  "meta": {"note": "Import: tools/n8n/start_n8n.sh. Receives only counts, detector names and digests (aegis/notify.py). Optional Telegram/Discord node: add it after 'High' with your own credential in n8n; none is shipped."}
+}
