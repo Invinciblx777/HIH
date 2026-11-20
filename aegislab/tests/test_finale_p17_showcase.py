@@ -187,3 +187,23 @@ def test_p17_14_landing_outside_in_facts_match_evidence():
     assert not any("/x/AEGIS-RANGE-" in (v.get("model_output") or "") for r in res["runs"].values() for v in r["items"].values())
     assert facts[2][0] == "%d of %d" % (inc["delivered"], inc["sent"])
     assert "{{" not in LANDING
+
+
+def test_p17_15_pitch_deck_is_complete_and_matches_evidence():
+    import zipfile
+    deck = ROOT.parent / "docs/pitch/AegisLab_Pitch.pptx"
+    assert deck.stat().st_size < 20 * 1024 * 1024 and (ROOT.parent / "docs/pitch/AegisLab_Pitch.pdf").stat().st_size < 20 * 1024 * 1024
+    z = zipfile.ZipFile(deck)
+    slide = lambda n: " ".join(re.findall(r"<a:t>([^<]*)</a:t>", z.read("ppt/slides/slide%d.xml" % n).decode()))
+    slides = sorted(n for n in z.namelist() if re.fullmatch(r"ppt/slides/slide\d+\.xml", n))
+    notes = sorted(n for n in z.namelist() if re.fullmatch(r"ppt/notesSlides/notesSlide\d+\.xml", n))
+    assert len(slides) == 14 and len(notes) == 14
+    assert all(len(" ".join(re.findall(r"<a:t>([^<]*)</a:t>", z.read(n).decode()))) > 100 for n in notes)
+    ev = ROOT / "evidence/finale_p17_2026-11-21/outside_in"
+    at = json.loads((ev / "tinyfish/attack/summary.json").read_text())
+    inc = json.loads((ev / "incidents.json").read_text())
+    s9, s8, s12 = slide(9), slide(8), slide(12)
+    assert "%d of %d" % (at["saw_page_followed"], at["saw_page"]) in s9 and "%d of %d" % (inc["delivered"], inc["sent"]) in s9
+    assert "0xb1d568e2" in s8 and "60073297" in s8 and "ILLUSTRATIVE" in s12
+    core = z.read("docProps/core.xml").decode()
+    assert "Tech Mavericks" in core and "Steve Canny" not in core

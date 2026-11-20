@@ -22,7 +22,7 @@ refused and when, and every run ends with signed evidence that a reviewer releas
 
 *The live jailbreak playground (`start_real_model_console.sh --playground`): the same prompt through REGEX ONLY and REGEX + QWEN3GUARD, each stage with its measured latency from the sealed record, then release, verification and a rejected tampered copy.*
 
-Team **Tech Mavericks** (Abdul Munaf Z, Likhith Sai N, Sreeram Rajesh) · **Hack in Hills '26** · Track 04: *Securing Adversarial AI Safety Testing Infrastructure* (Bayora). Product page: `/product` on any running console ([source](aegislab/web/product/index.html)).
+Team **Tech Mavericks** (Abdul Munaf Z, Likhith Sai N, Sreeram Rajesh) · **Hack in Hills '26** · Track 04: *Securing Adversarial AI Safety Testing Infrastructure* (Bayora). Product page: `/product` on any running console ([source](aegislab/web/product/index.html)). Pitch deck: [PDF](docs/pitch/AegisLab_Pitch.pdf) · [PPTX](docs/pitch/AegisLab_Pitch.pptx) · [talk tracks](docs/pitch/PITCH_SCRIPT.md).
 
 > **Status: working single-host prototype.** It is not a production security system and has not been audited by a third party. Everything below says which results are measured live, which come from saved runs, and where the guarantees stop.
 
