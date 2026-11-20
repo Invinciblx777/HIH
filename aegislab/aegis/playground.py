@@ -200,12 +200,22 @@ def _work(job):
                 return p.returncode, None
         rc, ok = verify(bundle)
         job.emit(label, "verify", "verify_cli (pinned key + terminal hash): exit %d · ok=%s" % (rc, ok))
+        anc = None
+        if os.environ.get("AEGIS_ANCHOR_CHAIN", "").strip() == "base":  # finale P16 (part E): nothing new when the flag is off
+            from . import anchor
+            anc = anchor.demo_report(rid, bundle)
+            job.emit(label, "anchor", anc["line"])
+            res["anchor"] = {k: anc.get(k) for k in ("exit", "tx_hash", "block_number", "fee_wei")}
         bad = work / "tampered"
         shutil.copytree(bundle, bad)
         lines = (bad / "audit.jsonl").read_text().splitlines()
         (bad / "audit.jsonl").write_text("\n".join(lines[:-2]) + "\n")
         rc2, ok2 = verify(bad)
-        job.emit(label, "tamper", "copy with the last 2 audit entries removed: exit %d · ok=%s · %s" % (rc2, ok2, "REJECTED" if rc2 else "NOT rejected"))
+        tail = ""
+        if anc and anc.get("pinned"):
+            res["anchor"]["tamper_exit"] = anchor.check(bad, anc["pinned"])["exit"]
+            tail = " · anchor check exit %d" % res["anchor"]["tamper_exit"]
+        job.emit(label, "tamper", "copy with the last 2 audit entries removed: exit %d · ok=%s · %s%s" % (rc2, ok2, "REJECTED" if rc2 else "NOT rejected", tail))
         res["verify"] = {"run_id": rid, "exit": rc, "ok": ok, "tamper_exit": rc2, "tamper_ok": ok2}
     except Exception as e:  # noqa: BLE001  (shown to the operator, never hidden)
         job.emit("-", "error", "%s: %s" % (type(e).__name__, str(e)[:300]))
