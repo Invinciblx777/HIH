@@ -8,6 +8,7 @@ import stat
 import subprocess
 import sys
 import time
+from importlib.util import find_spec
 from pathlib import Path
 
 import pytest
@@ -20,6 +21,11 @@ from aegis import anchor, evidence, runs, runtime, store  # noqa: E402
 PK_HEX = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"   # public test vector, never funded
 PK_ADDR = "0x2c7536E3605D9C16a7a3D7b1898e529396a65c23"
 U1, U2 = "https://rpc-one.invalid", "https://rpc-two.invalid"
+# The secp256k1 signer is optional (requirements-anchor.txt, not requirements.txt): CI installs requirements.txt only. Tests that sign,
+# derive an address or decode a signed transaction skip without it; the record, digest, flag-OFF and failure-path tests always run.
+SIGNER_MISSING = [m for m in ("eth_keys", "rlp", "Crypto") if find_spec(m) is None]
+needs_signer = pytest.mark.skipif(bool(SIGNER_MISSING), reason="optional anchor signer not installed (%s): pip install -r requirements-anchor.txt"
+                                  % ", ".join(SIGNER_MISSING))
 
 
 @pytest.fixture(autouse=True)
@@ -160,6 +166,7 @@ def test_P16E02_the_nonce_changes_the_digest_and_is_32_random_bytes():
     assert anchor.digest(a) == anchor.digest(anchor.build_record("ANCHOR-1", nonce=a["nonce"]))
 
 
+@needs_signer
 def test_P16E03_on_chain_payload_is_prefix_plus_digest_and_carries_no_clear_text(tmp_path, key):
     chain = FakeChain()
     run = released_run("SECRET-TEAM-RUN-42")
@@ -204,6 +211,7 @@ print(len(calls), (run.dir / "anchor.json").exists(), "aegis.anchor" in sys.modu
     assert p.stdout.split() == ["0", "False", "False"], p.stderr[-2000:]
 
 
+@needs_signer
 def test_P16E06_good_bundle_checks_exit_0_with_two_agreeing_rpcs(tmp_path, key):
     chain = FakeChain()
     b, rec = bundle_with_anchor(tmp_path, chain, key)
@@ -214,6 +222,7 @@ def test_P16E06_good_bundle_checks_exit_0_with_two_agreeing_rpcs(tmp_path, key):
     assert anchor.check(b, PK_ADDR.lower(), rpc=chain, urls=[U1])["exit"] == 0
 
 
+@needs_signer
 def test_P16E07_tampered_bundle_two_audit_lines_deleted_exits_1(tmp_path, key):
     chain = FakeChain()
     b, _ = bundle_with_anchor(tmp_path, chain, key)
@@ -227,6 +236,7 @@ def test_P16E07_tampered_bundle_two_audit_lines_deleted_exits_1(tmp_path, key):
     assert v.returncode != 0
 
 
+@needs_signer
 def test_P16E08_resigned_history_with_new_record_contradicts_the_chain(tmp_path, key):
     """The attack the anchor exists for: the forger rewrites anchor.json's record for a re-signed history. The digest no longer
     matches the on-chain data (or, if anchor.json's digest is left, the recomputed one)."""
@@ -243,6 +253,7 @@ def test_P16E08_resigned_history_with_new_record_contradicts_the_chain(tmp_path,
     assert anchor.check(b, PK_ADDR, rpc=chain, urls=[U1])["exit"] == 1
 
 
+@needs_signer
 def test_P16E09_wrong_sender_exits_1(tmp_path, key):
     chain = FakeChain()
     b, rec = bundle_with_anchor(tmp_path, chain, key)
@@ -252,6 +263,7 @@ def test_P16E09_wrong_sender_exits_1(tmp_path, key):
     assert res["exit"] == 1 and "not the pinned anchor address" in res["findings"][0]
 
 
+@needs_signer
 def test_P16E10_wrong_chain_id_aborts_before_signing_or_sending(key):
     chain = FakeChain(chain_id=1)
     run = released_run()
@@ -260,6 +272,7 @@ def test_P16E10_wrong_chain_id_aborts_before_signing_or_sending(key):
     assert chain.calls == ["eth_chainId"]
 
 
+@needs_signer
 def test_P16E11_fee_above_the_ceiling_is_not_sent(key):
     chain = FakeChain(base_fee=anchor.MAX_FEE_PER_GAS_WEI + 1)
     run = released_run()
@@ -267,6 +280,7 @@ def test_P16E11_fee_above_the_ceiling_is_not_sent(key):
     assert rec["status"] == "pending" and not chain.sent and "ceiling" in rec["last_error"]
 
 
+@needs_signer
 def test_P16E11b_balance_short_of_worst_case_cost_aborts_with_a_clear_message_and_sends_nothing(key):
     chain = FakeChain(balance=10_000, l1=50_000)
     run = released_run()
@@ -278,6 +292,7 @@ def test_P16E11b_balance_short_of_worst_case_cost_aborts_with_a_clear_message_an
     assert anchor.post(run.id, rpc=chain, urls=[U1], key=key, poll_s=0)["status"] == "confirmed" and len(chain.sent) == 1
 
 
+@needs_signer
 def test_P16E12_offline_queues_then_flush_posts_once_and_post_is_idempotent(key):
     chain = FakeChain(offline=True)
     run = released_run()
@@ -319,6 +334,7 @@ def test_P16E14_missing_key_makes_no_network_call_and_is_not_queued(tmp_path):
     assert anchor.post(run.id, rpc=chain, urls=[U1], key=loose)["status"] == "error" and chain.calls == []
 
 
+@needs_signer
 def test_P16E15_keygen_writes_0600_refuses_to_overwrite_and_prints_only_the_address(tmp_path):
     p = tmp_path / "cfg" / "base_anchor.key"
     env = dict(os.environ, AEGIS_ANCHOR_KEY=str(p))
@@ -332,6 +348,7 @@ def test_P16E15_keygen_writes_0600_refuses_to_overwrite_and_prints_only_the_addr
     assert again.returncode == 1 and p.read_text().strip() == raw
 
 
+@needs_signer
 def test_P16E16_known_vector_address_and_signed_tx_recovers_to_sender(key):
     pk = anchor._private_key(key)
     assert anchor.address_of(pk) == PK_ADDR
@@ -342,6 +359,7 @@ def test_P16E16_known_vector_address_and_signed_tx_recovers_to_sender(key):
     assert t["from"] == PK_ADDR.lower() == t["to"] and t["chainId"] == hex(8453) and t["value"] == "0x0" and t["nonce"] == hex(7)
 
 
+@needs_signer
 def test_P16E17_check_exit_2_when_missing_pending_or_unreachable_and_1_when_rpcs_disagree(tmp_path, key):
     chain = FakeChain()
     b, rec = bundle_with_anchor(tmp_path, chain, key)
@@ -363,6 +381,7 @@ def test_P16E17_check_exit_2_when_missing_pending_or_unreachable_and_1_when_rpcs
     assert anchor.check(nob, PK_ADDR, rpc=chain, urls=[U1])["exit"] == 2
 
 
+@needs_signer
 def test_P16E18_hook_posts_after_the_terminal_checkpoint_without_touching_the_run(key, monkeypatch):
     chain = FakeChain()
     monkeypatch.setattr(anchor, "jsonrpc", chain)
@@ -378,6 +397,7 @@ def test_P16E18_hook_posts_after_the_terminal_checkpoint_without_touching_the_ru
     assert len(chain.sent) == 1
 
 
+@needs_signer
 def test_P16E20_demo_report_copies_the_receipt_checks_it_and_never_sends(tmp_path, key, monkeypatch):
     chain = FakeChain()
     monkeypatch.setattr(anchor, "jsonrpc", chain)
