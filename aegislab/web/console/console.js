@@ -666,6 +666,7 @@ function playKindClass(l) {
   if (k === "audit") return "k-audit";
   if (k === "verify" || k === "release") return "k-ok";
   if (k === "tamper" || k === "error") return "k-bad";
+  if (k === "anchor") return / check exit 0$/.test(t) ? "k-ok" : "k-info";  // finale P16 part E (only sent when AEGIS_ANCHOR_CHAIN=base)
   return "k-info";
 }
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }

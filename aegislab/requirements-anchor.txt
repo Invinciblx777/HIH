@@ -1,0 +1,7 @@
+# Optional (finale P16 part E): only for AEGIS_ANCHOR_CHAIN=base (aegis/anchor.py). NOT part of requirements.txt or the offline kit.
+# eth-account 0.13.7 was the first choice; its dependency ckzg has no Python 3.15 wheel, so the signer is eth-keys directly.
+# Installed 21 Nov 2026 with: .venv/bin/pip install eth-keys==0.8.0 rlp==5.0.0 pycryptodome==3.24.1
+eth-keys==0.8.0
+rlp==5.0.0
+pycryptodome==3.24.1
+# resolved transitively (all wheels): eth-typing==6.0.0 eth-utils==6.0.0 eth-hash==0.8.0 cytoolz==1.2.0 toolz==1.2.0
