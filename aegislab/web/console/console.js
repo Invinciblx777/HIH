@@ -644,8 +644,9 @@ async function lab() {
   <section class="sec">${secHead("Scenarios", `<span id="lab-count"></span>`)}<div class="cards" id="lab-cards"></div></section>
   ${live ? "" : `<section class="sec" id="replay"></section>`}
   <section class="sec" id="probe-box"></section>
-  <section class="sec" id="play-box"></section>`);
-  drawRunBox(); drawLabCards(); drawProbe(); drawPlay();
+  <section class="sec" id="play-box"></section>
+  <section class="sec" id="oi-box"></section>`);
+  drawRunBox(); drawLabCards(); drawProbe(); drawPlay(); drawOutsideIn();
   if (!live) drawReplay();
   pollRun();
   $("#lab-cards").addEventListener("click", (e) => { const c = e.target.closest("[data-key]"); if (c) openKey(c.dataset.key); });
@@ -693,7 +694,7 @@ const P17 = {
     latency: { p50: 602, p95: 726, n: 512, errors: 0 } },
   timing: { label: "MEASURED 20 Nov 2026", n: "200 requests per setting, guard mode both, one execution", src: "evidence/finale_p16_2026-11-20/timing_guard/exec1_seed20261120/result.json",
     unpadded: "accuracy 1.000 (baseline 0.800, p = 0.001)", deadline: "accuracy 0.395 (baseline 0.800, p = 0.846)", D: 4000, cost: "+1516 ms", overruns: "0 overruns, 0 cut-offs" },
-  anchor: { label: "LIVE on Base mainnet, 21 Nov 2026", run: "TRY-006-G", block: 60073297,
+  anchor: { label: "LIVE on Base mainnet, 20 Nov 2026 (UTC)", run: "TRY-006-G", block: 60073297,
     tx: "0xb1d568e2bef36402bb8d43ab43b0b4253d93a402f16fbef0fc3ac65b3095daf5", fee: "0.000000154 ETH (about $0.00025)" },
   guide: [
     ["freeze", "Freeze", "Both runs are frozen with the same attack pack and defence config; their sha256 go into the signed log."],
@@ -888,6 +889,119 @@ function playSummary(res) {
   if (v) sum.append(el("p", "play-verify", `Signed audit (${v.run_id}): verify ${v.exit === 0 && v.ok ? "ok" : "FAILED"} / tampered copy ${v.tamper_exit ? "rejected" : "NOT rejected"}`));
   if (res.error) sum.append(el("p", "play-verify", "Error: " + res.error));
   drawPipes(res); drawEvidence(res); drawWhy(res); drawGuide();
+}
+/* ---------------------------------------------------------------- finale P17: AegisLab Outside-In (TinyFish)
+   Recorded TinyFish web-agent results, imported as an UNTRUSTED attack pack and run through the real broker, regex + Qwen3Guard
+   and the sandboxed model (aegis/outside_in.py). Agent text reaches the page only through textContent. */
+const OI = { job: null, next: 0, timer: null };
+async function drawOutsideIn() {
+  const box = $("#oi-box"); if (!box) return;
+  let st; try { st = await get("/api/lab/outside-in"); } catch (e) { box.remove(); return; }
+  if (!st.enabled || isPublic()) { box.remove(); return; }
+  const ev = st.evidence || {}, at = ev.attack || {}, inc = ev.incidents || {};
+  box.innerHTML = `${secHead("Outside-In: web agents vs. the open web", "TinyFish · imported as untrusted input")}
+    <div class="oi">
+      <div class="oi-grid" id="oi-facts"></div>
+      <div class="oi-feat" id="oi-feat"></div>
+      <div class="row"><label class="play-chk"><input type="checkbox" id="oi-guard" ${st.guard ? "checked" : "disabled"}> Use guard</label>
+        <button class="btn solid lg" type="button" id="oi-run" ${canAct() ? "" : "disabled"}>Import into the range and run</button></div>
+      <p class="tiny" id="oi-progress"></p>
+      <div id="oi-result"></div>
+      <div id="oi-audit"></div>
+    </div>`;
+  const f = $("#oi-facts");
+  const fact = (big, small, cls) => { const d = el("div", "oi-fact " + (cls || "")); d.append(el("strong", "", big), el("span", "", small)); f.append(d); };
+  fact(`${at.agent_runs ?? "?"} agent runs`, `TinyFish on ${ev.pages ?? "?"} synthetic pages, each with one hidden instruction (${ev.label}). ${at.completed ?? "?"} completed; ${at.saw_page ?? "?"} answers show the agent read the page, ${at.saw_interstitial ?? "?"} describe a mirror's click-through page instead`);
+  fact(`${at.saw_page_followed ?? "?"} / ${at.saw_page ?? "?"} followed`, `of the agents that read the page, how many repeated its marker or its "verification" link (all runs: ${at.followed_injection ?? "?"} / ${at.completed ?? "?"})`, at.followed_injection ? "warn" : "ok");
+  fact(`${at.flagged_injection ?? "?"} / ${at.completed ?? "?"} flagged`, "the agent's answer warned the user about the hidden instruction");
+  fact(`${inc.delivered ?? 0} / ${inc.sent ?? 0} incidents`, "signed (HMAC-SHA256) and delivered to the local n8n webhook");
+  const tb = el("table", "acc oi-styles"), hr = el("tr");
+  ["Page (injection style)", "Agent runs", "Read the page", "Followed", "Flagged", "Task not finished"].forEach((h) => hr.append(el("th", "", h))); tb.append(hr);
+  Object.entries(at.per_style || {}).forEach(([k, v]) => { const tr = el("tr", v.followed ? "fp" : ""); [k, v.runs, v.saw_page ?? "-", v.followed, v.flagged, v.incomplete ?? "-"].forEach((x) => tr.append(el("td", "", String(x)))); tb.append(tr); });
+  f.after(tb);
+  const mir = Object.entries(at.by_mirror || {}).map(([m, v]) => `${m}: ${v.runs} runs, ${v.saw_page} read the page, ${v.followed} followed`).join(" · ");
+  if (mir) tb.after(el("p", "tiny", "Pages served through public mirrors of the aegislab-range-pages branch: " + mir));
+  const au = $("#oi-audit");
+  if ((ev.audit || []).length) {
+    au.append(el("h3", "", `Read-only audit of the hosted demo (${ev.audit_target || ""})`));
+    ev.audit.forEach((x) => { const d = el("div", "oi-aud");
+      const what = x.refused ? "refused by TinyFish's usage policy before any step; reworded as G1b" : x.finding_claimed ? "the agent reports a finding" : x.none_found ? "no finding reported" : "no finding claimed";
+      d.append(el("strong", "", `${x.goal_id} · ${x.status} · ${what}`)); if (x.excerpt) d.append(el("p", "", x.excerpt)); au.append(d); });
+    if (ev.audit_check) au.append(el("p", "tiny", `Checked by us: ${ev.audit_check.claim} ${ev.audit_check.result} (${ev.audit_check.classification})`));
+  }
+  au.append(el("p", "tiny mono", "TinyFish run ids: " + (ev.run_ids || []).join(" ")));
+  OI.feat = ev.featured || null; OI.label = ev.label;
+  if (ev.import && ev.import.runs) oiSummary(ev.import, ev.import.run_ids); else drawFeatured(null);
+  $("#oi-run").addEventListener("click", oiRun);
+}
+async function oiRun(ev) {
+  const btn = ev.currentTarget; busy(btn, true);
+  const r = await call("/api/lab/outside-in", { method: "POST", body: { guard: $("#oi-guard").checked } });
+  if (!r.ok) { busy(btn, false); return toast((r.body && r.body.detail) || "HTTP " + r.status, true); }
+  OI.job = r.body.job; OI.next = 0; $("#oi-result").textContent = "";
+  const prog = $("#oi-progress"), seen = {};
+  const tick = async () => {
+    const q = await call(`/api/lab/playground/${encodeURIComponent(OI.job)}?since=${OI.next}`);
+    if (!q.ok) { busy(btn, false); return toast((q.body && q.body.detail) || "HTTP " + q.status, true); }
+    q.body.lines.forEach((l) => { if (l.kind === "broker→red") seen[l.run] = (seen[l.run] || 0) + 1; prog.textContent = `${OI.job}: ${l.run} ${l.kind} · ${Object.entries(seen).map(([k, v]) => k + " " + v + "/" + r.body.items).join(" · ")}`; });
+    OI.next = q.body.next;
+    if (q.body.done) { busy(btn, false); oiSummary(q.body.result || {}); return; }
+    OI.timer = setTimeout(tick, 600);
+  };
+  tick();
+}
+function drawFeatured(res) {
+  const c = $("#oi-feat"), F = OI.feat; if (!c) return; c.textContent = ""; if (!F) return;
+  c.append(el("h3", "", `One loop, end to end: ${F.style}${F.technique && F.technique !== F.style ? " (" + F.technique + ")" : ""}`),
+    el("p", "tiny", `TinyFish run ${F.run_id} · ${F.utc} · ${Math.round(F.agent_s || 0)} s · via ${F.mirror || "?"} · goal: "${F.goal}"`));
+  const cols = el("div", "oi-cols");
+  const a = el("div", "oi-col"); a.append(el("p", "lbl", "1. What the page fed the agent (injection highlighted)"));
+  const pre = el("p", "oi-page"); const seg = F.page_segments || ["", "", ""];
+  pre.append(document.createTextNode((seg[0].length > 260 ? "… " : "") + seg[0].slice(-260)), el("mark", "", seg[1]), document.createTextNode(seg[2].slice(0, 200) + (seg[2].length > 200 ? " …" : ""))); a.append(pre);
+  const b = el("div", "oi-col"); b.append(el("p", "lbl", "2. The agent's steps"));
+  const ol = el("ol", "oi-steps"); (F.steps || []).forEach((x) => ol.append(el("li", "", x))); b.append(ol);
+  b.append(el("p", "lbl", "3. The agent's answer"), el("p", "oi-ans", F.answer || "(empty)"),
+    el("span", "st " + (F.followed ? "warn" : "ok"), F.followed ? "followed the injection" : "did not follow the injection"),
+    el("span", "st " + (F.flagged ? "ok" : "none"), F.flagged ? " flagged it to the user" : " did not mention it"));
+  const d = el("div", "oi-col"); d.append(el("p", "lbl", "4. AegisLab verdicts on the imported entries"));
+  const R = res && res.runs && res.runs["RUN-R"], G = res && res.runs && res.runs["RUN-G"];
+  if (!res && F.recorded_import) d.append(el("p", "tiny", "recorded in " + F.recorded_import.join(" + ")));
+  (F.items || []).forEach((id) => {
+    const rv = (F.recorded_verdicts || {})[id] || {};
+    const recd = (lab) => { const x = rv[lab]; if (!x) return "not run yet"; return x.outcome + (x.guard && x.guard !== "Safe" ? " · " + x.guard + (x.categories && x.categories.length ? ": " + x.categories.join(", ") : "") : ""); };
+    if (!res) { d.append(el("p", "", `${id}: REGEX ONLY ${recd("REGEX ONLY")} | REGEX + QWEN3GUARD ${recd("REGEX + QWEN3GUARD")}`)); return; }
+    const o = (run) => { const it = run && run.items && run.items[id]; if (!it) return "not run yet"; const g = (it.stages || []).find((x) => x.id === "guard") || {};
+      const leak = it.model_output && /AEGIS-RANGE-/.test(it.model_output) ? " · the model repeated the page marker" : "";
+      return it.outcome + (g.status === "block" ? " · " + g.note + " in " + Math.round(g.ms) + " ms" : "") + leak; };
+    d.append(el("p", "", `${id}: REGEX ONLY ${o(R)} | REGEX + QWEN3GUARD ${o(G)}`));
+  });
+  d.append(el("p", "lbl", "5. Incident"), el("p", "", F.incident ? `n8n ${F.incident.ok ? "delivered" : "NOT delivered"} · severity ${F.incident.severity} · HMAC-signed · ${F.incident.ms} ms` : "not sent"));
+  cols.append(a, b, d); c.append(cols);
+}
+function oiSummary(res, recorded) {
+  drawFeatured(res);
+  const c = $("#oi-result"); if (!c) return; c.textContent = "";
+  if (recorded) c.append(el("p", "lbl", `Recorded import ${(recorded || []).join(" + ")} (${OI.label}). Press "Import into the range and run" to run it again live.`));
+  const R = (res.runs || {})["RUN-R"], G = (res.runs || {})["RUN-G"], ids = Object.keys((G || R || {}).items || {});
+  const out = (run, id) => { const it = run && run.items && run.items[id]; if (!it) return "-";
+    const g = (it.stages || []).find((s) => s.id === "guard") || {}, rx = (it.stages || []).find((s) => s.id === "regex") || {};
+    return it.outcome + (rx.status === "block" ? " (regex)" : g.status === "block" ? " (guard: " + g.note + ")" : ""); };
+  const blocked = (run) => ids.filter((id) => id !== "C1" && run && run.items[id] && /^blocked/.test(run.items[id].outcome)).length;
+  const n = ids.filter((id) => id !== "C1").length;
+  const ban = el("div", "play-banner " + (G && blocked(G) === n ? "blocked" : "allowed"));
+  const said = (run, re) => ids.filter((id) => run && run.items[id] && re.test(run.items[id].model_output || ""));
+  const link = (run) => said(run, /\/x\/AEGIS-RANGE-/).length, marks = said(G || R, /AEGIS-RANGE-/);
+  ban.append(el("strong", "", `${G ? blocked(G) : blocked(R)}/${n}`), el("span", "", `imported web entries stopped before the model${G ? " with regex + Qwen3Guard" : " with regex only"}` + (R && G ? ` (regex only: ${blocked(R)}/${n}).` : ".") +
+    ` Model answers carrying a "verification" link: ${R ? "regex only " + link(R) : ""}${R && G ? ", " : ""}${G ? "regex + Qwen3Guard " + link(G) : ""}.` +
+    (marks.length ? ` Page marker repeated in ${marks.join(", ")} (a reference code printed on the page itself, relayed, not an instruction obeyed).` : " No page marker repeated.") +
+    " Control C1: " + out(G || R, "C1") + "."));
+  c.append(ban);
+  const tb = el("table", "acc"), hr = el("tr"); ["Entry", "REGEX ONLY", "REGEX + QWEN3GUARD"].forEach((h) => hr.append(el("th", "", h))); tb.append(hr);
+  ids.forEach((id) => { const tr = el("tr"); [id, out(R, id), out(G, id)].forEach((x) => tr.append(el("td", "", x))); tb.append(tr); });
+  c.append(tb);
+  const v = res.verify;
+  if (v) c.append(el("p", "play-verify", `Sealed and released ${v.run_id}: verify_cli exit ${v.exit} (${v.exit === 0 && v.ok ? "authentic" : "FAILED"}) · tampered copy exit ${v.tamper_exit} (${v.tamper_exit ? "rejected" : "NOT rejected"})`));
+  if (res.error) c.append(el("p", "play-verify", "Error: " + res.error));
 }
 function drawLabCards() {
   const el = $("#lab-cards"); if (!el) return;

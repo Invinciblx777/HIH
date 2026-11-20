@@ -1,0 +1,66 @@
+/* finale P17 landing page. Local fonts only (web/fonts, OFL). */
+@font-face { font-family: "IBM Plex Sans"; src: url("/fonts/IBMPlexSans-var.ttf") format("truetype"); font-weight: 100 700; font-display: swap; }
+@font-face { font-family: "Montserrat"; src: url("/fonts/Montserrat-var.ttf") format("truetype"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "IBM Plex Mono"; src: url("/fonts/IBMPlexMono-Regular.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+:root { --ink: #111; --ink2: #555; --bg: #f6f5f1; --panel: #fff; --line: #d8d6cf; --accent: #2f6fb3; --moss: #2f7a4a; --warn: #8c6210; --red: #b3263e; }
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; font-family: "IBM Plex Sans", system-ui, sans-serif; color: var(--ink); background: var(--bg); line-height: 1.5; }
+a { color: var(--accent); }
+h1, h2, h3 { font-family: "Montserrat", "IBM Plex Sans", sans-serif; letter-spacing: -.01em; }
+.top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 24px; padding: 14px 6vw; background: rgba(246, 245, 241, .94); border-bottom: 1px solid var(--line); }
+.brand { font-family: "Montserrat"; font-size: 24px; font-weight: 600; color: var(--ink); text-decoration: none; }
+.brand span { color: var(--accent); }
+.top nav { display: flex; gap: 20px; flex: 1; }
+.top nav a { color: var(--ink2); text-decoration: none; font-size: 15px; }
+.cta { display: inline-block; padding: 14px 26px; border-radius: 999px; background: var(--ink); color: #fff; text-decoration: none; font-weight: 600; }
+.cta.sm { padding: 9px 18px; font-size: 14px; }
+.cta.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); }
+main section { padding: 64px 6vw; }
+section.band { background: var(--panel); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.hero-wrap { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 40px; align-items: center; padding: 72px 6vw 64px; }
+.hero { max-width: 1000px; }
+.shot { margin: 0; }
+.shot img { width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--line); box-shadow: 0 18px 40px rgba(0,0,0,.18); display: block; }
+.shot figcaption { font-size: 13px; color: var(--ink2); margin-top: 8px; }
+.hero h1 { font-size: clamp(40px, 4.6vw, 76px); line-height: 1.04; margin: 10px 0 20px; }
+.eyebrow { text-transform: uppercase; letter-spacing: .12em; font-size: 13px; color: var(--accent); font-weight: 600; margin: 0; }
+.lead { font-size: 21px; max-width: 900px; color: #222; }
+.ctas { display: flex; gap: 14px; flex-wrap: wrap; margin: 28px 0 12px; }
+.fine { font-size: 13px; color: var(--ink2); }
+.sub { color: var(--ink2); max-width: 900px; }
+h2 { font-size: clamp(28px, 3vw, 40px); margin: 0 0 18px; }
+.grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.card { background: var(--bg); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+.band .card { background: var(--bg); }
+.card h3 { margin: 0 0 8px; font-size: 19px; }
+.card p { margin: 0; color: #333; }
+.steps { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
+.steps li { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 24px; }
+.steps .n { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--ink); color: #fff; font-weight: 700; }
+.proof { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 18px; }
+.proof.three { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.pf { display: grid; gap: 8px; align-content: start; padding: 18px; border-radius: 14px; border: 2px solid var(--moss); background: var(--bg); }
+.pf strong { font-family: "Montserrat"; font-size: 22px; line-height: 1.2; }
+.pf span { font-size: 14px; color: #333; }
+.pf em { font-style: normal; font-size: 12px; font-family: "IBM Plex Mono", monospace; color: #1f7a7a; }
+.pf.weak { border-color: var(--warn); }
+.arch { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
+.arch svg { width: 100%; height: auto; display: block; }
+.tablewrap { overflow-x: auto; }
+table.cmp { border-collapse: collapse; width: 100%; background: var(--panel); font-size: 14px; }
+table.cmp th, table.cmp td { border-bottom: 1px solid var(--line); padding: 10px 12px; text-align: left; vertical-align: top; }
+table.cmp th { background: #eceae3; font-weight: 600; }
+table.cmp td.y { color: var(--moss); font-weight: 700; }
+.logos { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 14px; }
+.logos div { display: grid; gap: 4px; padding: 16px; border: 1px solid var(--line); border-radius: 14px; }
+.logos strong { font-family: "Montserrat"; font-size: 18px; }
+.logos span { font-size: 13px; color: var(--ink2); }
+.tag { font-size: 13px; font-family: "IBM Plex Mono", monospace; padding: 3px 10px; border-radius: 999px; box-shadow: inset 0 0 0 1.5px var(--warn); color: var(--warn); vertical-align: middle; }
+.plan .price { font-family: "Montserrat"; font-size: 20px; font-weight: 600; margin: 4px 0 10px; }
+.plan ul { margin: 0; padding-left: 18px; }
+.plan.hi { border: 2px solid var(--ink); }
+footer { padding: 36px 6vw 48px; border-top: 1px solid var(--line); }
+@media (max-width: 1200px) { .hero-wrap { grid-template-columns: minmax(0, 1fr); } .proof, .proof.three { grid-template-columns: repeat(2, minmax(0, 1fr)); } .logos { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 800px) { .grid4, .grid3, .steps, .proof, .proof.three, .logos { grid-template-columns: minmax(0, 1fr); } .top nav { display: none; } }
