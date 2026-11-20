@@ -1821,5 +1821,9 @@ def index():
     return FileResponse(CONSOLE / "index.html")
 
 
+# Finale P16 add-on: "Try a jailbreak (live)"; its routes refuse unless AEGIS_PLAYGROUND=1 (see aegis/playground.py).
+from . import playground as _playground  # noqa: E402
+_playground.register(app, _authorize)
+
 app.mount("/console", StaticFiles(directory=CONSOLE), name="console")
 app.mount("/", api.app)  # the unchanged control plane: /api/..., the legacy static site and its fonts

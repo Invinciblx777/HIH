@@ -1,0 +1,75 @@
+{
+ "live": {
+  "run_id": "P16-B3-LIVE",
+  "state": "SEALED",
+  "wall_s": 15.1,
+  "notify_delivery": [
+   {
+    "ms": 51.7,
+    "ok": true,
+    "payload_sha256": "4ea40caef446fcec8f181d9cb760ea48dfd2a25636d331024591763c9542717a",
+    "receiver": "n8n webhook",
+    "severity": "high",
+    "status": 200
+   }
+  ],
+  "notify_after_seal": true,
+  "audit_types_tail": [
+   "model.session_closed",
+   "anomaly.summary",
+   "run.sealed",
+   "notify.delivery"
+  ],
+  "verify_run": true
+ },
+ "down": {
+  "run_id": "P16-B3-DOWN",
+  "state": "SEALED",
+  "wall_s": 15.1,
+  "notify_delivery": [
+   {
+    "error": "URLError",
+    "ms": 0.3,
+    "ok": false,
+    "payload_sha256": "045adda883a834f4ac861d241cc563ce2666534429e4ddf43ec83740670b48b5",
+    "receiver": "n8n webhook",
+    "severity": "high"
+   }
+  ],
+  "notify_after_seal": true,
+  "audit_types_tail": [
+   "model.session_closed",
+   "anomaly.summary",
+   "run.sealed",
+   "notify.delivery"
+  ],
+  "verify_run": true
+ },
+ "n8n_incident_lines_for_run": [
+  {
+   "route": "high",
+   "received_at": "2026-11-20T08:41:33.958Z",
+   "notice": {
+    "anomaly_detectors_fired": [
+     "denial_burst",
+     "forbidden_sweep"
+    ],
+    "audit_head_at_seal": "sha256:c3c14287154bee9c19dab6e601f249e006919b4238367657de5ed5c9b795b371",
+    "audit_seq_at_seal": 20,
+    "complete": true,
+    "evaluated": 3,
+    "event": "aegislab.run.sealed",
+    "run_id": "P16-B3-LIVE",
+    "sealed_artifacts_digest": "sha256:f73d7df0463c51d978fc4750b6f29a6f3ea70d7f3c16cf2e7e1a6b8dc5523a8e",
+    "sealed_at": 1795164093.9165611,
+    "severity": "high",
+    "state": "SEALED",
+    "v": 1,
+    "verdict_counts": {
+     "blocked_input": 2,
+     "safe_output": 1
+    }
+   }
+  }
+ ]
+}
