@@ -18,6 +18,7 @@ import subprocess
 import sys
 import time
 import types
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -35,30 +36,44 @@ def http(method, url, body=None, headers=None, timeout=60):
         return r.status, r.read()
 
 
-def run_agent(key, url, timeout=240):
-    """One TinyFish run over SSE. Returns {"run_id", "status", "result", "error", "steps": [purpose, ...], "s"}."""
-    body = {"url": url, "goal": GOAL, "browser_profile": "lite", "agent_config": {"max_steps": 20, "max_duration_seconds": 180}}
+def parse_sse(lines, out=None):
+    """Fold TinyFish SSE lines (bytes or str) into {"run_id", "status", "result", "error", "steps"}. Stops at COMPLETE."""
+    out = out if out is not None else {"run_id": None, "status": None, "result": None, "error": None, "steps": [], "streaming_url": None}
+    for raw in lines:
+        line = (raw.decode("utf-8", "replace") if isinstance(raw, bytes) else str(raw)).strip()
+        if not line.startswith("data:"):
+            continue
+        try:
+            ev = json.loads(line[5:].strip())
+        except ValueError:
+            continue
+        if not isinstance(ev, dict):
+            continue
+        t = ev.get("type")
+        out["run_id"] = ev.get("run_id") or out["run_id"]
+        if t == "PROGRESS":
+            out["steps"].append(str(ev.get("purpose", ""))[:300])
+        elif t == "STREAMING_URL":
+            out["streaming_url"] = "present"  # a live view link; never stored (it is a capability URL)
+        elif t == "COMPLETE":
+            out.update(status=ev.get("status"), result=ev.get("result"), error=ev.get("error"))
+            break
+    return out
+
+
+def run_agent(key, url, timeout=240, goal=GOAL, max_s=180):
+    """One TinyFish run over SSE. Returns {"run_id", "status", "result", "error", "steps": [purpose, ...], "s"}.
+    agent_config carries only max_duration_seconds (GA); max_steps is a beta field that a non-beta key gets HTTP 403 for."""
+    body = {"url": url, "goal": goal, "browser_profile": "lite", "agent_config": {"max_duration_seconds": max_s}}
     req = urllib.request.Request(AGENT_URL, data=json.dumps(body).encode(), method="POST",
                                  headers={"X-API-Key": key, "Content-Type": "application/json", "Accept": "text/event-stream"})
-    out = {"run_id": None, "status": None, "result": None, "error": None, "steps": []}
+    out = {"run_id": None, "status": None, "result": None, "error": None, "steps": [], "streaming_url": None}
     t0 = time.time()
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
-            for raw in r:
-                line = raw.decode("utf-8", "replace").strip()
-                if not line.startswith("data:"):
-                    continue
-                try:
-                    ev = json.loads(line[5:].strip())
-                except ValueError:
-                    continue
-                t = ev.get("type")
-                out["run_id"] = ev.get("run_id") or out["run_id"]
-                if t == "PROGRESS":
-                    out["steps"].append(str(ev.get("purpose", ""))[:300])
-                elif t == "COMPLETE":
-                    out.update(status=ev.get("status"), result=ev.get("result"), error=ev.get("error"))
-                    break
+            parse_sse(r, out)
+    except urllib.error.HTTPError as e:
+        out["error"] = {"client": "HTTPError", "status": e.code, "detail": e.read(300).decode("utf-8", "replace")}
     except Exception as e:  # noqa: BLE001  (recorded per case, never hidden)
         out["error"] = {"client": type(e).__name__, "detail": str(e)[:200]}
     out["s"] = round(time.time() - t0, 1)

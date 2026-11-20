@@ -191,8 +191,12 @@ def _stream_run(job, rid, label):
         time.sleep(0.3)
 
 
-def _work(job):
+def _work(job, items=None):
+    """items: the attack pack entries (default: the prompt as J1 plus the benign control C1). Finale P17's Outside-In import
+    passes its own entries (aegis/outside_in.py); everything else (two runs, release, verify, tamper) is the same."""
     from llm_isolation import make_pack  # evaluation/ (added to sys.path below)
+    items = items or [{"id": "J1", "category": "jailbreak under test", "payload": job.prompt},
+                      {"id": "C1", "category": "benign control", "payload": CONTROL}]
     res = {"runs": {}, "prompt": job.prompt, "deadline_ms": DEADLINE_MS}
     work = Path(tempfile.mkdtemp(prefix="aegis-try-"))
     try:
@@ -207,8 +211,7 @@ def _work(job):
                     gl.get("model_file"), str(gl.get("model_sha256", ""))[:12]))
             except (OSError, ValueError):
                 job.emit("-", "sandbox", "guard: launch record unreadable (runs fail closed)")
-        make_pack(work / "pack.json", [{"id": "J1", "category": "jailbreak under test", "payload": job.prompt},
-                                       {"id": "C1", "category": "benign control", "payload": CONTROL}])
+        make_pack(work / "pack.json", items)
         base = json.loads((ROOT / "samples/defence_config.json").read_text())
         plan = [(job.id + "-R", "RUN-R", "regex")] + ([(job.id + "-G", "RUN-G", "both")] if job.guard else [])
         for rid, label, mode in plan:
@@ -222,7 +225,7 @@ def _work(job):
             obs = store.read_json(r.dir / "sealed/red_observed.json", [])
             lat = {o.get("attack_id"): o.get("latency_ms") for o in obs if isinstance(o, dict)}
             mon = json.dumps(runs.monitor_view(r, trusted=False))
-            hidden = [w for w in ("Unsafe", "Controversial", "Categories", job.prompt[:24], CONTROL[:24]) if w and w in mon]
+            hidden = [w for w in ("Unsafe", "Controversial", "Categories") + tuple(str(i["payload"])[:24] for i in items) if w and w in mon]
             job.emit(label, "monitor", "public monitoring stream: " + ("holds neither the prompt nor any guard verdict" if not hidden else "FOUND %d marker(s)" % len(hidden)))
             res["runs"][label] = {"run_id": rid, "state": r.state, "mode": mode, "monitor_clean": not hidden,
                                   "items": {a["attack_id"]: {"outcome": a.get("outcome"), "verdict_in": _verdict(a.get("verdict_in")),
@@ -283,18 +286,34 @@ def _work(job):
             job.result, job.done = res, True
 
 
-def _next_id():
+def _next_id(prefix="TRY"):
     used = set()
     d = store.p("runs")
     if d.exists():
         for x in d.iterdir():
-            m = re.fullmatch(r"TRY-(\d{3})-[RG]", x.name)
+            m = re.fullmatch(prefix + r"-(\d{3})-[RG]", x.name)
             if m:
                 used.add(int(m.group(1)))
     with _lock:
         for j in _jobs:
-            used.add(int(j.split("-")[1]))
-    return "TRY-%03d" % (max(used, default=0) + 1)
+            if j.startswith(prefix + "-"):
+                used.add(int(j.split("-")[1]))
+    return "%s-%03d" % (prefix, max(used, default=0) + 1)
+
+
+def start_job(jid, prompt, guard, items=None):
+    """Queue one job (one at a time across the playground and Outside-In); returns the Job. Raises HTTPException 409 if busy."""
+    with _lock:
+        if any(not j.done for j in _jobs.values()):
+            raise HTTPException(409, "a playground test is already running")
+    job = Job(jid, prompt, guard)
+    with _lock:
+        _jobs[job.id] = job
+        _order.append(job.id)
+        while len(_order) > KEEP:
+            _jobs.pop(_order.pop(0), None)
+    threading.Thread(target=_work, args=(job,) if items is None else (job, items), name="playground-" + job.id, daemon=True).start()
+    return job
 
 
 def _gate(request, authorize, token):
@@ -325,16 +344,7 @@ def register(app, authorize):
         if not 1 <= len(prompt) <= MAX_PROMPT:
             raise HTTPException(400, "prompt must be 1-%d characters" % MAX_PROMPT)
         guard = bool((body or {}).get("guard", True)) and bool(os.environ.get("AEGIS_GUARD_RUNDIR", "").strip())
-        with _lock:
-            if any(not j.done for j in _jobs.values()):
-                raise HTTPException(409, "a playground test is already running")
-        job = Job(_next_id(), prompt, guard)
-        with _lock:
-            _jobs[job.id] = job
-            _order.append(job.id)
-            while len(_order) > KEEP:
-                _jobs.pop(_order.pop(0), None)
-        threading.Thread(target=_work, args=(job,), name="playground-" + job.id, daemon=True).start()
+        job = start_job(_next_id(), prompt, guard)
         return {"job": job.id, "guard": guard}
 
     @app.get("/api/lab/playground/{job_id}")
@@ -346,3 +356,6 @@ def register(app, authorize):
                 raise HTTPException(404, "no such playground job")
             since = max(0, since)
             return {"job": j.id, "lines": j.lines[since:], "next": len(j.lines), "done": j.done, "result": j.result if j.done else None}
+
+    from . import outside_in  # finale P17: AegisLab Outside-In (TinyFish results imported as an untrusted attack pack)
+    outside_in.register(app, authorize, _gate)

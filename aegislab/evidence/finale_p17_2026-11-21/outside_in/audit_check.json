@@ -1,0 +1,7 @@
+{
+ "checked_utc": "2026-11-20T22:35:00Z",
+ "claim": "G1b-visible (TinyFish run 08ba9c5b-5f9b-428b-8312-eadf7efa64ba) listed a Lab card 'Session-leakage experiment' with 'Verdict: Unsafe'.",
+ "how_checked": "Headless Chromium on https://aegislab-demo.onrender.com: visible text of #/lab, #/overview, #/experiments, #/evidence, #/audit, with every Lab card opened, and every JSON response the Lab page loaded; plus origin/main aegislab/web/console/console.js.",
+ "result": "No page shows the word Unsafe. The only occurrence of 'unsafe' is the public defence-profile description in /api/lab/defence-profiles: 'blocks the obvious jailbreak phrasings and the stub model's unsafe marker'. No guard verdict, prompt text or sealed result is exposed.",
+ "classification": "agent misreading, not a finding"
+}

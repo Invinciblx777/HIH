@@ -112,8 +112,13 @@ def test_p17_08_presets():
 
 
 def test_p17_09_new_ui_writes_text_only():
-    body = P17[P17.index("function drawWhy("):]
+    body = P17[P17.index("function drawWhy("):P17.index("const OI = {")]
     assert "innerHTML" not in body and "insertAdjacentHTML" not in body and "outerHTML" not in body
+    oi = P17[P17.index("async function drawOutsideIn()"):]
+    assert oi.count("innerHTML") == 1 and "insertAdjacentHTML" not in oi and "outerHTML" not in oi
+    oi_tmpl = oi.split("box.innerHTML = `", 1)[1].split("`;", 1)[0]
+    assert re.findall(r"\$\{([^}]*)\}", oi_tmpl) == ['secHead("Outside-In: web agents vs. the open web", "TinyFish · imported as untrusted input")',
+                                                     'st.guard ? "checked" : "disabled"', 'canAct() ? "" : "disabled"']
     tmpl = JS[JS.index("async function drawPlay()"):JS.index("function drawWhy(")]
     assert len(re.findall(r"\$\{", tmpl.split("box.innerHTML = `", 1)[1].split("`;", 1)[0])) == 3  # secHead + st.guard + canAct only
 
@@ -127,3 +132,58 @@ def test_p17_10_skip_class_does_not_collide():
 def test_p17_11_result_carries_stages(monkeypatch):
     assert '"stages"] = stages(a, lat.get(a["attack_id"]))' in (ROOT / "aegis/playground.py").read_text()
     assert '"deadline_ms": DEADLINE_MS' in (ROOT / "aegis/playground.py").read_text()
+
+
+LANDING = (ROOT / "web/product/index.html").read_text()
+
+
+def test_p17_12_landing_is_served_offline_safe():
+    from fastapi.testclient import TestClient
+    from aegis import console
+    c = TestClient(console.app, base_url="http://127.0.0.1")
+    r = c.get("/product")
+    assert r.status_code == 200 and "The secure range for AI red-teaming." in r.text
+    assert c.get("/product/product.css").status_code == 200 and c.get("/product/hero.png").status_code == 200
+    assert c.get("/").status_code == 200  # the console stays at /
+    css = (ROOT / "web/product/product.css").read_text()
+    for m in re.findall(r'(?:src|href)="([^"]+)"', LANDING) + re.findall(r'url\("([^"]+)"\)', css):
+        assert not m.startswith(("http://", "//")) and (not m.startswith("https://") or m.startswith("https://github.com/Invinciblx777/HIH")), m
+    assert "<script" not in LANDING.lower()
+    for f in re.findall(r'url\("/fonts/([^"]+)"\)', css):
+        assert (ROOT / "web/fonts" / f).exists(), f
+
+
+def test_p17_13_landing_figures_are_claims_with_labels():
+    blocks = re.findall(r'<div class="pf[^"]*"><strong>(.*?)</strong><span>(.*?)</span><em>(.*?)</em></div>', LANDING, re.S)
+    assert len(blocks) == 8
+    forms = {f: c for c in CLAIMS.values() for f in c["forms"].values()}
+    for big, small, lab in blocks:
+        txt = re.sub(r"\s+", " ", big + " " + small)
+        used = []
+        for f in sorted(forms, key=len, reverse=True):  # longest form first, masked once found (as check_finale_presentation does)
+            if f in txt:
+                used.append(f)
+                txt = txt.replace(f, " ")
+        assert used, big
+        assert not re.findall(r"\d", re.sub(r"[A-Za-z]+\d+[A-Za-z]*", "", txt)), (big, txt)  # identifiers like Qwen3Guard aside
+        assert all(forms[f]["label"] == lab for f in used), (big, lab)
+    assert "ILLUSTRATIVE" in LANDING and "no pricing has been set" in LANDING
+    assert "does not make a system compliant" in LANDING and "We did not benchmark any of these products" in LANDING
+
+
+def test_p17_14_landing_outside_in_facts_match_evidence():
+    ev = ROOT / "evidence/finale_p17_2026-11-21/outside_in"
+    at = json.loads((ev / "tinyfish/attack/summary.json").read_text())
+    inc = json.loads((ev / "incidents.json").read_text())
+    res = json.loads((ev / "import/result.json").read_text())["result"]
+    blocked = lambda run: sum(1 for k, v in res["runs"][run]["items"].items() if k != "C1" and v["outcome"].startswith("blocked"))
+    n = sum(1 for k in res["runs"]["RUN-G"]["items"] if k != "C1")
+    facts = re.findall(r'<div class="pf" data-src="outside_in"><strong>(.*?)</strong><span>(.*?)</span><em>(.*?)</em></div>', LANDING, re.S)
+    assert len(facts) == 3 and all(f[2] == "RECORDED 21 Nov 2026" for f in facts)
+    assert facts[0][0] == "%d of %d" % (at["saw_page_followed"], at["saw_page"]) and "%d TinyFish runs" % at["agent_runs"] in facts[0][1]
+    assert at["flagged_injection"] == 0 and "None warned" in facts[0][1]
+    assert facts[1][0] == "%d of %d" % (blocked("RUN-G"), n) and "regex alone: %d of %d" % (blocked("RUN-R"), n) in facts[1][1]
+    assert res["verify"]["run_id"] in facts[1][1] and res["verify"]["exit"] == 0 and res["verify"]["tamper_exit"] == 1
+    assert not any("/x/AEGIS-RANGE-" in (v.get("model_output") or "") for r in res["runs"].values() for v in r["items"].values())
+    assert facts[2][0] == "%d of %d" % (inc["delivered"], inc["sent"])
+    assert "{{" not in LANDING

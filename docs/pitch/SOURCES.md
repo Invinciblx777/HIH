@@ -19,6 +19,13 @@ capability; "not documented" means we did not find it in the pages listed below,
 | S11 | Market category | Gartner Market Guide for AI Trust, Risk and Security Management (Feb 2025), as distributed by a vendor | https://www.paloaltonetworks.com/resources/research/gartner-market-guide-for-ai-trust-risk-and-security-management |
 | S12 | TinyFish Web Agent API | Endpoints run / run-sse / run-async, X-API-Key, PROGRESS / COMPLETE events | https://docs.tinyfish.ai/tinyagent/api/agent.md |
 | S13 | Track 04 problem statement | "Securing Adversarial AI Safety Testing Infrastructure" (Bayora) | Hack_in_Hills_26_Problem_Statements.pdf (event handout, not public) |
+| S14 | OWASP Top 10 for LLM Applications 2025 | LLM01:2025 Prompt Injection, LLM02:2025 Sensitive Information Disclosure, LLM05:2025 Improper Output Handling, LLM10:2025 Unbounded Consumption (secondary summaries confirm numbering) | https://genai.owasp.org/llm-top-10/ , https://www.hackerone.com/ai/owasp-top-10-llms-2025 , https://invicti.com/blog/web-security/owasp-top-10-risks-llm-security-2025 |
+| S15 | MITRE ATLAS | AML.T0051 LLM Prompt Injection (.000 direct, .001 indirect); AML.T0054 LLM Jailbreak (via the MITRE D3FEND mirror of the ATLAS entries) | https://atlas.mitre.org/techniques/AML.T0051 , https://d3fend.mitre.org/offensive-technique/attack/AML.T0051/ , https://d3fend.mitre.org/offensive-technique/attack/AML.T0054/ |
+| S16 | NIST AI RMF 1.0, MEASURE 2.7 | "AI system security and resilience ... are evaluated and documented"; playbook suggests red-teaming under adversarial conditions | https://airc.nist.gov/airmf-resources/airmf/5-sec-core/ , https://airc.nist.gov/AI_RMF_Knowledge_Base/Playbook/Measure |
+| S17 | EU AI Act, Article 15 | High-risk systems: appropriate accuracy, robustness and cybersecurity; measures against attacks incl. adversarial examples / model evasion and confidentiality attacks | https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-15 , https://artificialintelligenceact.eu/article/15/ |
 
 Market estimates disagree widely (2025 figures from about USD 2.9 billion to 4.3 billion in the summaries we saw), because each firm scopes
 the category differently. We quote one figure (S10) and say it is a third-party estimate.
+
+Compliance mapping rule: AegisLab produces test evidence that can SUPPORT these controls. It does not make a system compliant, and we
+claim no certification. The landing page maps only what the code does (see web/product/index.html, section Compliance).

@@ -1,0 +1,24 @@
+{
+  "block_hash": "0xf88a1da57a6f676f9f996c13b3098f398dbc33733a5621895682277899a657c0",
+  "block_number": 60073297,
+  "block_time_utc": "2026-11-20 20:03:55 UTC",
+  "block_timestamp": 1795205035,
+  "checks": [
+    "record matches terminal_anchor.json + broker_public_key.b64",
+    "digest recomputed",
+    "audit chain + signed checkpoints verify against the anchored terminal hash",
+    "on-chain: from pinned, to self, data = prefix + digest, status 1, chain 8453, >= 1 confirmation, 2 RPCs agree"
+  ],
+  "confirmations": 47144,
+  "exit": 0,
+  "findings": [],
+  "minutes_after_terminal_checkpoint": 0.07,
+  "ok": true,
+  "rpcs": [
+    "https://mainnet.base.org",
+    "https://base-rpc.publicnode.com"
+  ],
+  "state": "RELEASED",
+  "terminal_hash": "sha256:02cb64fc7048469760be09e441699e69234530acffeb2df0bc6c150164e523f7",
+  "tx_hash": "0xb1d568e2bef36402bb8d43ab43b0b4253d93a402f16fbef0fc3ac65b3095daf5"
+}

@@ -1,6 +1,21 @@
-# AegisLab prototype
+# AegisLab: the secure range for AI red-teaming
 
-Secure infrastructure for adversarial AI evaluation. Team Tech Mavericks, Hack in Hills ’26, Track 04 (Bayora).
+[![release-gates](https://github.com/Invinciblx777/HIH/actions/workflows/release-gates.yml/badge.svg)](https://github.com/Invinciblx777/HIH/actions/workflows/release-gates.yml)
+[![live-gates](https://github.com/Invinciblx777/HIH/actions/workflows/live-gates.yml/badge.svg)](https://github.com/Invinciblx777/HIH/actions/workflows/live-gates.yml)
+
+Guards protect the model and attack tools test the model; AegisLab protects the test itself. Red, blue and the model run in sandboxes
+that cannot reach each other, the broker hides which layer refused, and every run ends in signed evidence a reviewer releases.
+Team Tech Mavericks, Hack in Hills ’26, Track 04 (Bayora).
+
+![Jailbreak playground result](../docs/pitch/img/console_jailbreak_result.png)
+
+**Try it** (from this directory): `bash scripts/quickstart.sh`, then `bash scripts/judge_demo.sh` (offline, stub model) or, with the
+model files, `bash scripts/start_real_model_console.sh --playground` and open **Lab → Try a jailbreak (live)**. Product page: `/product`
+on the running console. Proof table, integrations (Qwen3Guard, n8n, Base, TinyFish Outside-In), comparison, roadmap and team:
+[`../README.md`](../README.md). Security model and residual risk: [`THREAT_MODEL.md`](THREAT_MODEL.md).
+
+This file is the **technical reference**: what each part does, how to run it, the API, design choices and layout.
+
 
 **Status: implemented prototype.** It is a working single-host proof of concept with measured results. It is not a production security system. By default the model under test is a deterministic **stub**, not an LLM; an optional, opt-in OpenAI-compatible adapter exists (see "Optional real-model backend"). Since the finale P3 (10 Nov 2026) a real model can also run **live**: `scripts/real_model_demo.sh` and `scripts/start_real_model_console.sh` use Qwen2.5-0.5B on llama.cpp CPU, in a hardened, sandboxed server (see "Real model live").
 
