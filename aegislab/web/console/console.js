@@ -720,6 +720,17 @@ function drawGuide() {
     li.className = st[k] === null ? "g-skip" : st[k] ? "g-done" : i === cur && PLAY.job ? "g-now" : "";
   });
 }
+/* Finale P18: the measured effect of the "Hardening" toggle on the team's own red-team set (HELD-OUT half) and on false positives. */
+function drawHardenCard(h) {
+  const c = $("#play-hcard"); if (!c) return; c.textContent = "";
+  if (!h) { c.remove(); return; }
+  const o = h.held_out || {}, off = o.off || {}, on = o.on || {};
+  c.append(el("p", "lbl", `Hardening · ${h.label}`), el("h3", "", `Team red-team set: ${on.both_content}/${h.held_out_n} held-out blocked with hardening ON`),
+    el("p", "", `Regex + Qwen3Guard on the prompt's first ${h.window_chars} characters: ${off.both_content}/${h.held_out_n} OFF, ${on.both_content}/${h.held_out_n} ON. Regex alone: ${off.regex} to ${on.regex}.`));
+  const fp = h.false_positives || {}, name = { hh_helpful: "HH-RLHF benign", jbb_benign: "JBB benign" };
+  c.append(el("p", "", "False positives (regex + guard): " + Object.entries(fp).map(([k, v]) => `${name[k] || k} ${v.off} to ${v.on} of ${v.n}`).join(" · ")));
+  c.append(el("p", "tiny", `Small n, prompts written by the team, held-out drawn from the same source. As deployed, every one of these long prompts is already blocked by the guard's length rule.`));
+}
 async function drawPlay() {
   const box = $("#play-box"); if (!box) return;
   let st; try { st = await get("/api/lab/playground"); } catch (e) { return; }
@@ -731,6 +742,7 @@ async function drawPlay() {
         <div class="play-presets" id="play-presets"></div>
         <textarea id="play-prompt" rows="3" maxlength="1000" class="play-ta" aria-label="Prompt to test"></textarea>
         <div class="row"><label class="play-chk"><input type="checkbox" id="play-guard" ${st.guard ? "checked" : "disabled"}> Use guard</label>
+          <label class="play-chk" title="Input hardening (finale P18): decode and normalise the input, extra technique rules, the guard also judges the normalised text"><input type="checkbox" id="play-harden"> Hardening</label>
           <button class="btn" type="button" id="play-big" aria-pressed="false">Large text</button>
           <button class="btn solid lg" type="button" id="play-run" ${canAct() ? "" : "disabled"}>Run real test</button></div>
         <div id="play-banner"></div>
@@ -743,11 +755,12 @@ async function drawPlay() {
         </div>
         <div id="play-sum"></div>
         <div id="play-evidence"></div>
-        <div class="play-cards"><div class="play-card" id="play-why"></div><div class="play-card" id="play-acc"></div></div>
+        <div class="play-cards"><div class="play-card" id="play-why"></div><div class="play-card" id="play-acc"></div><div class="play-card" id="play-hcard"></div></div>
       </div>
       <aside class="play-guide"><h3>What you are seeing</h3><ol id="play-guide"></ol></aside>
     </div>`;
   $("#play-prompt").value = PLAY_DEFAULT;
+  $("#play-harden").checked = !!st.harden; drawHardenCard(st.harden_card);
   const pre = $("#play-presets");
   P17.presets.forEach((x) => { const b = el("button", "btn chip", x.t); b.type = "button"; b.dataset.preset = x.k;
     b.addEventListener("click", () => { $("#play-prompt").value = x.p; pre.querySelectorAll("button").forEach((y) => y.classList.toggle("on", y === b)); });
@@ -852,7 +865,7 @@ async function playRun(ev) {
   const btn = ev.currentTarget, prompt = $("#play-prompt").value.trim();
   if (!prompt) return toast("Write a prompt first", true);
   busy(btn, true);
-  const r = await call("/api/lab/playground", { method: "POST", body: { prompt, guard: $("#play-guard").checked } });
+  const r = await call("/api/lab/playground", { method: "POST", body: { prompt, guard: $("#play-guard").checked, harden: $("#play-harden").checked } });
   if (!r.ok) { busy(btn, false); return toast((r.body && r.body.detail) || "HTTP " + r.status, true); }
   PLAY.job = r.body.job; PLAY.next = 0; PLAY.lines = []; PLAY.guard = !!r.body.guard;
   $("#play-log").textContent = ""; $("#play-sum").textContent = ""; $("#play-pipes").textContent = ""; $("#play-banner").textContent = ""; $("#play-banner").className = "";
