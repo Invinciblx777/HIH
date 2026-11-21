@@ -191,13 +191,15 @@ def _stream_run(job, rid, label):
         time.sleep(0.3)
 
 
-def _work(job, items=None):
+def _work(job, items=None, extra=None):
     """items: the attack pack entries (default: the prompt as J1 plus the benign control C1). Finale P17's Outside-In import
-    passes its own entries (aegis/outside_in.py); everything else (two runs, release, verify, tamper) is the same."""
+    passes its own entries (aegis/outside_in.py); everything else (two runs, release, verify, tamper) is the same.
+    extra: fields put in the job's result from the start (the live TinyFish run that produced the entries)."""
     from llm_isolation import make_pack  # evaluation/ (added to sys.path below)
     items = items or [{"id": "J1", "category": "jailbreak under test", "payload": job.prompt},
                       {"id": "C1", "category": "benign control", "payload": CONTROL}]
     res = {"runs": {}, "prompt": job.prompt, "deadline_ms": DEADLINE_MS}
+    res = dict(extra, **res) if extra else res
     work = Path(tempfile.mkdtemp(prefix="aegis-try-"))
     try:
         job.emit("-", "sandbox", "model: %s · sha256 %s · llama.cpp CPU · %s" % (
@@ -286,8 +288,9 @@ def _work(job, items=None):
             job.result, job.done = res, True
 
 
-def _next_id(prefix="TRY"):
-    used = set()
+def _next_id(prefix="TRY", floor=0):
+    """floor: the highest number already used outside this console's state (ids recorded in committed evidence)."""
+    used = {floor} if floor else set()
     d = store.p("runs")
     if d.exists():
         for x in d.iterdir():
@@ -301,8 +304,9 @@ def _next_id(prefix="TRY"):
     return "%s-%03d" % (prefix, max(used, default=0) + 1)
 
 
-def start_job(jid, prompt, guard, items=None):
-    """Queue one job (one at a time across the playground and Outside-In); returns the Job. Raises HTTPException 409 if busy."""
+def start_job(jid, prompt, guard, items=None, target=None):
+    """Queue one job (one at a time across the playground and Outside-In); returns the Job. Raises HTTPException 409 if busy.
+    target: a replacement worker target(job) that ends by calling _work (the Outside-In live TinyFish run)."""
     with _lock:
         if any(not j.done for j in _jobs.values()):
             raise HTTPException(409, "a playground test is already running")
@@ -312,6 +316,9 @@ def start_job(jid, prompt, guard, items=None):
         _order.append(job.id)
         while len(_order) > KEEP:
             _jobs.pop(_order.pop(0), None)
+    if target is not None:
+        threading.Thread(target=target, args=(job,), name="playground-" + job.id, daemon=True).start()
+        return job
     threading.Thread(target=_work, args=(job,) if items is None else (job, items), name="playground-" + job.id, daemon=True).start()
     return job
 

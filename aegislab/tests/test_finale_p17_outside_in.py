@@ -224,3 +224,148 @@ def test_O11_live_one_agent_run(tmp_path):
                             ledger=str(oi_tool.ledger_path())), key)
     assert s["agent_runs"] == 1 and s["completed"] == 1
     assert key not in (tmp_path / "a/cases.jsonl").read_text()
+
+
+# ---------------------------------------------------------------- the live stage button (fixtures only; never the network)
+def live_env(tmp_path, monkeypatch, key=True, ledger_lines=0):
+    monkeypatch.setenv("AEGIS_PLAYGROUND", "1")
+    monkeypatch.setenv("AEGIS_GUARD_RUNDIR", "/run/user/1000/aegis-guard.TEST")
+    kf, led = tmp_path / "tinyfish.key", tmp_path / "ledger.jsonl"
+    if key:
+        kf.write_text(KEY + "\n")
+    led.write_text("{}\n" * ledger_lines)
+    monkeypatch.setenv("AEGIS_TINYFISH_KEY_FILE", str(kf))
+    monkeypatch.setenv("AEGIS_TINYFISH_LEDGER", str(led))
+    monkeypatch.setenv("AEGIS_TINYFISH_BUDGET", "40")
+    monkeypatch.delenv("AEGIS_OI_SERVE_BASE", raising=False)
+    monkeypatch.setattr(outside_in, "_probe", lambda url, timeout=5: True)  # never the network
+    return led
+
+
+def fake_work(monkeypatch):
+    got = []
+
+    def work(job, items=None, extra=None):
+        got.append({"items": items, "extra": extra})
+        with playground._lock:
+            job.result, job.done = dict(extra or {}, runs={}), True
+    monkeypatch.setattr(playground, "_work", work)
+    return got
+
+
+def wait_done(c, job):
+    for _ in range(100):
+        j = c.get("/api/lab/playground/%s" % job).json()
+        if j["done"]:
+            return j
+        time.sleep(0.05)
+    raise AssertionError("job did not finish")
+
+
+def test_O12_live_button_off_without_key(isolated, monkeypatch, tmp_path):
+    c = isolated
+    live_env(tmp_path, monkeypatch, key=False)
+    h = login(c)
+    assert c.get("/api/lab/outside-in").json()["live"]["enabled"] is False
+    assert c.post("/api/lab/outside-in/live", json={"page": "hidden_div"}, headers=h).status_code == 403
+    assert c.post("/api/lab/outside-in/live", json={"page": "hidden_div"}).status_code == 403  # no CSRF
+    monkeypatch.delenv("AEGIS_PLAYGROUND")
+    assert c.post("/api/lab/outside-in/live", json={"page": "hidden_div"}, headers=h).status_code == 403
+
+
+def test_O13_fold_sse_streams_steps_and_drops_the_live_view_link():
+    seen, out = [], {"run_id": None, "status": None, "result": None, "error": None, "steps": []}
+    outside_in.fold_sse((FIX / "sse_completed.txt").read_text().splitlines(), out, seen.append)
+    assert seen == ["Navigate to the target page", "Summarize the page in three sentences"] == out["steps"]
+    assert out["status"] == "COMPLETED" and "SECRET-VIEW" not in json.dumps(out)
+
+
+def test_O14_live_click_streams_steps_imports_and_counts_in_the_ledger(isolated, monkeypatch, tmp_path):
+    c = isolated
+    led = live_env(tmp_path, monkeypatch)
+    got = fake_work(monkeypatch)
+    sent = []
+
+    def fake_open(key, body, timeout):
+        sent.append((key, body, led.read_text().count("console-live")))
+        return (FIX / "sse_completed.txt").read_text().splitlines()
+    monkeypatch.setattr(outside_in, "_open", fake_open)
+    h = login(c)
+    r = c.post("/api/lab/outside-in/live", json={"page": "support_doc", "guard": True}, headers=h)
+    assert r.status_code == 200 and re.fullmatch(r"OIN-\d{3}", r.json()["job"])
+    j = wait_done(c, r.json()["job"])
+    key, body, ledger_before = sent[0]
+    assert key == KEY and ledger_before == 1  # the ledger line exists before the request is sent
+    assert body["url"] == PAGES["base"] + "/p/support_doc.html" and body["goal"].startswith("Follow this support article")
+    assert body["agent_config"] == {"max_duration_seconds": outside_in.LIVE_TIMEOUT - 5} and body["browser_profile"] == "lite"
+    kinds = [l["kind"] for l in j["lines"]]
+    assert kinds.count("tinyfish step") == 2 and "tinyfish answer" in kinds and "tinyfish fallback" not in kinds
+    live = j["result"]["live"]
+    assert live["source"] == "live" and live["run_id"] == "00000000-0000-4000-8000-000000000001" and live["verdict"]["followed_injection"] is False
+    ids = [i["id"] for i in got[0]["items"]]
+    assert ids == ["W10", "A10", "C1"] and "water management" in got[0]["items"][1]["payload"]
+    rows = [json.loads(l) for l in led.read_text().splitlines() if l.strip() and l.strip() != "{}"]
+    assert len(rows) == 1 and rows[0]["mode"] == "console-live" and rows[0]["console_start"] == outside_in.STARTED
+    blob = json.dumps(j) + led.read_text() + "".join(p.read_text() for p in (store.VAR / "outside_in_live").iterdir())
+    assert KEY not in blob and "SECRET-VIEW" not in blob
+
+
+def test_O15_cap_two_clicks_per_console_start_and_budget(isolated, monkeypatch, tmp_path):
+    c = isolated
+    led = live_env(tmp_path, monkeypatch)
+    fake_work(monkeypatch)
+    calls = []
+    monkeypatch.setattr(outside_in, "_open", lambda *a: calls.append(1) or (FIX / "sse_completed.txt").read_text().splitlines())
+    h = login(c)
+    for _ in range(2):
+        r = c.post("/api/lab/outside-in/live", json={"page": "hidden_div"}, headers=h)
+        assert r.status_code == 200
+        wait_done(c, r.json()["job"])
+    r3 = c.post("/api/lab/outside-in/live", json={"page": "hidden_div"}, headers=h)
+    assert r3.status_code == 429 and len(calls) == 2 and c.get("/api/lab/outside-in").json()["live"]["left"] == 0
+    with open(led, "a") as f:  # an earlier console start's clicks do not count against this one
+        f.write(json.dumps({"mode": "console-live", "console_start": "other"}) + "\n")
+    monkeypatch.setattr(outside_in, "STARTED", "a-new-start")
+    assert c.get("/api/lab/outside-in").json()["live"]["left"] == 2
+    led.write_text("{}\n" * 40)  # but never past the budget
+    assert c.post("/api/lab/outside-in/live", json={"page": "hidden_div"}, headers=h).status_code == 429 and len(calls) == 2
+    assert c.post("/api/lab/outside-in/live", json={"page": "white_text"}, headers=h).status_code == 400
+
+
+def test_O16_timeout_falls_back_to_the_recorded_run(isolated, monkeypatch, tmp_path):
+    c = isolated
+    live_env(tmp_path, monkeypatch)
+    got = fake_work(monkeypatch)
+    monkeypatch.setattr(outside_in, "LIVE_TIMEOUT", 0.3)
+
+    def slow(key, body, timeout):
+        yield 'data: {"type": "PROGRESS", "run_id": "r-slow", "purpose": "Navigate"}'
+        time.sleep(2)
+        yield 'data: {"type": "PROGRESS", "run_id": "r-slow", "purpose": "too late"}'
+    monkeypatch.setattr(outside_in, "_open", slow)
+    h = login(c)
+    r = c.post("/api/lab/outside-in/live", json={"page": "hidden_div"}, headers=h)
+    j = wait_done(c, r.json()["job"])
+    live = j["result"]["live"]
+    assert live["source"] == "recorded" and live["fallback_reason"] == "timeout" and live["timed_out"]
+    assert live["recorded"]["run_id"] and "tinyfish fallback" in [l["kind"] for l in j["lines"]]
+    assert [i["id"] for i in got[0]["items"]] == ["W01", "A01", "C1"]
+    monkeypatch.setattr(outside_in, "_open", lambda *a: (_ for _ in ()).throw(OSError("network down")))
+    monkeypatch.setattr(outside_in, "LIVE_TIMEOUT", 5)
+    j2 = wait_done(c, c.post("/api/lab/outside-in/live", json={"page": "vendor_pricing"}, headers=h).json()["job"])
+    assert j2["result"]["live"]["source"] == "recorded" and j2["result"]["live"]["fallback_reason"] == "OSError"
+
+
+def test_O17_import_ids_never_reuse_a_recorded_id(isolated):
+    assert outside_in._floor() >= 2
+    assert playground._next_id("OIN", 2) == "OIN-003" and playground._next_id("OIN") == "OIN-001"
+
+
+def test_O18_serve_base_falls_back_to_the_mirror_when_pages_is_down(monkeypatch):
+    monkeypatch.delenv("AEGIS_OI_SERVE_BASE", raising=False)
+    monkeypatch.setattr(outside_in, "_probe", lambda url, timeout=5: False)
+    assert outside_in.serve_base(PAGES["base"], "p/hidden_div.html")[0] == outside_in.MIRROR_BASE
+    monkeypatch.setattr(outside_in, "_probe", lambda url, timeout=5: True)
+    assert outside_in.serve_base(PAGES["base"], "p/hidden_div.html") == (PAGES["base"], "GitHub Pages")
+    monkeypatch.setenv("AEGIS_OI_SERVE_BASE", "https://x.invalid/")
+    assert outside_in.serve_base(PAGES["base"], "p/hidden_div.html")[0] == "https://x.invalid"
