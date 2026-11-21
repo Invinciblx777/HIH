@@ -2288,19 +2288,22 @@ function navEdges() {
 const AEGIS_GUARD_INFO = "Aegis Guard = regex rules + input hardening + Qwen3Guard-Gen-0.6B (Qwen, Apache-2.0), run in its own sandbox";
 const CHAT = { sid: null, busy: false };
 async function chatPage() {
-  render(`<section class="chat-wrap"><aside class="chat-side"><button class="btn solid" id="chat-new" type="button">New chat</button><ul id="chat-list" class="chat-list"></ul></aside>
+  render(`<p class="chat-how"><b>How to read this:</b> each reply is the one answer the broker released at the fixed 4000 ms deadline; the badge says whether Aegis Guard allowed it, the Operator view shows which layer decided and the measured timings from the sealed run, and the cards on the right are this session (live) and the recorded measurements (with n and evidence).</p>
+    <section class="chat-wrap"><aside class="chat-side"><button class="btn solid" id="chat-new" type="button">New chat</button><ul id="chat-list" class="chat-list"></ul></aside>
     <div class="chat-main"><div class="chat-head"><h1>Aegis Chat</h1><span class="chat-info" tabindex="0" role="note" aria-label="${esc(AEGIS_GUARD_INFO)}" title="${esc(AEGIS_GUARD_INFO)}">ⓘ Aegis Guard</span></div>
     <p class="muted chat-sub">Every message goes user → broker → Aegis Guard → model (only if allowed) → output check + canary scan → broker → you.</p>
     <div id="chat-log" class="chat-log" aria-live="polite"></div>
-    <form id="chat-form" class="chat-form"><textarea id="chat-in" rows="2" maxlength="1000" placeholder="Message the model through Aegis Guard"></textarea><button class="btn solid" id="chat-send" type="submit">Send</button></form></div></section>`);
+    <form id="chat-form" class="chat-form"><textarea id="chat-in" rows="2" maxlength="8000" placeholder="Message the model through Aegis Guard"></textarea><button class="btn solid" id="chat-send" type="submit">Send</button></form></div>
+    <aside class="chat-cards"><div class="chat-card" id="chat-stats"></div><div class="chat-card" id="chat-acc"></div></aside></section>`);
+  chatAcc(); chatStats(null);
   const log = $("#chat-log");
-  if (isPublic()) { $(".chat-wrap").replaceChildren(el("p", "chat-off", "Live chat runs on the local lab only.")); return; }
+  if (isPublic()) { $(".chat-wrap").replaceChildren(el("p", "chat-off", "Live chat runs on the local lab only.")); $(".chat-how").remove(); return; }
   let st = null; try { st = await get("/api/lab/playground"); } catch (e) { /* shown below */ }
   if (!st || !st.enabled || !canAct()) {
     log.replaceChildren(el("p", "chat-off", !st || !st.enabled ? "Live chat runs on the local lab only: start the console with scripts/start_real_model_console.sh --playground." : noSession()));
     $("#chat-send").disabled = true; $("#chat-new").disabled = true; return;
   }
-  $("#chat-new").addEventListener("click", () => { CHAT.sid = null; chatPaint(null); chatList(); $("#chat-in").focus(); });
+  $("#chat-new").addEventListener("click", () => { CHAT.sid = null; chatPaint(null); chatStats(null); chatList(); $("#chat-in").focus(); });
   $("#chat-form").addEventListener("submit", chatSend);
   $("#chat-in").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#chat-form").requestSubmit(); } });
   await chatList();
@@ -2319,7 +2322,7 @@ async function chatList() {
   if (!r.sessions.length) ul.append(el("li", "muted", "No chats yet."));
 }
 async function chatOpen(sid) {
-  try { const s = await get(`/api/lab/chat/sessions/${encodeURIComponent(sid)}`); CHAT.sid = s.id; chatPaint(s); chatList(); }
+  try { const s = await get(`/api/lab/chat/sessions/${encodeURIComponent(sid)}`); CHAT.sid = s.id; chatPaint(s); chatStats(s.stats); chatList(); }
   catch (e) { CHAT.sid = null; chatPaint(null); }
 }
 function chatBadge(rep) {
@@ -2331,7 +2334,7 @@ function chatBadge(rep) {
 function chatBubble(m) {
   const d = el("div", "chat-msg " + (m.role === "user" ? "me" : "bot"));
   d.append(el("div", "chat-text", m.text));
-  if (m.role !== "user") d.append(chatBadge(m));
+  if (m.role !== "user") { d.append(chatBadge(m)); if (m.ops) d.append(chatOps(m)); }
   return d;
 }
 function chatPaint(s) {
@@ -2356,9 +2359,61 @@ async function chatSend(ev) {
     if (!r.ok) { log.append(el("p", "chat-off", (r.body && r.body.detail) || "HTTP " + r.status)); return; }
     CHAT.sid = r.body.session;
     log.append(chatBubble(Object.assign({ role: "assistant" }, r.body.reply)));
-    log.scrollTop = log.scrollHeight; chatList();
+    chatStats(r.body.stats); log.scrollTop = log.scrollHeight; chatList();
   } catch (e) { wait.remove(); log.append(el("p", "chat-off", e.message)); }
   finally { CHAT.busy = false; busy(btn, false); inp.focus(); }
+}
+const GH_EV = "https://github.com/Invinciblx777/HIH/blob/finale/p17-showcase/aegislab/evidence/";
+const ACC = [
+  ["Team red-team set, held-out: blocked with hardening", "26/27", "n = 27", "finale_p18_2026-11-21/README.md"],
+  ["Team red-team set, held-out: blocked without hardening", "19/27", "n = 27", "finale_p18_2026-11-21/README.md"],
+  ["JailbreakBench harmful: blocked", "99/100", "n = 100", "finale_p18_2026-11-21/results.json"],
+  ["Gandalf attacks: blocked with hardening", "66/112", "n = 112", "finale_p18_2026-11-21/results.json"],
+  ["False positives, HH-RLHF helpful", "4/200", "n = 200", "finale_p18_2026-11-21/results.json"],
+  ["False positives, JailbreakBench benign (benign set includes borderline prompts)", "61/100", "n = 100", "finale_p18_2026-11-21/results.json"],
+  ["Guard latency, one call (measured 20 Nov 2026)", "p50 602 ms · p95 726 ms", "n = 512 texts", "finale_p16_2026-11-20/guard_eval/result.json"],
+  ["Timing leak test at the 4000 ms deadline (measured 20 Nov 2026)", "no leak detected (p 0.846)", "n = 200 requests per setting", "finale_p16_2026-11-20/timing_guard/exec1_seed20261120/result.json"],
+];
+function chatAcc() {
+  const c = $("#chat-acc"); if (!c) return;
+  const h = el("div", "chat-card-head"); h.append(el("strong", "", "Measured accuracy"), el("span", "label rec", "MEASURED 21 Nov 2026"));
+  const ul = el("ul", "chat-acc");
+  ACC.forEach(([what, val, n, ev]) => {
+    const li = el("li"); const a = el("a", "chat-ev", val); a.href = GH_EV + ev; a.target = "_blank"; a.rel = "noopener noreferrer"; a.title = "evidence: aegislab/evidence/" + ev;
+    li.append(el("span", "", what), a, el("span", "muted", n)); ul.append(li);
+  });
+  c.replaceChildren(h, ul, el("p", "muted small", "Regex + input hardening + Qwen3Guard on the prompt's first 1000 characters (team set) or as deployed (reference sets). Small n; team prompts written by us."));
+}
+function chatStats(st) {
+  const c = $("#chat-stats"); if (!c) return;
+  st = st || { messages: 0, allowed: 0, blocked: 0, blocked_by_layer: {}, guard_p50_ms: null, guard_p95_ms: null, guard_n: 0, overruns: 0, canary_leaks: 0 };
+  const h = el("div", "chat-card-head"); h.append(el("strong", "", "Session stats"), el("span", "label live", "live, this session"));
+  const row = (k, v) => { const r = el("div", "chat-kv"); r.append(el("span", "muted", k), el("b", "", String(v))); return r; };
+  const by = Object.entries(st.blocked_by_layer || {}).map(([k, v]) => `${k} ${v}`).join(" · ") || "none";
+  const ms = (v) => (v == null ? "-" : Math.round(v) + " ms");
+  c.replaceChildren(h, row("messages", st.messages), row("allowed", st.allowed), row("blocked", st.blocked), row("blocked by layer", by),
+    row(`guard latency p50 / p95 (n = ${st.guard_n})`, `${ms(st.guard_p50_ms)} / ${ms(st.guard_p95_ms)}`),
+    row("deadline overruns", st.overruns), row("canary leaks", st.canary_leaks));
+}
+function chatOps(m) {
+  const o = m.ops, ms = (v) => (v == null ? "-" : Math.round(v) + " ms");
+  const d = el("details", "chat-ops"); d.open = true;
+  const sm = el("summary"); sm.append(el("b", "", "Operator view"), el("span", "muted", " · reviewer only: the user and red only ever get the one answer at the fixed deadline")); d.append(sm);
+  const g = o.guard || {};
+  const gv = g.error ? `no verdict (${g.error}, fail-closed)` : `${g.safety || "-"}${(g.categories || []).length ? " · " + g.categories.join(", ") : ""}`;
+  const rows = [
+    ["decision layer", o.layer ? o.layer : "none: every layer passed, answer released"],
+    ["Aegis Guard input check", ms(o.input_ms) + (g.error === "guard_text_too_long" ? " (Qwen3Guard not called: refused unscanned)" : g.ms != null ? ` (Qwen3Guard ${ms(g.ms)})` : "")],
+    ["guard verdict", gv],
+    ["input hardening", (o.harden_techniques || []).length ? "techniques seen: " + o.harden_techniques.join(", ") : "no technique seen"],
+    ["model", o.model_called ? ms(o.model_ms) : "not called"],
+    ["output check + canary scan", o.output_ms != null ? ms(o.output_ms) + ` · canary hits ${o.canary_hits}` : "not needed: model not called"],
+    ["internal total", `${ms(o.internal_ms)} · released at ${ms(o.released_ms)} · padding ${ms(o.padding_ms)}${o.cut_off ? " · checks not finished in time: refused" : ""}`],
+    ["run", `${m.run_id || "-"} · audit: ${o.audit_signed ? "signed" : "unsigned"}, ${o.audit_entries} entries`],
+  ];
+  const dl = el("dl", "chat-ops-dl"); rows.forEach(([k, v]) => dl.append(el("dt", "", k), el("dd", "", v))); d.append(dl);
+  d.append(el("p", "muted small", "Aegis Guard sees the last 3 turns plus the new message, cut to 1000 characters (oldest text first). A single message over 1000 characters is refused unscanned (length limit), and a check not finished in time is refused (guard timeout): fail-closed, never passed."));
+  return d;
 }
 PAGES.chat = { render: chatPage };
 
