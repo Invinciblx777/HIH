@@ -86,7 +86,7 @@ def _verdict(v):
     s = v.get("verdict", "?")
     g = v.get("guard") or {}
     if g:
-        s += " · Qwen3Guard %s%s%s" % (g.get("safety"), " [" + ", ".join(g.get("categories") or []) + "]" if g.get("categories") else "",
+        s += " · AegisGuard model %s%s%s" % (g.get("safety"), " [" + ", ".join(g.get("categories") or []) + "]" if g.get("categories") else "",
                                        " in %s ms" % round(g["ms"]) if isinstance(g.get("ms"), (int, float)) else "")
         if g.get("error"):
             s += " (guard error %s: fail closed)" % g["error"]
@@ -120,12 +120,12 @@ def stages(a, red_ms=None):
         out.append({"id": "regex", "label": "Regex input check", "status": "block" if rx_block else "pass", "ms": rms, "derived": der,
                     "note": "rule %s" % rx.get("rule") if rx.get("rule") else ("blocked" if rx_block else "no rule matched")})
     if not g:
-        out.append({"id": "guard", "label": "Qwen3Guard input check", "status": "skip", "ms": None, "derived": False, "note": "guard off"})
+        out.append({"id": "guard", "label": "AegisGuard model input check", "status": "skip", "ms": None, "derived": False, "note": "guard off"})
     else:
         gblock = blocked_in and not rx_block and g.get("safety") != "Safe"
         cats = g.get("categories") or []
         cats = cats if isinstance(cats, list) else [str(cats)]
-        out.append({"id": "guard", "label": "Qwen3Guard input check", "status": "block" if gblock else "pass", "ms": gms, "derived": False,
+        out.append({"id": "guard", "label": "AegisGuard model input check", "status": "block" if gblock else "pass", "ms": gms, "derived": False,
                     "note": "%s%s%s" % (g.get("safety") or "?", (": " + ", ".join(map(str, cats))) if cats else "",
                                         " (guard error %s: fail closed)" % g["error"] if g.get("error") else "")})
     out.append({"id": "model", "label": "Model (sandboxed)", "status": "pass" if called else "skip", "ms": mms if called else None, "derived": False,
