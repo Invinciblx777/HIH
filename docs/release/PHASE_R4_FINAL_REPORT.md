@@ -125,7 +125,7 @@ drawn mouse pointer in the page (headless screencasts have no cursor). The beats
 | Full decode | 4,152 / 4,152 frames, 0 errors, 138.92 s container | VERIFIED |
 | Audio | peak 0.81, RMS −19.3 dBFS, 0 clipped samples | VERIFIED |
 | Captions vs speech | 99.5 s speech, 0.0 s outside cues, 0 empty cues | VERIFIED |
-| Stills inspected (by Claude) | text readable, correct bands, no secret visible | VERIFIED (not a human check) |
+| Stills inspected (AI-assisted) | text readable, correct bands, no secret visible | VERIFIED (not a human check) |
 | Secret exposure | 12 DOM/text checks against launch code, CSRF token, session cookie, private-key and role-token strings, canary, local paths: 0 hits | VERIFIED |
 | OCR of frames | no OCR tool on the host | NOT_RUN |
 | Human watch-and-listen | — | HUMAN_APPROVAL_REQUIRED |

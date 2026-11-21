@@ -70,8 +70,8 @@ Read-only.
 | Full decode | 4,214 / 4,214 frames, 0 errors | VERIFIED |
 | Audio | peak 0.80, RMS −19.2 dBFS, 0 clipped samples | VERIFIED |
 | Captions vs speech | 101.2 s speech, 0.0 s outside cues, 0 cues without speech | VERIFIED |
-| Narration vs events | each beat starts at the recorded start of its action; stills at 13 times compared with captions | VERIFIED (by Claude) |
-| Stills | 13 stills: text legible, correct bands, no graph overlap, no clipped lifecycle, no overflowing button | VERIFIED (by Claude, not a person) |
+| Narration vs events | each beat starts at the recorded start of its action; stills at 13 times compared with captions | VERIFIED (AI-assisted check) |
+| Stills | 13 stills: text legible, correct bands, no graph overlap, no clipped lifecycle, no overflowing button | VERIFIED (AI-assisted check, not a person) |
 | Secret exposure (DOM/text, every beat and after logout) | 12 checks against launch code, CSRF token, session cookie, key and role-token strings, canaries, local paths: 0 hits | VERIFIED |
 | OCR of frames | no OCR tool on the host | NOT_RUN |
 | Human watch-and-listen | — | HUMAN_APPROVAL_REQUIRED |

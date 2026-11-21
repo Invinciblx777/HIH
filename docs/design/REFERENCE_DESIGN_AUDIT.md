@@ -4,7 +4,7 @@ Phase R1-UI, 26 October 2026. Reference: https://thestoryarchive.net/ (and its s
 
 ## How the reference was inspected
 
-- Rendered in a real browser, not a text extract: the Claude desktop browser pane (Chromium, 1024 px wide) for live
+- Rendered in a real browser, not a text extract: a desktop browser pane (Chromium, 1024 px wide) for live
   inspection, and headless Chromium 156 (Playwright-core 1.56, `~/.cache/ms-playwright/chromium-1248`) for
   screenshots at 1440 × 900, 1024 × 768 and 390 × 844 (mobile emulation with touch).
 - Values below come from `getComputedStyle`, `getBoundingClientRect` and the page's own CSS custom properties read

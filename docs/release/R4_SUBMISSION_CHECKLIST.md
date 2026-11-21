@@ -1,6 +1,6 @@
 # R4 submission checklist
 
-Team Tech Mavericks · Hack in Hills '26 · Track 04 (Bayora). Prepared 26 October 2026 (IST) in Phase R4. Claude prepared
+Team Tech Mavericks · Hack in Hills '26 · Track 04 (Bayora). Prepared 26 October 2026 (IST) in Phase R4 with AI assistance. The preparer
 this list; it submitted nothing, posted nothing and filled no form. **Status: NOT SUBMITTED.** Only a genuine organizer
 confirmation may change that.
 
@@ -9,14 +9,14 @@ confirmation may change that.
 | Item | Value | Status |
 |---|---|---|
 | Deadline | 28 October 2026, India Standard Time (team statement for Phase R4). The Unstop listing read on 26 Oct showed 28 Oct 2026, 11:59 PM IST for the "Prototype Development, Social Pitch & Outreach" stage | HUMAN_CONFIRMATION_REQUIRED: the exact time comes from the organizer's own instructions |
-| Channel | **Not Unstop** (team statement). The organizer's separate submission instructions were not available to Claude: no organizer message, form or rules file exists in the project workspace. The Unstop page read on 26 Oct named a Google Form shared in the official Hack in Hills '26 WhatsApp group | HUMAN_CONFIRMATION_REQUIRED: open the organizer's instructions and follow them, not this file |
-| Required items | Per the Unstop page read on 26 Oct: GitHub link, demo video link, LinkedIn post link, Instagram Reel link (posts tagging Eren, Builder Base, Nexido, Web3 India). Video length, file naming and format were not stated anywhere Claude could read | HUMAN_CONFIRMATION_REQUIRED against the organizer instructions |
+| Channel | **Not Unstop** (team statement). The organizer's separate submission instructions were not available to the preparer: no organizer message, form or rules file exists in the project workspace. The Unstop page read on 26 Oct named a Google Form shared in the official Hack in Hills '26 WhatsApp group | HUMAN_CONFIRMATION_REQUIRED: open the organizer's instructions and follow them, not this file |
+| Required items | Per the Unstop page read on 26 Oct: GitHub link, demo video link, LinkedIn post link, Instagram Reel link (posts tagging Eren, Builder Base, Nexido, Web3 India). Video length, file naming and format were not stated anywhere the preparer could read | HUMAN_CONFIRMATION_REQUIRED against the organizer instructions |
 
 Do not confuse the optional TinyFish Builder Challenge form with the Round 2 form.
 
 ## Ready for the team (engineering done)
 
-| # | Item | Value | Verified by Claude | Human action |
+| # | Item | Value | Verified (AI-assisted) | Human action |
 |---|---|---|---|---|
 | 1 | Public repository | https://github.com/Invinciblx777/HIH, public, MIT, default branch `main` | anonymous GitHub API and page HTTP 200 on 26 Oct (R4) | open logged out; record in `docs/round2/SUBMISSION_LINKS.md` (workspace) |
 | 2 | Verified prototype revision | `main` = `743415223e916d31c43c48f648d31524c8ba1d88` (merge of PR #5) | clean clone: all container-free and Podman gates pass, live browser walkthrough, strict verify, tamper rejection (`PHASE_R4_FINAL_REPORT.md`) | none, unless the R4 branch is merged (then re-check the new SHA) |
@@ -28,7 +28,7 @@ Do not confuse the optional TinyFish Builder Challenge form with the Round 2 for
 | 8 | Technical description | below | — | adapt to the form's length limit |
 | 9 | Integrity summary | `docs/release/R4_RELEASE_INTEGRITY.md` | yes | none |
 | 10 | Known limitations | `docs/release/R4_JUDGE_DEMO_GUIDE.md`, experience 6; `aegislab/THREAT_MODEL.md` | — | say them in the video description too |
-| 11 | LinkedIn post, Instagram Reel | drafts in workspace `round2/submission_ready/text/`; Reel `round2/submission_ready/reel/` | not posted by Claude | verify tag handles, post, record URLs |
+| 11 | LinkedIn post, Instagram Reel | drafts in workspace `round2/submission_ready/text/`; Reel `round2/submission_ready/reel/` | not posted by the preparer | verify tag handles, post, record URLs |
 
 ## Technical project description (draft, 120 words)
 
