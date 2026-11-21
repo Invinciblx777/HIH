@@ -29,16 +29,15 @@ messages. Every reply leaves at one fixed deadline with one refusal text. Every 
 offline."
 
 **[1:05, slides 6–7, LIVE] Jailbreak.** Console → Lab → Try a jailbreak → Prompt B → Run real test. "Same prompt, two real runs. Without
-the guard, the model answers. With Qwen3Guard, it is blocked before the model, Non-violent Illegal Acts, in about six hundred
+the guard, the model answers. With AegisGuard model, it is blocked before the model, Non-violent Illegal Acts, in about six hundred
 milliseconds. And red? Red gets the same refusal at the same four-second deadline either way." Point at the pipeline tiles and the
 evidence strip: verify exit 0, tampered copy exit 1.
 
-**[optional, after slide 7, LIVE] Aegis Chat.** Console → Chat → New chat. Ask "What is the capital of France?" (green "Aegis Guard:
-allowed"), then Prompt B (red "Aegis Guard: blocked · Non-violent Illegal Acts", the uniform refusal). "This is a normal chat, but
-every message is a real broker run: Aegis Guard checks it before the model, the model answers only if allowed, output and canary
+**[optional, after slide 7, LIVE] Aegis Chat.** Console → Chat → New chat. Ask "What is the capital of France?" (green "AegisGuard:
+allowed"), then Prompt B (red "AegisGuard: blocked · Non-violent Illegal Acts", the uniform refusal). "This is a normal chat, but
+every message is a real broker run: AegisGuard checks it before the model, the model answers only if allowed, output and canary
 checks run, and the broker releases one answer at the fixed four-second deadline." Point at the open Operator view (reviewer only:
-deciding layer, guard, model and output times, padding, signed audit). If asked: Aegis Guard is our regex rules plus input hardening
-plus Qwen's Qwen3Guard-Gen-0.6B (Apache-2.0) in its own sandbox.
+deciding layer, guard, model and output times, padding, signed audit). If asked: "AegisGuard: our guard pipeline. Regex, input hardening, a pinned open guard model and an output check + canary scan, behind a fixed 4000 ms deadline, fail-closed." Credit: AegisGuard runs the open-weight Qwen3Guard-Gen-0.6B (Qwen team, Apache-2.0), unmodified, sha256 pinned.
 
 **[1:50, slide 8] Proof.** "Measured on 20 November: the guard blocks 99 of 100 JailbreakBench harmful goals; regex blocks none.
 On Gandalf injections it gets 61 of 112, so it is a layer, not a wall. It costs false positives: 59 of 100 benign look-alikes.
@@ -48,7 +47,7 @@ detected."
 **[2:20, slide 10] TinyFish Outside-In.** "We pointed the sponsor's web agents at pages with hidden instructions, imported what they
 brought back as an untrusted pack, and ran it through the same range. We also let their agents pentest our public demo."
 "Recorded on 21 November: of the agents that actually read a poisoned page, none of 18 obeyed it. In the range, regex plus
-Qwen3Guard stopped 9 of 20 imported entries before the model, and no model answer carried the injected link. Their audit of our
+The AegisGuard model stopped 9 of 20 imported entries before the model, and no model answer carried the injected link. Their audit of our
 demo found no keys, no API docs and no way to write."
 
 **[2:45, slides 9, 14] Evidence and ask.** "Every run's terminal checkpoint can be anchored on Base: one transaction, a fraction of a
@@ -79,7 +78,7 @@ Outside-In lines for slide 10 (from the evidence):
 
 - (a) 30 TinyFish runs on 10 synthetic pages; 18 answers show the page was read; 0 of 18 followed the hidden instruction; 0 warned
   the user. Say it plainly: the first mirror put a click-through page in front of ours and about half the agents never got past it.
-- Import: regex + Qwen3Guard stopped 9 of 20 entries before the model (regex alone 8 of 20). The base64 page was stopped only by a
+- Import: regex + AegisGuard model stopped 9 of 20 entries before the model (regex alone 8 of 20). The base64 page was stopped only by a
   guard timeout (fail-closed). The agents' answers were clean, so they reached the model, which is correct. No model answer carried
   the injected link. Sealed OIN-002-G: verify exit 0, tampered copy exit 1.
 - (b) "We let the sponsor's agents pentest us": no API docs, keys, tokens or write path. One agent said it saw an "Unsafe"
