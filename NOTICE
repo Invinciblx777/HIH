@@ -1,0 +1,13 @@
+AegisLab
+Copyright (c) Tech Mavericks. Code licensed under the MIT licence (see LICENSE).
+
+Third-party components
+
+AegisGuard
+  AegisGuard is AegisLab's guard pipeline: regex rules, input hardening, a pinned open guard model and an
+  output check + canary scan, behind a fixed 4000 ms deadline, fail-closed.
+  AegisGuard runs the open-weight Qwen3Guard-Gen-0.6B (Qwen team, Apache-2.0), unmodified, sha256 pinned.
+  It is not bundled in this repository; scripts fetch it and check the pinned sha256 before use.
+  Licence: Apache License 2.0, https://www.apache.org/licenses/LICENSE-2.0
+
+Fonts and other third-party files: see README.md (Licence section) and aegislab/web/fonts/OFL.txt.

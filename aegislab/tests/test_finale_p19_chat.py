@@ -196,7 +196,7 @@ def test_timeout_labels_never_bare_deadline():
         assert rep["verdict"] == "blocked" and rep["category"] == want and rep["text"] == runs.UNIFORM_REFUSAL
         assert rep["category"] != "deadline" and "model_output" not in str(rep)
     assert chat.decision(TIMEOUT)[0] == "guard timeout" and chat.decision(CUTOFF)[0] == "time limit"
-    assert chat.decision(HARDEN)[0] == "input hardening" and chat.decision(BLOCK)[0] == "Qwen3Guard"
+    assert chat.decision(HARDEN)[0] == "input hardening" and chat.decision(BLOCK)[0] == "AegisGuard model"
 
 
 def test_panel_fields_present(tmp_path):
@@ -210,7 +210,7 @@ def test_panel_fields_present(tmp_path):
     assert o["layer"] is None and o["model_called"] and o["model_ms"] == 900.0 and o["output_ms"] == 20.0
     assert o["internal_ms"] == 1530.0 and o["padding_ms"] == 2470.0 and o["audit_entries"] == 3 and o["audit_signed"]
     b = chat.reply_from(dict(BLOCK), "CHAT-003-G")["ops"]
-    assert b["model_ms"] is None and not b["model_called"] and b["layer"] == "Qwen3Guard"
+    assert b["model_ms"] is None and not b["model_called"] and b["layer"] == "AegisGuard model"
 
 
 def test_stats_maths():
@@ -224,7 +224,7 @@ def test_stats_maths():
         msgs += [{"role": "user", "text": "q"}, dict(rep, role="assistant")]
     st = chat.stats(msgs)
     assert (st["messages"], st["allowed"], st["blocked"]) == (5, 2, 3)
-    assert st["blocked_by_layer"] == {"Qwen3Guard": 1, "guard timeout": 1, "input hardening": 1}
+    assert st["blocked_by_layer"] == {"AegisGuard model": 1, "guard timeout": 1, "input hardening": 1}
     assert st["guard_n"] == 4 and st["guard_p50_ms"] == 700 and st["guard_p95_ms"] == 1500
     assert st["overruns"] == 0 and st["canary_leaks"] == 0
     assert chat.stats([])["guard_p50_ms"] is None

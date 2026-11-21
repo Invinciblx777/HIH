@@ -18,9 +18,9 @@
 Red-team attacks, blue-team defences and the model under test run in sandboxes that cannot reach each other, a broker hides which layer
 refused and when, and every run ends with signed evidence that a reviewer releases and anyone can verify on their own machine.
 
-![The jailbreak playground: Prompt B blocked by Qwen3Guard before the model; per-stage pipeline with latencies; verify and tamper results](docs/pitch/img/console_jailbreak_result.png)
+![The jailbreak playground: Prompt B blocked by the AegisGuard model before the model; per-stage pipeline with latencies; verify and tamper results](docs/pitch/img/console_jailbreak_result.png)
 
-*The live jailbreak playground (`start_real_model_console.sh --playground`): the same prompt through REGEX ONLY and REGEX + QWEN3GUARD, each stage with its measured latency from the sealed record, then release, verification and a rejected tampered copy.*
+*The live jailbreak playground (`start_real_model_console.sh --playground`): the same prompt through REGEX ONLY and REGEX + AEGISGUARD MODEL, each stage with its measured latency from the sealed record, then release, verification and a rejected tampered copy.*
 
 Team **Tech Mavericks** (Abdul Munaf Z, Likhith Sai N, Sreeram Rajesh) · **Hack in Hills '26** · Track 04: *Securing Adversarial AI Safety Testing Infrastructure* (Bayora). Product page: `/product` on any running console ([source](aegislab/web/product/index.html)). Pitch deck: [PDF](docs/pitch/AegisLab_Pitch.pdf) · [PPTX](docs/pitch/AegisLab_Pitch.pptx) · [talk tracks](docs/pitch/PITCH_SCRIPT.md).
 
@@ -32,8 +32,8 @@ Team **Tech Mavericks** (Abdul Munaf Z, Likhith Sai N, Sreeram Rajesh) · **Hack
 |---|---|---|
 | A browser | Open https://aegislab-demo.onrender.com (read-only; the free instance can take about half a minute to wake) | Evidence pages; run the real verifier on a shipped bundle, then tamper with a disposable copy and watch it fail |
 | Linux + rootless Podman | `git clone https://github.com/Invinciblx777/HIH.git && cd HIH/aegislab && bash scripts/quickstart.sh`, then `bash scripts/judge_demo.sh` | Real sandboxes, rejected attacks, a released run that verifies, a tampered copy that does not (the first setup builds the venv and image and takes longer than a minute) |
-| The model files as well | `bash scripts/start_real_model_console.sh --playground` and open the launch link, then **Lab → Try a jailbreak (live)** | Your prompt through the real broker, blue's regex + Qwen3Guard and the sandboxed model; verdict banner, per-stage pipeline, verify and tamper |
-| The same console | **Chat** (next to Lab), then **New chat** | Aegis Chat: a chat with the local model where every message is one real broker run through Aegis Guard; one released answer per message, an allowed/blocked badge, and an operator view with the deciding layer and the measured timings |
+| The model files as well | `bash scripts/start_real_model_console.sh --playground` and open the launch link, then **Lab → Try a jailbreak (live)** | Your prompt through the real broker, blue's regex + AegisGuard model and the sandboxed model; verdict banner, per-stage pipeline, verify and tamper |
+| The same console | **Chat** (next to Lab), then **New chat** | Aegis Chat: a chat with the local model where every message is one real broker run through AegisGuard; one released answer per message, an allowed/blocked badge, and an operator view with the deciding layer and the measured timings |
 
 ## Architecture
 
@@ -41,7 +41,7 @@ Team **Tech Mavericks** (Abdul Munaf Z, Likhith Sai N, Sreeram Rajesh) · **Hack
 flowchart LR
   R["Red sandbox<br/>attack pack · no network"] -->|mailbox| B{{"Broker<br/>fixed deadline · one refusal text<br/>canary scan · quotas"}}
   B -->|mailbox| BL["Blue sandbox<br/>regex rules"]
-  BL -->|socket| G["Qwen3Guard sandbox<br/>(blue only)"]
+  BL -->|socket| G["AegisGuard model sandbox<br/>(blue only)"]
   B -->|UNIX socket| M["Model sandbox<br/>llama.cpp · --network none"]
   B --> A[("Hash-chained audit log<br/>Ed25519 checkpoints")]
   A -->|reviewer releases| V["verify_cli<br/>offline, fail-closed"]
@@ -63,7 +63,7 @@ Every figure here is a claim from [`finale_package/claims_used_for_finale.json`]
 | Tamper evidence | 40/40 tampered copies rejected; 10/10 genuine bundles accepted | RE-MEASURED 11 Nov 2026 |
 | API boundary | 181/181 unauthorized cases denied | RE-MEASURED 11 Nov 2026 |
 | Role matrix | 419/419 denied, 141/141 allowed | RE-MEASURED 11 Nov 2026 |
-| Guard detection (Qwen3Guard-Gen-0.6B) | 99 of 100 JailbreakBench harmful goals (regex: 0 of 100 with regex); 61 of 112 Gandalf attacks (15 of 112 with regex, 63 of 112 with both) | MEASURED 20 Nov 2026 |
+| Guard detection (AegisGuard model) | 99 of 100 JailbreakBench harmful goals (regex: 0 of 100 with regex); 61 of 112 Gandalf attacks (15 of 112 with regex, 63 of 112 with both) | MEASURED 20 Nov 2026 |
 | Guard false positives | 3 of 200 HH-RLHF helpful prompts; **59 of 100 JailbreakBench benign look-alikes** (harmless prompts on the same topics as the harmful set: the cost of the guard's recall; regex refuses none of them but also blocks none of the harmful set) | MEASURED 20 Nov 2026 |
 | Guard latency | p50 602 ms, p95 726 ms, 0 guard errors in 512 texts | MEASURED 20 Nov 2026 |
 | Which layer refused? (timing channel, guard mode) | unpadded: accuracy 1.000 (baseline 0.800, p = 0.001); with D = 4000 ms: accuracy 0.395 (baseline 0.800, p = 0.846); 200 requests per setting; cost +1516 ms; 0 overruns, 0 cut-offs | MEASURED 20 Nov 2026 |
@@ -77,7 +77,7 @@ All OFF by default; each is enabled by one environment variable and tested with 
 
 | Integration | What it adds | Switch | Docs |
 |---|---|---|---|
-| **Qwen3Guard** (local) | A second blue layer after the regex rules, in its own sandbox that only blue can reach; fails closed | `--playground` / `AEGIS_GUARD_RUNDIR` | [`aegislab/guard/`](aegislab/guard/) |
+| **AegisGuard model** (local) | A second blue layer after the regex rules, in its own sandbox that only blue can reach; fails closed | `--playground` / `AEGIS_GUARD_RUNDIR` | [`aegislab/guard/`](aegislab/guard/) |
 | **n8n** (self-hosted) | One HMAC-signed incident notice per sealed run (counts and digests only, never attack text) | `AEGIS_N8N_WEBHOOK` | [`tools/n8n/`](tools/n8n/) |
 | **Base** (mainnet) | The terminal checkpoint's digest in a 0-value self-transfer; offline-first queue, cost check before posting | `AEGIS_ANCHOR_CHAIN=base` | [`aegislab/aegis/anchor.py`](aegislab/aegis/anchor.py) |
 | **TinyFish** (web agents) | *AegisLab Outside-In*: agents read synthetic injection pages and audit the hosted demo read-only; their results come back as an untrusted attack pack. RECORDED 21 Nov 2026: no agent that read a poisoned page obeyed it, and the audit of the demo found nothing exposed | `tools/range/outside_in.py` | [`docs/integrations/TINYFISH.md`](docs/integrations/TINYFISH.md) |
@@ -174,7 +174,7 @@ bash scripts/start_real_model_console.sh --host-process   # model server as a ho
 
 It labels each run "REAL MODEL · LIVE" with the model file, its sha256 prefix, "llama.cpp CPU" and "loopback". The label comes from the run's own frozen manifest. It never falls back to the stub: an unreachable model server makes the run `FAILED`, and errors reach red as the uniform refusal. Its state is separate (`var/console-real`). Ctrl-C stops the console and the model server and deletes the server's key. `scripts/start_prototype.sh` is unchanged and still starts the stub console.
 
-**Aegis Chat (finale P19–P20, 21 Nov 2026).** With `--playground`, the console also has a **Chat** tab: a chat with the local model where Aegis Guard always sits between the user and the model. Aegis Guard is the regex rules, the input hardening and Qwen3Guard-Gen-0.6B (Qwen, Apache-2.0) in its own sandbox. Every message is one real broker run (`aegislab/aegis/chat.py`): the last 3 turns plus the new message, up to 1000 characters, go through Aegis Guard's input check; the model is called only if the input is allowed; the output check and canary scan follow; the broker releases one answer (`final_output`) at the fixed deadline. A blocked message gets the uniform refusal. A single message over 1000 characters is refused unscanned, and a check that does not finish in time is refused: fail-closed. The chat never shows raw model text. Each reply has a badge ("Aegis Guard: allowed", or "blocked · <category>") and an open **Operator view** for the reviewer: the deciding layer, the guard, model and output-check times, the internal total against the release time and the padding, the run ID and the signed audit count. Cards on the right show this session's live stats and the recorded accuracy figures, each with its n, date label and evidence link. Routes: `POST /api/lab/chat`, `GET /api/lab/chat/sessions`, `GET`/`DELETE /api/lab/chat/sessions/{id}`; same gate as the playground (operator session, CSRF, never a role token). The public demo refuses them.
+**Aegis Chat (finale P19–P20, 21 Nov 2026).** With `--playground`, the console also has a **Chat** tab: a chat with the local model where AegisGuard always sits between the user and the model. AegisGuard: our guard pipeline. Regex, input hardening, a pinned open guard model and an output check + canary scan, behind a fixed 4000 ms deadline, fail-closed. Every message is one real broker run (`aegislab/aegis/chat.py`): the last 3 turns plus the new message, up to 1000 characters, go through AegisGuard's input check; the model is called only if the input is allowed; the output check and canary scan follow; the broker releases one answer (`final_output`) at the fixed deadline. A blocked message gets the uniform refusal. A single message over 1000 characters is refused unscanned, and a check that does not finish in time is refused: fail-closed. The chat never shows raw model text. Each reply has a badge ("AegisGuard: allowed", or "blocked · <category>") and an open **Operator view** for the reviewer: the deciding layer, the guard, model and output-check times, the internal total against the release time and the padding, the run ID and the signed audit count. Cards on the right show this session's live stats and the recorded accuracy figures, each with its n, date label and evidence link. Routes: `POST /api/lab/chat`, `GET /api/lab/chat/sessions`, `GET`/`DELETE /api/lab/chat/sessions/{id}`; same gate as the playground (operator session, CSRF, never a role token). The public demo refuses them.
 
 Console session rules (Phase R3 hardening, 26 Oct 2026):
 
@@ -228,7 +228,7 @@ Stated here because a security result is only as credible as its limits.
 - **GPU and accelerator KV-cache isolation were not tested.** Only CPU inference was exercised. The proposed GPU boundary is described in `aegislab/README.md` ("GPU inference boundary").
 - **Saved and live real-model results.** The judge and security demos show the real-model numbers from saved runs; they never run a model. `scripts/real_model_demo.sh` and `scripts/start_real_model_console.sh` do run it live. Both these scripts and the experiments need a local `llama-server` binary and a GGUF model file (not included; nothing is downloaded by the repo). Re-running E1–E5 took 33 minutes on 11 Nov (`evaluation/llm_isolation.py`).
 - An earlier CPU-contention measurement (+37–52% round-trip time) did not reproduce in later runs (−5% to +1%).
-- **Guard limits (Qwen3Guard, measured 20 Nov 2026).** It is a layer, not a wall: about half of the Gandalf injection attacks pass it, and it refuses many harmless prompts that look like harmful ones (the JailbreakBench benign look-alike set). Guard mode needs a longer deadline (D = 4000 ms), so every reply in guard mode waits about four seconds.
+- **Guard limits (AegisGuard model, measured 20 Nov 2026).** It is a layer, not a wall: about half of the Gandalf injection attacks pass it, and it refuses many harmless prompts that look like harmful ones (the JailbreakBench benign look-alike set). Guard mode needs a longer deadline (D = 4000 ms), so every reply in guard mode waits about four seconds.
 - **Outside-In limits.** The synthetic pages are served from a public branch; the public mirrors keep no request log for us, and one of them put a click-through page in front of ours that many agents never passed, so whether a web agent obeyed an injection is judged only from its own answer and step log. The agents' behaviour is TinyFish's at the time of the run and may change. See [`docs/integrations/TINYFISH.md`](docs/integrations/TINYFISH.md).
 - **Base anchor.** It proves *when* a terminal checkpoint existed, not that the run was honest; the anchoring key is a hot wallet on the operator host.
 
@@ -272,6 +272,10 @@ tools/publication_scan.py    pre-publication secret and private-data scan (git i
 ## Team
 
 Tech Mavericks: Abdul Munaf Z, Likhith Sai N, Sreeram Rajesh.
+
+## Credits
+
+AegisGuard runs the open-weight Qwen3Guard-Gen-0.6B (Qwen team, Apache-2.0), unmodified, sha256 pinned. Full notice: [`NOTICE`](NOTICE).
 
 ## Licence
 
