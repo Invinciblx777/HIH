@@ -11,8 +11,8 @@ Team Tech Mavericks, Hack in Hills ’26, Track 04 (Bayora).
 
 **Try it** (from this directory): `bash scripts/quickstart.sh`, then `bash scripts/judge_demo.sh` (offline, stub model) or, with the
 model files, `bash scripts/start_real_model_console.sh --playground` and open **Lab → Try a jailbreak (live)**, or **Chat** for Aegis
-Chat (every message one real broker run through Aegis Guard, one released answer, an operator view). Product page: `/product`
-on the running console. Proof table, integrations (Qwen3Guard, n8n, Base, TinyFish Outside-In), comparison, roadmap and team:
+Chat (every message one real broker run through AegisGuard, one released answer, an operator view). Product page: `/product`
+on the running console. Proof table, integrations (AegisGuard model, n8n, Base, TinyFish Outside-In), comparison, roadmap and team:
 [`../README.md`](../README.md). Security model and residual risk: [`THREAT_MODEL.md`](THREAT_MODEL.md).
 
 This file is the **technical reference**: what each part does, how to run it, the API, design choices and layout.
