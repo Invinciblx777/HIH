@@ -1,0 +1,10 @@
+{
+ "run_id": "OIN-003-G",
+ "pubkey_b64": "RBz7Ri2/Ph593UP3kundB7KX1ggt7Qu9+iAGfQTGVUw=",
+ "terminal_hash": "sha256:ca90371aec2f95bc6ce443612389f7e97d927d293104278d5e23a71bf83fe06a",
+ "terminal_hash_source": "release line in progress.jsonl (prefix ca90371aec2f)",
+ "good_exit": 0,
+ "tampered_exit": 1,
+ "tampered": "copy of bundle/ with the last 2 lines of audit.jsonl removed",
+ "command": "python -m aegis.verify_cli --bundle <dir> --run-id OIN-003-G --expect-state RELEASED --pubkey <pubkey_b64> --expect-terminal-hash <terminal_hash>"
+}

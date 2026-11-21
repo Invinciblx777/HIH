@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "entries": 40,
+  "chain_ok": true,
+  "checkpoints_checked": 5,
+  "checkpoint_ok": true,
+  "last_checkpoint_seq": 40,
+  "tail_uncovered": 0,
+  "terminal_required": true,
+  "terminal_verified": true,
+  "terminal_state": "RELEASED",
+  "anchor_checked": true,
+  "terminal_hash": "sha256:2183a9e8b1c087b28010b7e179ce1e81bf8fd55d35b174ae201fb324e7036a14",
+  "findings": [],
+  "key_id": "sha256:b6fe0874c03e9b64",
+  "key_source": "pinned (--pubkey)"
+}

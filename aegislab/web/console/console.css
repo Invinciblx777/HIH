@@ -611,3 +611,103 @@ dialog.confirm .row { justify-content: flex-end; margin-top: 18px; }
   .g .edge path { stroke: CanvasText; }
   .ring path { stroke: Highlight; filter: none; }
 }
+
+/* finale P16: "Try a jailbreak (live)" card and console window */
+.play-ta { width: 100%; box-sizing: border-box; font: inherit; padding: 10px; border-radius: 8px; border: 2px solid var(--line); background: transparent; color: var(--ink); }
+.play-chk { display: inline-flex; gap: 6px; align-items: center; margin-right: 12px; }
+.play-con { margin-top: 12px; border-radius: 10px; overflow: hidden; background: #0d1117; color: #e6edf3; }
+.play-strip { display: flex; gap: 8px; align-items: center; padding: 8px 10px; font-size: 12px; background: #161b22; color: #9da7b3; }
+.play-strip .spacer { flex: 1; }
+.play-strip .btn, .play-strip .btn:hover:not(:disabled) { height: 26px; font-size: 12px; color: #e6edf3; background: #21262d; box-shadow: inset 0 0 0 1px #3d444d; }
+.play-log { height: 320px; overflow-y: auto; padding: 8px 10px; font-size: 12px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
+.play-log .pl-t, .play-log .pl-r { color: #7d8590; }
+.play-log .pl-k { font-weight: 600; }
+.k-red .pl-k, .k-red .pl-x { color: #f0883e; }
+.k-blue-ok .pl-k, .k-blue-ok .pl-x { color: #3fb950; }
+.k-blue-block .pl-k, .k-blue-block .pl-x { color: #f85149; }
+.k-model .pl-k, .k-model .pl-x { color: #39c5cf; }
+.k-out .pl-k, .k-out .pl-x { color: #ffffff; }
+.k-audit .pl-k, .k-audit .pl-x { color: #7d8590; }
+.k-ok .pl-k, .k-ok .pl-x { color: #3fb950; }
+.k-bad .pl-k, .k-bad .pl-x { color: #f85149; }
+.k-info .pl-k { color: #d2a8ff; }
+.play-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 14px; }
+.play-col { border: 2px solid var(--line); border-radius: 10px; padding: 12px; }
+.play-col h3 { margin: 0 0 4px; }
+.play-ans { white-space: pre-wrap; word-break: break-word; margin: 4px 0; font-size: 12px; }
+.play-verify { margin-top: 10px; font-weight: 600; }
+
+/* ---------------------------------------------------------------- finale P17: jailbreak result UI */
+.play.p17 { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+.play-main { min-width: 0; }
+.play-presets { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
+.play-guide { position: sticky; top: 12px; border: 2px solid var(--ink); border-radius: 12px; padding: 12px 14px; background: var(--panel); }
+.play-guide h3 { margin: 0 0 8px; font-size: var(--fs-body); }
+.play-guide ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.play-guide li { display: grid; gap: 2px; padding: 6px 8px; border-radius: 8px; border-left: 4px solid var(--faint); font-size: 12.5px; color: var(--ink2); }
+.play-guide li strong { color: var(--ink); font-size: 13px; }
+.play-guide li.g-now { border-left-color: var(--cobalt); background: color-mix(in oklab, var(--cobalt) 10%, transparent); }
+.play-guide li.g-done { border-left-color: var(--moss); }
+.play-guide li.g-done strong::after { content: "  ✓"; color: var(--moss); }
+.play-guide li.g-skip { opacity: .45; }
+.play-banner { display: flex; gap: 14px; align-items: center; margin: 14px 0 6px; padding: 14px 16px; border-radius: 12px; font-size: 16px; line-height: 1.4; color: #fff; }
+.play-banner strong { font-size: 20px; letter-spacing: .04em; padding: 4px 10px; border-radius: 8px; background: rgba(255, 255, 255, .18); }
+.play-banner.blocked { background: #1f5f3a; }
+.play-banner.allowed { background: #8a4b0d; }
+.pipe { margin: 10px 0; }
+.pipe-h { font-size: 12px; font-weight: 600; letter-spacing: .04em; margin-bottom: 6px; }
+.pipe-s { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 6px; }
+.ps { position: relative; display: grid; gap: 2px; padding: 8px 6px; border-radius: 8px; border: 2px solid var(--moss); background: color-mix(in oklab, var(--moss) 8%, transparent); font-size: 11.5px; min-width: 0; }
+.ps:not(:last-child)::after { content: "›"; position: absolute; right: -6px; top: 50%; transform: translate(50%, -50%); color: var(--ink2); font-size: 16px; }
+.ps.st-block { border-color: var(--crimson); background: color-mix(in oklab, var(--crimson) 12%, transparent); }
+.ps.st-skip { border-color: var(--faint); border-style: dashed; background: transparent; color: var(--ink2); }
+.ps-l { font-weight: 600; overflow-wrap: anywhere; }
+.ps-v { font-weight: 600; color: var(--moss); }
+.ps.st-block .ps-v { color: var(--crimson); }
+.ps.st-skip .ps-v { color: var(--ink2); }
+.ps-ms { font-variant-numeric: tabular-nums; }
+.ps-n { color: var(--ink2); font-size: 10.5px; overflow-wrap: anywhere; }
+.ev-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 14px 0; }
+.ev { display: grid; gap: 4px; padding: 10px 12px; border-radius: 10px; border: 2px solid var(--moss); font-size: 12.5px; }
+.ev strong { font-size: 13px; }
+.ev.bad { border-color: var(--danger); }
+.ev.idle { border-color: var(--faint); border-style: dashed; color: var(--ink2); }
+.ev a { color: var(--cobalt); }
+.play-cards { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 14px; margin-top: 8px; }
+.play-card { border: 2px solid var(--ink); border-radius: 12px; padding: 12px 14px; font-size: 13px; min-width: 0; }
+.play-card h3 { margin: 0 0 4px; font-size: var(--fs-body); }
+.play-card ul { margin: 8px 0; padding-left: 18px; display: grid; gap: 6px; }
+.play-card li.live { color: var(--cobalt); font-weight: 600; }
+.mlabel { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px; box-shadow: inset 0 0 0 1.5px var(--teal); color: var(--teal); }
+table.acc { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 12.5px; }
+table.acc th, table.acc td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.acc tr.fp td:not(:first-child) { color: var(--ochre); }
+table.acc tr.read td { color: var(--ink2); font-size: 11.5px; border-bottom: 2px solid var(--line); padding-top: 0; }
+body.p17-big { zoom: 1.25; }
+body.p17-big .play-log { font-size: 14px; }
+@media (max-width: 1500px) { .play.p17 { grid-template-columns: minmax(0, 1fr) 250px; } .pipe-s { grid-template-columns: repeat(5, minmax(0, 1fr)); } .ps:nth-child(5n)::after { display: none; } }
+@media (max-width: 1100px) { .play.p17 { grid-template-columns: minmax(0, 1fr); } .play-guide { position: static; } .play-cards, .ev-strip { grid-template-columns: minmax(0, 1fr); } }
+.btn.on, .btn.on:hover:not(:disabled) { background: var(--ink); color: var(--on-ink); }
+/* finale P17: Outside-In card */
+.oi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 8px 0 12px; }
+.oi-fact { display: grid; gap: 4px; padding: 12px; border-radius: 10px; border: 2px solid var(--ink); font-size: 12.5px; }
+.oi-fact strong { font-size: 20px; }
+.oi-fact.ok { border-color: var(--moss); }
+.oi-fact.warn { border-color: var(--ochre); }
+.oi-aud { border-left: 4px solid var(--teal); padding: 4px 10px; margin: 8px 0; font-size: 13px; }
+.oi-aud p { margin: 4px 0 0; color: var(--ink2); }
+@media (max-width: 1100px) { .oi-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.oi-feat { border: 2px solid var(--ink); border-radius: 12px; padding: 12px 14px; margin: 6px 0 14px; }
+.oi-feat h3 { margin: 0 0 4px; font-size: var(--fs-body); }
+.oi-cols { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 14px; margin-top: 8px; }
+.oi-col { min-width: 0; font-size: 12.5px; }
+.oi-col .lbl { font-weight: 600; margin: 6px 0 4px; }
+.oi-page { font-family: var(--font); font-size: 11.5px; line-height: 1.5; background: var(--soft); padding: 8px; border-radius: 8px; overflow-wrap: anywhere; margin: 0; }
+.oi-page mark { background: #ffd8a8; color: #5a2a00; padding: 1px 2px; }
+.oi-steps { margin: 0; padding-left: 18px; }
+.oi-ans { background: var(--soft); padding: 8px; border-radius: 8px; margin: 0 0 6px; }
+@media (max-width: 1100px) { .oi-cols { grid-template-columns: minmax(0, 1fr); } }
+.oi-live { border: 2px solid var(--teal); border-radius: 12px; padding: 12px 14px; margin: 14px 0; }
+.oi-live h3 { margin: 0 0 6px; font-size: var(--fs-body); }
+.oi-live select { font: inherit; padding: 6px 8px; border-radius: 8px; border: 2px solid var(--ink); margin-right: 8px; }
+.oi-live-out .st { margin-left: 6px; }

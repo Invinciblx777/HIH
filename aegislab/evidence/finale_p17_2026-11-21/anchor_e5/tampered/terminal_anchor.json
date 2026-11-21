@@ -1,0 +1,14 @@
+{
+  "cp_seq": 3,
+  "event_count": 20,
+  "head": "sha256:8d44422979196d11c8d6c2dd172c01be2bb2e2d7fb8fa560e8938093bef045d7",
+  "key_id": "sha256:8df46a909bb956fd",
+  "prev_cp": "sha256:c310c04d0294b4bdcd0087fe0fe729cae2169c3001ba60792ccb02f1f15eefda",
+  "reason": "terminal",
+  "run_id": "TRY-006-G",
+  "seq": 20,
+  "sig": "o0rQHRy+bYuEzl78p3r1Qb+I5zZpNP2kLjCcjSBHyGYxSOUtJtg+stydOpnU9q2HGlKwkGVYlgrb+oIJkJELCw==",
+  "state": "RELEASED",
+  "ts": 1795205030.953727,
+  "v": 2
+}

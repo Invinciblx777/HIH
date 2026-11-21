@@ -34,6 +34,7 @@ WRITES = [
     ("POST", "/api/lab/scenarios/sandbox-containment/run", {}),
     ("POST", "/api/lab/probe", {"role": "reviewer", "op": "release", "run_id": "LAB-001"}),
     ("POST", "/api/lab/runs/LAB-001/tamper-suite", None),
+    ("POST", "/api/lab/playground", {"prompt": "hello", "guard": True}),  # finale P16 add-on
     ("POST", "/api/lab/session/end", None),
     ("POST", "/api/runs", {"run_id": "PUB-001"}),
     ("POST", "/api/runs/PUB-001/freeze", None),

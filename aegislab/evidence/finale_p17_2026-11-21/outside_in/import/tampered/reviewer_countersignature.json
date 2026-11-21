@@ -1,0 +1,13 @@
+{
+  "broker_key_id": "sha256:b6fe0874c03e9b64",
+  "event_count": 40,
+  "head": "sha256:347b5a6652c715934023b4691d27b52b8c377336f35179a9e8da0f112b695f15",
+  "kind": "aegis-reviewer-countersignature",
+  "reviewer_key_id": "sha256:a0c7bd6044d468dd",
+  "run_id": "OIN-002-G",
+  "sig": "9rCRMVymvG0vJzEvvQSq4lckdkgvxzbpnMjhc157ZMMymqdirCSGtj9T1M0YUOTiJvkRc90DE5oFz4l8uYEaCg==",
+  "state": "RELEASED",
+  "terminal_hash": "sha256:2183a9e8b1c087b28010b7e179ce1e81bf8fd55d35b174ae201fb324e7036a14",
+  "ts": 1795215306.7188408,
+  "v": 1
+}

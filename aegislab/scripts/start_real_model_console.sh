@@ -7,6 +7,8 @@
 #   scripts/start_real_model_console.sh --reset          delete this console's state directory (var/console-real) first
 #   scripts/start_real_model_console.sh --link           a new launch link for the real-model console that is running
 #   scripts/start_real_model_console.sh --any-model      do not insist on the Phase 3 model and server hashes
+#   scripts/start_real_model_console.sh --playground     finale P16: also start the sandboxed Qwen3Guard and enable the Lab card
+#                                                        "Try a jailbreak (live)" (AEGIS_PLAYGROUND=1); Ctrl-C stops the guard too
 #
 # 1. starts scripts/start_model_server.sh (hardened flags; the API key goes in a 0600 file) and waits until it answers;
 # 2. starts the console on 127.0.0.1 with AEGIS_MODEL_BACKEND=openai_compatible and the server's settings, state in
@@ -18,7 +20,7 @@
 set -Eeuo pipefail
 cd "$(dirname "$0")/.."
 ROOT=$PWD
-PORT=8410; MODE=--sandbox; RESET=0; LINK=0; ANY=0
+PORT=8410; MODE=--sandbox; RESET=0; LINK=0; ANY=0; PLAY=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --port) PORT="${2:?--port needs a number}"; shift ;;
@@ -27,7 +29,8 @@ while [ $# -gt 0 ]; do
     --reset) RESET=1 ;;
     --link) LINK=1 ;;
     --any-model) ANY=1 ;;
-    -h|--help) sed -n '2,19p' "$0"; exit 0 ;;
+    --playground) PLAY=1 ;;
+    -h|--help) sed -n '2,21p' "$0"; exit 0 ;;
     *) echo "unknown option: $1 (see --help)" >&2; exit 2 ;;
   esac
   shift
@@ -39,7 +42,7 @@ die() { echo "  ${R}fail${N}  $1" >&2; echo "        -> $2" >&2; exit 1; }
 
 export AEGIS_VAR="$ROOT/var/console-real"
 export PYTHONDONTWRITEBYTECODE=1
-unset AEGIS_DEMO_MODE AEGIS_CONSOLE_LAUNCH_CODE AEGIS_PUBLIC_DEMO
+unset AEGIS_DEMO_MODE AEGIS_CONSOLE_LAUNCH_CODE AEGIS_PUBLIC_DEMO AEGIS_PLAYGROUND AEGIS_GUARD_RUNDIR
 for k in $(env | sed -n 's/^\(AEGIS_MODEL_[A-Z_]*\)=.*/\1/p'); do unset "$k"; done   # only the launcher's settings below; keeps AEGIS_MODELS_DIR (finale P6)
 unset AEGIS_UNSAFE_EXPERIMENT_SHARED_PROMPT_CACHE
 
@@ -73,6 +76,7 @@ cleanup() {
   left=$(podman ps -a --filter label=aegislab=1 --format '{{.Names}}' 2>/dev/null | grep -E '^aegis-(lab-[0-9]{3}-(red|blue|model)|lab-probe-[0-9a-f]{8})$' || true)
   [ -n "$left" ] && podman rm -f -t 0 $left >/dev/null 2>&1 || true
   scripts/start_model_server.sh --stop "$RUN" >/dev/null 2>&1 || true
+  [ -n "${GRUN:-}" ] && scripts/start_guard_server.sh --stop "$GRUN" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 set -a; . "$RUN/model.env"; set +a
@@ -80,6 +84,13 @@ ok "model server: $AEGIS_MODEL_SERVER, $AEGIS_MODEL_FILE_NAME sha256 ${AEGIS_MOD
 .venv/bin/python -c 'from aegis import model_client as mc; mc.OpenAICompatibleClient(mc.load_config()).ping()' \
   || die "the adapter cannot reach the model server" "nothing falls back to the stub"
 ok "adapter reaches the model server"
+if [ "$PLAY" = 1 ]; then
+  GEXP=(); [ "$ANY" = 1 ] || GEXP=(--expect-model-sha256 3f66ce2417b6df317e750b4c5bd847cb8e3e120eb9b3314b347269d87223efcd)
+  GRUN=$(scripts/start_guard_server.sh "${GEXP[@]}") || die "the guard server did not start" "see the message above"
+  GRUN=$(printf '%s\n' "$GRUN" | tail -1)
+  export AEGIS_GUARD_RUNDIR="$GRUN" AEGIS_PLAYGROUND=1
+  ok "Qwen3Guard in its own sandbox; Lab card 'Try a jailbreak (live)' enabled"
+fi
 
 [ "$RESET" = 1 ] && [ -d "$AEGIS_VAR" ] && { rm -rf -- "$AEGIS_VAR"; ok "reset: removed var/console-real"; }
 mkdir -p "$AEGIS_VAR"

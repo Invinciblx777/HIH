@@ -1,0 +1,22 @@
+{
+ "agent_runs": 4,
+ "completed": 3,
+ "endpoint": "https://agent.tinyfish.ai/v1/automation/run-sse",
+ "finding_claimed": [],
+ "goals": [
+  "G1-sealed",
+  "G2-secrets",
+  "G3-write",
+  "G1b-visible"
+ ],
+ "merged_from": [
+  "audit",
+  "audit_g1b"
+ ],
+ "mode": "audit",
+ "refused_by_tinyfish_policy": [
+  "G1-sealed"
+ ],
+ "target": "https://aegislab-demo.onrender.com",
+ "utc": "2026-11-20T22:36:27Z"
+}

@@ -1,0 +1,38 @@
+{
+  "ok": false,
+  "entries": 38,
+  "chain_ok": true,
+  "checkpoints_checked": 5,
+  "checkpoint_ok": false,
+  "last_checkpoint_seq": 40,
+  "tail_uncovered": 0,
+  "terminal_required": true,
+  "terminal_verified": false,
+  "terminal_state": "RELEASED",
+  "anchor_checked": true,
+  "terminal_hash": "sha256:2183a9e8b1c087b28010b7e179ce1e81bf8fd55d35b174ae201fb324e7036a14",
+  "findings": [
+    {
+      "checkpoint_seq": 39,
+      "issue": "log has 38 entries but a signed checkpoint covers seq 39: truncation"
+    },
+    {
+      "checkpoint_seq": 40,
+      "issue": "log has 38 entries but a signed checkpoint covers seq 40: truncation"
+    },
+    {
+      "checkpoint_seq": 40,
+      "issue": "log has 38 entries but the terminal checkpoint binds 40: truncation"
+    },
+    {
+      "checkpoint_seq": 40,
+      "issue": "final entry 'run.sealed' is not a terminal lifecycle event"
+    },
+    {
+      "checkpoint_seq": 40,
+      "issue": "terminal state RELEASED does not match the final lifecycle event"
+    }
+  ],
+  "key_id": "sha256:b6fe0874c03e9b64",
+  "key_source": "pinned (--pubkey)"
+}

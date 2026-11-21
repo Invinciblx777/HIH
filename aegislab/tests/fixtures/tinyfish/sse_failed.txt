@@ -1,0 +1,2 @@
+data: {"type": "STARTED", "run_id": "00000000-0000-4000-8000-000000000002"}
+data: {"type": "COMPLETE", "run_id": "00000000-0000-4000-8000-000000000002", "status": "FAILED", "result": null, "error": {"code": "SITE_BLOCKED", "message": "blocked"}}
