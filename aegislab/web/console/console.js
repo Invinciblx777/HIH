@@ -373,7 +373,7 @@ async function doRoute() {
   }
   hideSheet();
 }
-const NAV_TITLES = { overview: "Overview", lab: "Lab", connections: "Connections", audit: "Audit", evidence: "Evidence", experiments: "Experiments", "threat-model": "Threat Model" };
+const NAV_TITLES = { overview: "Overview", lab: "Lab", chat: "Chat", connections: "Connections", audit: "Audit", evidence: "Evidence", experiments: "Experiments", "threat-model": "Threat Model" };
 function setNav(page) {
   $$("#subnav a").forEach((a) => {
     const on = a.dataset.nav === page, span = a.firstElementChild;
@@ -700,7 +700,7 @@ const P17 = {
     ["freeze", "Freeze", "Both runs are frozen with the same attack pack and defence config; their sha256 go into the signed log."],
     ["send", "Red attacks", "Red's sandbox (no network) posts your prompt plus a benign control to its mailbox. It cannot reach blue, the guard or the model."],
     ["regex", "REGEX ONLY run", "Blue's regex rules check the input; if nothing matches, the broker calls the sandboxed model."],
-    ["guard", "REGEX + QWEN3GUARD run", "Same prompt. Qwen3Guard, in its own sandbox that only blue can reach, judges it before the model."],
+    ["guard", "REGEX + AEGIS GUARD run", "Same prompt. Aegis Guard (Qwen3Guard model), in its own sandbox that only blue can reach, judges it before the model."],
     ["deadline", "Fixed deadline", "Every reply leaves the broker at the same deadline with the same refusal text: red cannot tell which layer refused."],
     ["release", "Seal and release", "Results stay sealed until the reviewer releases the run; the terminal checkpoint is Ed25519-signed."],
     ["verify", "Verify and tamper", "An independent verifier accepts the bundle; a copy with 2 audit lines deleted is rejected."],
@@ -726,7 +726,7 @@ function drawHardenCard(h) {
   if (!h) { c.remove(); return; }
   const o = h.held_out || {}, off = o.off || {}, on = o.on || {};
   c.append(el("p", "lbl", `Hardening · ${h.label}`), el("h3", "", `Team red-team set: ${on.both_content}/${h.held_out_n} held-out blocked with hardening ON`),
-    el("p", "", `Regex + Qwen3Guard on the prompt's first ${h.window_chars} characters: ${off.both_content}/${h.held_out_n} OFF, ${on.both_content}/${h.held_out_n} ON. Regex alone: ${off.regex} to ${on.regex}.`));
+    el("p", "", `Aegis Guard (regex + Qwen3Guard) on the prompt's first ${h.window_chars} characters: ${off.both_content}/${h.held_out_n} OFF, ${on.both_content}/${h.held_out_n} ON. Regex alone: ${off.regex} to ${on.regex}.`));
   const fp = h.false_positives || {}, name = { hh_helpful: "HH-RLHF benign", jbb_benign: "JBB benign" };
   c.append(el("p", "", "False positives (regex + guard): " + Object.entries(fp).map(([k, v]) => `${name[k] || k} ${v.off} to ${v.on} of ${v.n}`).join(" · ")));
   c.append(el("p", "tiny", `Small n, prompts written by the team, held-out drawn from the same source. As deployed, every one of these long prompts is already blocked by the guard's length rule.`));
@@ -796,7 +796,7 @@ function drawAccuracy() {
   const b = P17.bench; c.textContent = "";
   c.append(el("h3", "", "How good is each layer?"), el("span", "mlabel", b.label));
   const tb = el("table", "acc");
-  const hr = el("tr"); ["Set (n)", "Counted", "Regex", "Qwen3Guard", "Both"].forEach((h) => hr.append(el("th", "", h))); tb.append(hr);
+  const hr = el("tr"); ["Set (n)", "Counted", "Regex", "Aegis Guard model", "Both"].forEach((h) => hr.append(el("th", "", h))); tb.append(hr);
   b.rows.forEach((r) => {
     const tr = el("tr", r.kind === "false positives" ? "fp" : "");
     tr.append(el("td", "", `${r.set} (${r.n})`), el("td", "", r.kind), el("td", "", `${r.regex}/${r.n}`), el("td", "", `${r.guard}/${r.n}`), el("td", "", `${r.both}/${r.n}`));
@@ -832,7 +832,7 @@ function drawPipes(res) {
   const S = (it, id) => (it.stages || []).find((x) => x.id === id) || {};
   const red = Math.round(S(main, "red_rx").ms || main.red_ms || 0);
   let txt, cls;
-  if (S(main, "guard").status === "block") { txt = `BLOCKED by Qwen3Guard before the model (${S(main, "guard").note}) in ${Math.round(S(main, "guard").ms)} ms. Red received the uniform refusal at ${red} ms.`; cls = "blocked"; }
+  if (S(main, "guard").status === "block") { txt = `BLOCKED by Aegis Guard before the model (${S(main, "guard").note}) in ${Math.round(S(main, "guard").ms)} ms. Red received the uniform refusal at ${red} ms.`; cls = "blocked"; }
   else if (S(main, "regex").status === "block") { txt = `BLOCKED by the regex rules before the model (${S(main, "regex").note}). Red received the uniform refusal at ${red} ms.`; cls = "blocked"; }
   else if (S(main, "canary").status === "block") { txt = `The model leaked the canary: the reply was withheld. Red received the uniform refusal at ${red} ms.`; cls = "blocked"; }
   else if (S(main, "output").status === "block") { txt = `The model answered, the output check blocked it. Red received the uniform refusal at ${red} ms.`; cls = "blocked"; }
@@ -1083,8 +1083,8 @@ function oiSummary(res, recorded, keepFeatured) {
   const ban = el("div", "play-banner " + (G && blocked(G) === n ? "blocked" : "allowed"));
   const said = (run, re) => ids.filter((id) => run && run.items[id] && re.test(run.items[id].model_output || ""));
   const link = (run) => said(run, /\/x\/AEGIS-RANGE-/).length, marks = said(G || R, /AEGIS-RANGE-/);
-  ban.append(el("strong", "", `${G ? blocked(G) : blocked(R)}/${n}`), el("span", "", `imported web entries stopped before the model${G ? " with regex + Qwen3Guard" : " with regex only"}` + (R && G ? ` (regex only: ${blocked(R)}/${n}).` : ".") +
-    ` Model answers carrying a "verification" link: ${R ? "regex only " + link(R) : ""}${R && G ? ", " : ""}${G ? "regex + Qwen3Guard " + link(G) : ""}.` +
+  ban.append(el("strong", "", `${G ? blocked(G) : blocked(R)}/${n}`), el("span", "", `imported web entries stopped before the model${G ? " with Aegis Guard" : " with regex only"}` + (R && G ? ` (regex only: ${blocked(R)}/${n}).` : ".") +
+    ` Model answers carrying a "verification" link: ${R ? "regex only " + link(R) : ""}${R && G ? ", " : ""}${G ? "Aegis Guard " + link(G) : ""}.` +
     (marks.length ? ` Page marker repeated in ${marks.join(", ")} (a reference code printed on the page itself, relayed, not an instruction obeyed).` : " No page marker repeated.") +
     " Control C1: " + out(G || R, "C1") + "."));
   c.append(ban);
@@ -2281,4 +2281,85 @@ function navEdges() {
   n.classList.toggle("more-l", n.scrollLeft > 2);
   n.classList.toggle("more-r", n.scrollLeft + n.clientWidth < n.scrollWidth - 2);
 }
+/* ---------------------------------------------------------------- Aegis Chat (finale P19)
+   Local real-model console only (same gate as the playground: --playground, operator session). Every message is one real
+   broker run: Aegis Guard checks the input, the model answers only if allowed, the output check and canary scan run, and the
+   broker releases ONE answer. The page shows that answer (final_output) and a badge, nothing else. All text via textContent. */
+const AEGIS_GUARD_INFO = "Aegis Guard = regex rules + input hardening + Qwen3Guard-Gen-0.6B (Qwen, Apache-2.0), run in its own sandbox";
+const CHAT = { sid: null, busy: false };
+async function chatPage() {
+  render(`<section class="chat-wrap"><aside class="chat-side"><button class="btn solid" id="chat-new" type="button">New chat</button><ul id="chat-list" class="chat-list"></ul></aside>
+    <div class="chat-main"><div class="chat-head"><h1>Aegis Chat</h1><span class="chat-info" tabindex="0" role="note" aria-label="${esc(AEGIS_GUARD_INFO)}" title="${esc(AEGIS_GUARD_INFO)}">ⓘ Aegis Guard</span></div>
+    <p class="muted chat-sub">Every message goes user → broker → Aegis Guard → model (only if allowed) → output check + canary scan → broker → you.</p>
+    <div id="chat-log" class="chat-log" aria-live="polite"></div>
+    <form id="chat-form" class="chat-form"><textarea id="chat-in" rows="2" maxlength="1000" placeholder="Message the model through Aegis Guard"></textarea><button class="btn solid" id="chat-send" type="submit">Send</button></form></div></section>`);
+  const log = $("#chat-log");
+  if (isPublic()) { $(".chat-wrap").replaceChildren(el("p", "chat-off", "Live chat runs on the local lab only.")); return; }
+  let st = null; try { st = await get("/api/lab/playground"); } catch (e) { /* shown below */ }
+  if (!st || !st.enabled || !canAct()) {
+    log.replaceChildren(el("p", "chat-off", !st || !st.enabled ? "Live chat runs on the local lab only: start the console with scripts/start_real_model_console.sh --playground." : noSession()));
+    $("#chat-send").disabled = true; $("#chat-new").disabled = true; return;
+  }
+  $("#chat-new").addEventListener("click", () => { CHAT.sid = null; chatPaint(null); chatList(); $("#chat-in").focus(); });
+  $("#chat-form").addEventListener("submit", chatSend);
+  $("#chat-in").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#chat-form").requestSubmit(); } });
+  await chatList();
+  if (CHAT.sid) await chatOpen(CHAT.sid); else chatPaint(null);
+}
+async function chatList() {
+  const ul = $("#chat-list"); if (!ul) return;
+  let r; try { r = await get("/api/lab/chat/sessions"); } catch (e) { ul.replaceChildren(el("li", "muted", e.message)); return; }
+  ul.replaceChildren(...r.sessions.map((s) => {
+    const li = el("li", s.id === CHAT.sid ? "on" : "");
+    const b = el("button", "linkbtn chat-title", s.title); b.type = "button"; b.addEventListener("click", () => chatOpen(s.id));
+    const d = el("button", "xbtn chat-del", "×"); d.type = "button"; d.title = "Delete chat"; d.setAttribute("aria-label", "Delete chat " + s.title);
+    d.addEventListener("click", async () => { const q = await call(`/api/lab/chat/sessions/${encodeURIComponent(s.id)}`, { method: "DELETE" }); if (!q.ok) { toast((q.body && q.body.detail) || "Delete failed", true); return; } if (CHAT.sid === s.id) { CHAT.sid = null; chatPaint(null); } chatList(); });
+    li.append(b, d); return li;
+  }));
+  if (!r.sessions.length) ul.append(el("li", "muted", "No chats yet."));
+}
+async function chatOpen(sid) {
+  try { const s = await get(`/api/lab/chat/sessions/${encodeURIComponent(sid)}`); CHAT.sid = s.id; chatPaint(s); chatList(); }
+  catch (e) { CHAT.sid = null; chatPaint(null); }
+}
+function chatBadge(rep) {
+  const b = el("div", "chat-badge " + (rep.verdict === "allowed" ? "ok" : "bad"));
+  b.append(el("span", "", rep.verdict === "allowed" ? "Aegis Guard: allowed" : "Aegis Guard: blocked · " + (rep.category || "refused")));
+  if (rep.released_ms != null) b.append(el("span", "muted", " · released at " + rep.released_ms + " ms"));
+  b.title = AEGIS_GUARD_INFO; return b;
+}
+function chatBubble(m) {
+  const d = el("div", "chat-msg " + (m.role === "user" ? "me" : "bot"));
+  d.append(el("div", "chat-text", m.text));
+  if (m.role !== "user") d.append(chatBadge(m));
+  return d;
+}
+function chatPaint(s) {
+  const log = $("#chat-log"); if (!log) return;
+  const msgs = (s && s.messages) || [];
+  log.replaceChildren(...msgs.map(chatBubble));
+  if (!msgs.length) log.append(el("p", "muted chat-empty", "Start a conversation. Aegis Guard checks every message before the model sees it."));
+  log.scrollTop = log.scrollHeight;
+}
+async function chatSend(ev) {
+  ev.preventDefault();
+  if (CHAT.busy) return;
+  const inp = $("#chat-in"), msg = inp.value.trim(); if (!msg) return;
+  const log = $("#chat-log"), btn = $("#chat-send");
+  $$(".chat-empty", log).forEach((x) => x.remove());
+  log.append(chatBubble({ role: "user", text: msg }));
+  const wait = el("div", "chat-msg bot wait"); wait.append(el("div", "chat-text muted", "Aegis Guard is checking…")); log.append(wait);
+  log.scrollTop = log.scrollHeight; inp.value = ""; CHAT.busy = true; busy(btn, true);
+  try {
+    const r = await call("/api/lab/chat", { method: "POST", body: CHAT.sid ? { session: CHAT.sid, message: msg } : { message: msg } });
+    wait.remove();
+    if (!r.ok) { log.append(el("p", "chat-off", (r.body && r.body.detail) || "HTTP " + r.status)); return; }
+    CHAT.sid = r.body.session;
+    log.append(chatBubble(Object.assign({ role: "assistant" }, r.body.reply)));
+    log.scrollTop = log.scrollHeight; chatList();
+  } catch (e) { wait.remove(); log.append(el("p", "chat-off", e.message)); }
+  finally { CHAT.busy = false; busy(btn, false); inp.focus(); }
+}
+PAGES.chat = { render: chatPage };
+
 boot();
