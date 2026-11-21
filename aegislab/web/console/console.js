@@ -2412,7 +2412,7 @@ function chatOps(m) {
     ["run", `${m.run_id || "-"} · audit: ${o.audit_signed ? "signed" : "unsigned"}, ${o.audit_entries} entries`],
   ];
   const dl = el("dl", "chat-ops-dl"); rows.forEach(([k, v]) => dl.append(el("dt", "", k), el("dd", "", v))); d.append(dl);
-  d.append(el("p", "muted small", "AegisGuard sees the last 3 turns plus the new message, cut to 1000 characters (oldest text first). A single message over 1000 characters is refused unscanned (length limit), and a check not finished in time is refused (guard timeout): fail-closed, never passed."));
+  d.append(el("p", "muted small", "AegisGuard sees the last 3 turns plus the new message, cut to 1000 characters (oldest text first). A single message over 1000 characters is refused unscanned (length limit), and a check not finished in time is refused (guard timeout): fail-closed, never passed. Blocked turns are not sent to AegisGuard or the model as context."));
   return d;
 }
 PAGES.chat = { render: chatPage };
