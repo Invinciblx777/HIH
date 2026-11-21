@@ -6,7 +6,7 @@ Accessed 21 Nov 2026. Sources are numbered S1–S13 in [SOURCES.md](SOURCES.md).
 
 | Group | Products (sources) | What they protect or test |
 |---|---|---|
-| Runtime guards | Lakera Guard (S1), NeMo Guardrails (S7), Llama Guard / Prompt Guard (S8), Qwen3Guard (which AegisLab uses) | The model's inputs and outputs in production |
+| Runtime guards | Lakera Guard (S1), NeMo Guardrails (S7), Llama Guard / Prompt Guard (S8), the open guard model inside AegisGuard | The model's inputs and outputs in production |
 | Red-team / attack generators | PyRIT (S3), garak (S4), promptfoo (S5), Cisco AI Defense validation (S6), HiddenLayer automated red teaming (S2), Protect AI Recon (S9) | The model or the LLM application, by sending attacks |
 | Model supply chain | HiddenLayer model scanner (S2), Protect AI Guardian (S9) | Model files and artefacts before deployment |
 
@@ -33,7 +33,7 @@ read before they are released, and whether the evidence can be rewritten afterwa
 > (Ed25519-signed hash chain, optionally anchored on Base). Unlike runtime guards and attack generators, which secure or test the
 > **model**, AegisLab secures the **testing infrastructure** itself, exactly the gap in Track 04.
 
-AegisLab is complementary: it can run any guard (we run Qwen3Guard) as the blue team and any generator (PyRIT, garak, promptfoo, or
+AegisLab is complementary: it can run any guard (we run AegisGuard) as the blue team and any generator (PyRIT, garak, promptfoo, or
 TinyFish web agents) as the red team, inside the range.
 
 ## 4. Feature grid (public documentation only)
@@ -42,7 +42,7 @@ D = documented in the sources read; ND = not documented in the sources read. Aeg
 
 | Capability | AegisLab | Lakera Guard (S1) | PyRIT (S3) | garak (S4) | promptfoo (S5) | Cisco AI Defense (S6) | HiddenLayer (S2) | NeMo Guardrails (S7) |
 |---|---|---|---|---|---|---|---|---|
-| Screens model input/output at runtime | Yes (regex + Qwen3Guard) | D | ND | ND | ND | D | D | D |
+| Screens model input/output at runtime | Yes (AegisGuard) | D | ND | ND | ND | D | D | D |
 | Generates or automates attacks | Yes (attack packs, TinyFish agents) | ND | D | D | D | D | D | ND |
 | Red, blue and model in separate network-less sandboxes | Yes | ND | ND | ND | ND | ND | ND | ND |
 | Broker hides which layer refused, fixed-deadline replies | Yes | ND | ND | ND | ND | ND | ND | ND |

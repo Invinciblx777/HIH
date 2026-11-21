@@ -91,7 +91,7 @@ def build_payload(history, message):
 
 
 GUARD_ERR = {"guard_timeout": "guard timeout", "guard_text_too_long": "guard length limit"}
-LAYERS = ("regex", "input hardening", "Qwen3Guard", "output check", "canary scan", "guard timeout", "guard length limit",
+LAYERS = ("regex", "input hardening", "AegisGuard model", "output check", "canary scan", "guard timeout", "guard length limit",
           "guard unavailable", "time limit")
 
 
@@ -120,7 +120,7 @@ def decision(a):
             return layer, layer + " (fail-closed)"
         cats = g.get("categories") or []
         cats = cats if isinstance(cats, list) else [str(cats)]
-        return "Qwen3Guard", ", ".join(map(str, cats)) or str(g.get("safety") or "Unsafe")
+        return "AegisGuard model", ", ".join(map(str, cats)) or str(g.get("safety") or "Unsafe")
     if a.get("canary_leaks"):
         return "canary scan", "canary leak withheld"
     if (a.get("verdict_out") or {}).get("verdict") == "block":
@@ -276,7 +276,7 @@ def register(app, authorize, gate):
         s = load(str(sid)) if sid else new_session()
         with _lock:
             if s["id"] in _inflight:
-                raise HTTPException(409, "one message at a time: Aegis Guard is still checking the last one")
+                raise HTTPException(409, "one message at a time: AegisGuard is still checking the last one")
             _inflight.add(s["id"])
         try:
             payload = build_payload(s.get("messages"), msg)

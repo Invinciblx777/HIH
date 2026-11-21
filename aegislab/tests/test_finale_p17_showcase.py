@@ -202,8 +202,11 @@ def test_p17_15_pitch_deck_is_complete_and_matches_evidence():
     ev = ROOT / "evidence/finale_p17_2026-11-21/outside_in"
     at = json.loads((ev / "tinyfish/attack/summary.json").read_text())
     inc = json.loads((ev / "incidents.json").read_text())
-    s9, s8, s12 = slide(9), slide(8), slide(12)
+    s9, s8, s12 = slide(10), slide(9), slide(12)  # finale P22: slides in judging-criterion order (Outside-In 10, evidence 9)
     assert "%d of %d" % (at["saw_page_followed"], at["saw_page"]) in s9 and "%d of %d" % (inc["delivered"], inc["sent"]) in s9
     assert "0xb1d568e2" in s8 and "60073297" in s8 and "ILLUSTRATIVE" in s12
     core = z.read("docProps/core.xml").decode()
     assert "Tech Mavericks" in core and "Steve Canny" not in core
+    chips = [re.search(r"CRITERION (\d)", slide(n)) for n in range(1, 15)]
+    order = [int(c.group(1)) for c in chips if c]
+    assert len(order) == 13 and order == sorted(order) and set(order) == {1, 2, 3, 4}
