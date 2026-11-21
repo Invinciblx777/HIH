@@ -3,6 +3,17 @@
 Deck: `docs/pitch/AegisLab_Pitch.pptx` and `docs/pitch/AegisLab_Pitch.pdf`. Every number below is a claim from `finale_package/claims_used_for_finale.json`
 with its label, or comes from a P17 evidence file named next to it. Say the label when you say a number ("measured on 20 November").
 
+## How the deck maps to the judging criteria
+
+Each slide carries a chip naming the criterion it answers (weights as given by the organisers); the cover shows the map.
+
+| Criterion | Weight | Where |
+|---|---|---|
+| 1. Problem Understanding & Innovation | 25 | slides 2, 3, 11 |
+| 2. Technical Execution & Functionality | 30 | slides 4–9 and the live demo (Lab playground, Aegis Chat) |
+| 3. Real-World Impact & Scalability | 25 | slides 10, 12, 13 |
+| 4. Presentation & Team Understanding | 20 | the whole talk, slide 14; every team member should be able to explain the broker, the guard and the evidence chain |
+
 ## 3-minute track
 
 **[0:00, slide 1] Hook.** "Your red team is the easiest way to steal your model's secrets. The red-team range holds the attack pack,
@@ -21,6 +32,13 @@ offline."
 the guard, the model answers. With Qwen3Guard, it is blocked before the model, Non-violent Illegal Acts, in about six hundred
 milliseconds. And red? Red gets the same refusal at the same four-second deadline either way." Point at the pipeline tiles and the
 evidence strip: verify exit 0, tampered copy exit 1.
+
+**[optional, after slide 6, LIVE] Aegis Chat.** Console → Chat → New chat. Ask "What is the capital of France?" (green "Aegis Guard:
+allowed"), then Prompt B (red "Aegis Guard: blocked · Non-violent Illegal Acts", the uniform refusal). "This is a normal chat, but
+every message is a real broker run: Aegis Guard checks it before the model, the model answers only if allowed, output and canary
+checks run, and the broker releases one answer at the fixed four-second deadline." Point at the open Operator view (reviewer only:
+deciding layer, guard, model and output times, padding, signed audit). If asked: Aegis Guard is our regex rules plus input hardening
+plus Qwen's Qwen3Guard-Gen-0.6B (Apache-2.0) in its own sandbox.
 
 **[1:50, slide 7] Proof.** "Measured on 20 November: the guard blocks 99 of 100 JailbreakBench harmful goals; regex blocks none.
 On Gandalf injections it gets 61 of 112, so it is a layer, not a wall. It costs false positives: 59 of 100 benign look-alikes.

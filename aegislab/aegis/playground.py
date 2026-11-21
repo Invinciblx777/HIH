@@ -392,3 +392,5 @@ def register(app, authorize):
 
     from . import outside_in  # finale P17: AegisLab Outside-In (TinyFish results imported as an untrusted attack pack)
     outside_in.register(app, authorize, _gate)
+    from . import chat  # finale P19: Aegis Chat (same gate)
+    chat.register(app, authorize, _gate)
