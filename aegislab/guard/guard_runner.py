@@ -22,6 +22,12 @@ input this runner inspected last: the broker inspects an attack's input, then it
 parsed for "Safety: Safe|Controversial|Unsafe" and "Categories: ...". Anything else, an HTTP error, a dead socket or a timeout
 blocks, and the verdict records why.
 
+  guard_harden              bool, default false (finale P18): input hardening (aegis/harden.py, copied next to this file, and
+                            harden_rules.json beside it). Regex rules (and the extra rules) run on the original AND a normalised
+                            view (encodings decoded, homoglyphs, zero-width, leetspeak, split letters, case); the guard judges the
+                            original and, if that passes and the view differs, the view (first guard_max_chars characters). Either
+                            blocking blocks. Output inspection is unchanged.
+
 Where the guard's verdict goes: into the verdict dict the broker stores in sealed/artifacts.jsonl (sealed; released only by the
 result gate). Red's reply is unchanged: the uniform refusal or the model text, at the same deadline.
 """
@@ -184,6 +190,28 @@ def judge(text, settings, user=None):
 
 
 _last_input = [""]
+_HARDEN = []
+
+
+def _harden():
+    """(module, extra rules) for guard_harden: the read-only copy next to this file in the container, else aegis.harden on the host."""
+    if not _HARDEN:
+        try:
+            import harden  # noqa: F401  (container: /aegis/guardrun/harden.py)
+        except ImportError:
+            from aegis import harden
+        _HARDEN.append((harden, harden.load_rules(os.path.join(os.path.dirname(os.path.abspath(__file__)), "harden_rules.json"))))
+    return _HARDEN[0]
+
+
+def _regex_input(text, patterns, hard):
+    """The regex check of an input: the tag's (defence_runner.inspect), or with guard_harden the original and normalised views
+    against the config's patterns plus the extra rules."""
+    if hard is None:
+        return defence_runner.inspect(text, patterns)
+    mod, rules, norm, tech = hard
+    m = mod.match(text, norm, patterns, rules)
+    return {"ok": True, "verdict": m["verdict"], "rule": m["rule"], "harden": {"view": m["view"], "techniques": tech}}
 
 
 def inspect(text, kind):
@@ -192,11 +220,19 @@ def inspect(text, kind):
     if s["mode"] is None:
         return {"ok": True, "verdict": "block", "rule": None, "error": "invalid_guard_mode"}
     patterns = cfg["_input"] if kind == "input" else cfg["_output"]
+    hard = None
+    if kind == "input" and cfg.get("guard_harden") is True:
+        mod, rules = _harden()
+        norm, tech = mod.normalise(text)
+        hard = (mod, rules, norm, tech)
     if s["mode"] == "regex":
-        return defence_runner.inspect(text, patterns)
+        return _regex_input(text, patterns, hard) if kind == "input" else defence_runner.inspect(text, patterns)
     if kind == "input":
         _last_input[0] = text
         g = judge(text, s)
+        if hard and not g["block"] and hard[2][: s["max_chars"]] != text[: s["max_chars"]]:
+            g2 = judge(hard[2][: s["max_chars"]], s)
+            g = dict(g2, ms=round(g["ms"] + g2["ms"], 3), view="normalised") if g2["block"] else dict(g, ms=round(g["ms"] + g2["ms"], 3), view_checked=True)
     else:
         g = judge(text, s, user=_last_input[0])
     out = {"ok": True, "verdict": "block" if g["block"] else "allow", "rule": None, "guard_mode": s["mode"],
@@ -204,7 +240,7 @@ def inspect(text, kind):
     if g.get("error"):
         out["error"] = g["error"]
     if s["mode"] == "both":
-        r = defence_runner.inspect(text, patterns)
+        r = _regex_input(text, patterns, hard) if kind == "input" else defence_runner.inspect(text, patterns)
         out["regex"] = r
         if r.get("verdict") == "block":
             out["verdict"], out["rule"] = "block", r.get("rule")
