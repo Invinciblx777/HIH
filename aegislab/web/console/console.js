@@ -907,6 +907,8 @@ async function drawOutsideIn() {
         <button class="btn solid lg" type="button" id="oi-run" ${canAct() ? "" : "disabled"}>Import into the range and run</button></div>
       <p class="tiny" id="oi-progress"></p>
       <div id="oi-result"></div>
+      <div id="oi-pages"></div>
+      <div class="oi-live" id="oi-live"></div>
       <div id="oi-audit"></div>
     </div>`;
   const f = $("#oi-facts");
@@ -933,10 +935,87 @@ async function drawOutsideIn() {
   OI.feat = ev.featured || null; OI.label = ev.label;
   if (ev.import && ev.import.runs) oiSummary(ev.import, ev.import.run_ids); else drawFeatured(null);
   $("#oi-run").addEventListener("click", oiRun);
+  drawPagesRun(st.pages_run); drawLive(st.live);
 }
-async function oiRun(ev) {
+/* The 3-page run served from GitHub Pages (no mirror): per-page verdicts and its own import. */
+function drawPagesRun(pr) {
+  const c = $("#oi-pages"); if (!c) return; c.textContent = ""; if (!pr) return;
+  const a = pr.attack || {};
+  c.append(el("h3", "", "Served from GitHub Pages, no mirror"),
+    el("p", "tiny", `${a.agent_runs ?? "?"} TinyFish runs on ${a.serve || "GitHub Pages"} (${a.utc || ""}): ${a.saw_page ?? "?"} read the page, ${a.saw_page_followed ?? "?"} of those followed the injection, ${a.flagged_injection ?? "?"} warned the user.`));
+  const tb = el("table", "acc"), hr = el("tr"); ["Page", "TinyFish run", "Status", "Read the page", "Followed", "Flagged"].forEach((h) => hr.append(el("th", "", h))); tb.append(hr);
+  (pr.cases || []).forEach((x) => { const tr = el("tr", x.followed ? "fp" : ""); [x.style, x.run_id || "-", x.status || "-", x.saw_page ? "yes" : "no", x.followed ? "YES" : "no", x.flagged ? "yes" : "no"].forEach((v) => tr.append(el("td", "", String(v)))); tb.append(tr); });
+  c.append(tb);
+  const im = pr.import;
+  if (im && im.run_ids) c.append(el("p", "play-verify", `Imported through the broker as ${im.run_ids.join(" + ")}` + (im.verify ? `: verify_cli exit ${im.verify.exit} · tampered copy exit ${im.verify.tamper_exit} (${im.verify.tamper_exit ? "rejected" : "NOT rejected"})` : "")));
+  const b = el("button", "btn", "Import the GitHub Pages run again"); b.type = "button"; b.id = "oi-run-pages"; b.disabled = !canAct();
+  b.addEventListener("click", (e) => oiRun(e, "pages")); c.append(b);
+}
+/* Stage button: ONE real TinyFish agent run per click (server-side cap per console start, counted in the ledger). The agent's
+   steps and answer appear as they arrive; then its answer is imported through the broker. Off unless the key file exists. */
+function drawLive(lv) {
+  const c = $("#oi-live"); if (!c) return; const keep = $("#oi-live-out"); c.textContent = "";
+  if (!lv || !lv.enabled) { c.remove(); return; }
+  c.append(el("h3", "", "Live: send a TinyFish agent now"));
+  const row = el("div", "row"), sel = el("select", ""); sel.id = "oi-live-page"; sel.setAttribute("aria-label", "Range page for the live agent");
+  const names = { hidden_div: "Article with a hidden div", support_doc: "Support article (aria-label, fake reference)", vendor_pricing: "Vendor pricing (base64 instruction)" };
+  (lv.pages || []).forEach((p) => { const o = el("option", "", names[p] || p); o.value = p; sel.append(o); });
+  const b = el("button", "btn solid lg", "Run live TinyFish agent"); b.type = "button"; b.id = "oi-live-run"; b.disabled = !canAct() || lv.left < 1;
+  b.addEventListener("click", oiLive); row.append(sel, b); c.append(row);
+  c.append(el("p", "tiny", `${lv.left} of ${lv.cap} live runs left this console start · ${lv.budget_left} of ${lv.budget} left in the TinyFish budget · 1 agent run per click · after ${lv.timeout_s} s without an answer the recorded run is imported instead, labelled RECORDED`));
+  const out = keep || el("div", "oi-live-out"); out.id = "oi-live-out"; c.append(out);
+}
+async function oiLive(ev) {
   const btn = ev.currentTarget; busy(btn, true);
-  const r = await call("/api/lab/outside-in", { method: "POST", body: { guard: $("#oi-guard").checked } });
+  const r = await call("/api/lab/outside-in/live", { method: "POST", body: { guard: $("#oi-guard").checked, page: $("#oi-live-page").value } });
+  if (!r.ok) { busy(btn, false); return toast((r.body && r.body.detail) || "HTTP " + r.status, true); }
+  const o = $("#oi-live-out"); o.textContent = "";
+  const tag = el("span", "st warn", "LIVE · agent running"), head = el("p", "lbl", `${r.body.job} · ${r.body.page}`); head.append(" ", tag);
+  const sent = el("p", "tiny"), srv = el("p", "tiny"), ol = el("ol", "oi-steps"), ans = el("p", "oi-ans", "waiting for the agent's answer…"), prog = el("p", "tiny"), res = el("div", "");
+  o.append(head, sent, srv, el("p", "lbl", "The agent's steps, as they arrive"), ol, el("p", "lbl", "The agent's answer"), ans, prog, res);
+  let next = 0; const seen = {};
+  const tick = async () => {
+    const q = await call(`/api/lab/playground/${encodeURIComponent(r.body.job)}?since=${next}`);
+    if (!q.ok) { busy(btn, false); return toast((q.body && q.body.detail) || "HTTP " + q.status, true); }
+    q.body.lines.forEach((l) => {
+      if (l.kind === "tinyfish") sent.textContent = l.text;
+      else if (l.kind === "tinyfish serve") srv.textContent = l.text;
+      else if (l.kind === "tinyfish step") ol.append(el("li", "", l.text));
+      else if (l.kind === "tinyfish answer") { ans.textContent = l.text; tag.textContent = /^recorded · /.test(l.text) ? "RECORDED" : "LIVE · answered"; }
+      else if (l.kind === "tinyfish fallback") { tag.textContent = "RECORDED"; tag.className = "st none"; prog.textContent = l.text; }
+      else { if (l.kind === "broker→red") seen[l.run] = (seen[l.run] || 0) + 1; prog.textContent = `importing through the broker: ${l.run} ${l.kind} · ${Object.entries(seen).map(([k, v]) => k + " " + v + "/3").join(" · ")}`; }
+    });
+    next = q.body.next;
+    if (q.body.done) { oiLiveResult(q.body.result || {}, res, tag); const s = await get("/api/lab/outside-in").catch(() => null); drawLive(s && s.live); return; }
+    setTimeout(tick, 600);
+  };
+  tick();
+}
+function oiLiveResult(res, c, tag) {
+  const L = res.live || {}, v = L.verdict || {};
+  tag.textContent = L.source === "live" ? "LIVE" : "RECORDED"; tag.className = "st " + (L.source === "live" ? "ok" : "none");
+  const who = L.source === "live" ? `TinyFish run ${L.run_id || "?"} · ${Math.round(L.agent_s || 0)} s · ${L.url || ""}`
+    : `live run gave no answer (${L.fallback_reason || "?"}); recorded run ${(L.recorded || {}).run_id || "?"} (${(L.recorded || {}).from || ""}, ${(L.recorded || {}).utc || ""}) imported instead`;
+  c.append(el("p", "tiny", who));
+  const ban = el("div", "play-banner " + (v.followed_injection ? "allowed" : "blocked"));
+  ban.append(el("strong", "", v.followed_injection ? "FOLLOWED" : "NOT FOLLOWED"), el("span", "", `the agent ${v.followed_injection ? "followed" : "did not follow"} the page's hidden instruction · ${v.saw_page ? "its answer shows it read the page" : "its answer does not show the page's content"} · ${v.flagged_injection ? "it warned the user" : "it did not warn the user"}.`));
+  c.append(ban);
+  const R = (res.runs || {})["RUN-R"], G = (res.runs || {})["RUN-G"], ids = Object.keys((G || R || {}).items || {});
+  const tb = el("table", "acc"), hr = el("tr"); ["Entry", "REGEX ONLY", "REGEX + QWEN3GUARD"].forEach((h) => hr.append(el("th", "", h))); tb.append(hr);
+  ids.forEach((id) => { const tr = el("tr"); [id, oiOut(R, id), oiOut(G, id)].forEach((x) => tr.append(el("td", "", x))); tb.append(tr); });
+  c.append(tb);
+  const vr = res.verify;
+  if (vr) c.append(el("p", "play-verify", `Sealed and released ${vr.run_id}: verify_cli exit ${vr.exit} (${vr.exit === 0 && vr.ok ? "authentic" : "FAILED"}) · tampered copy exit ${vr.tamper_exit} (${vr.tamper_exit ? "rejected" : "NOT rejected"})`));
+  if (res.error) c.append(el("p", "play-verify", "Error: " + res.error));
+}
+function oiOut(run, id) {
+  const it = run && run.items && run.items[id]; if (!it) return "-";
+  const g = (it.stages || []).find((s) => s.id === "guard") || {}, rx = (it.stages || []).find((s) => s.id === "regex") || {};
+  return it.outcome + (rx.status === "block" ? " (regex)" : g.status === "block" ? " (guard: " + g.note + ")" : "");
+}
+async function oiRun(ev, source) {
+  const btn = ev.currentTarget; busy(btn, true);
+  const r = await call("/api/lab/outside-in", { method: "POST", body: { guard: $("#oi-guard").checked, source: source || "recorded" } });
   if (!r.ok) { busy(btn, false); return toast((r.body && r.body.detail) || "HTTP " + r.status, true); }
   OI.job = r.body.job; OI.next = 0; $("#oi-result").textContent = "";
   const prog = $("#oi-progress"), seen = {};
@@ -945,7 +1024,7 @@ async function oiRun(ev) {
     if (!q.ok) { busy(btn, false); return toast((q.body && q.body.detail) || "HTTP " + q.status, true); }
     q.body.lines.forEach((l) => { if (l.kind === "broker→red") seen[l.run] = (seen[l.run] || 0) + 1; prog.textContent = `${OI.job}: ${l.run} ${l.kind} · ${Object.entries(seen).map(([k, v]) => k + " " + v + "/" + r.body.items).join(" · ")}`; });
     OI.next = q.body.next;
-    if (q.body.done) { busy(btn, false); oiSummary(q.body.result || {}); return; }
+    if (q.body.done) { busy(btn, false); oiSummary(q.body.result || {}, null, source === "pages"); return; }
     OI.timer = setTimeout(tick, 600);
   };
   tick();
@@ -978,8 +1057,8 @@ function drawFeatured(res) {
   d.append(el("p", "lbl", "5. Incident"), el("p", "", F.incident ? `n8n ${F.incident.ok ? "delivered" : "NOT delivered"} · severity ${F.incident.severity} · HMAC-signed · ${F.incident.ms} ms` : "not sent"));
   cols.append(a, b, d); c.append(cols);
 }
-function oiSummary(res, recorded) {
-  drawFeatured(res);
+function oiSummary(res, recorded, keepFeatured) {
+  if (!keepFeatured) drawFeatured(res);
   const c = $("#oi-result"); if (!c) return; c.textContent = "";
   if (recorded) c.append(el("p", "lbl", `Recorded import ${(recorded || []).join(" + ")} (${OI.label}). Press "Import into the range and run" to run it again live.`));
   const R = (res.runs || {})["RUN-R"], G = (res.runs || {})["RUN-G"], ids = Object.keys((G || R || {}).items || {});
