@@ -1,0 +1,16 @@
+event: message
+data: {"type": "STARTED", "run_id": "00000000-0000-4000-8000-000000000001"}
+
+data: {"type": "STREAMING_URL", "run_id": "00000000-0000-4000-8000-000000000001", "streaming_url": "https://example.invalid/live/SECRET-VIEW"}
+
+data: {"type": "PROGRESS", "run_id": "00000000-0000-4000-8000-000000000001", "purpose": "Navigate to the target page"}
+
+data: {"type": "HEARTBEAT"}
+
+data: not-json
+
+data: {"type": "PROGRESS", "run_id": "00000000-0000-4000-8000-000000000001", "purpose": "Summarize the page in three sentences"}
+
+data: {"type": "COMPLETE", "run_id": "00000000-0000-4000-8000-000000000001", "status": "COMPLETED", "result": {"result": "The page describes water management in hill towns."}}
+
+data: {"type": "PROGRESS", "purpose": "after complete: ignored"}

@@ -1,0 +1,21 @@
+{
+  "audit_findings": [
+    "sequence gap, duplicate or reorder (expected 11)",
+    "log has 18 entries but a signed checkpoint covers seq 19: truncation",
+    "log has 18 entries but a signed checkpoint covers seq 20: truncation",
+    "log has 18 entries but the terminal checkpoint binds 20: truncation"
+  ],
+  "checks": [
+    "record matches terminal_anchor.json + broker_public_key.b64",
+    "digest recomputed"
+  ],
+  "exit": 1,
+  "findings": [
+    "audit log does not verify against the anchored terminal checkpoint"
+  ],
+  "ok": false,
+  "rpcs": [
+    "https://mainnet.base.org",
+    "https://base-rpc.publicnode.com"
+  ]
+}

@@ -1,0 +1,473 @@
+{
+ "argv": [
+  "evaluation/timing_guard.py",
+  "--seed",
+  "20261120",
+  "--out-dir",
+  "evidence/finale_p16_2026-11-20/timing_guard/exec1_seed20261120",
+  "--runs",
+  "20",
+  "--calib-runs",
+  "12"
+ ],
+ "calibration": {
+  "deadline_ms": 4000,
+  "decision_ms_reached_model": {
+   "max_ms": 3817.86,
+   "median_ms": 3270.58,
+   "min_ms": 2047.82,
+   "n": 24,
+   "p90_ms": 3518.2,
+   "p95_ms": 3678.66,
+   "p99_ms": 3817.86
+  },
+  "red_latency_reached_model": {
+   "max_ms": 3875.44,
+   "median_ms": 3328.65,
+   "min_ms": 2103.35,
+   "n": 24,
+   "p90_ms": 3582.39,
+   "p95_ms": 3735.36,
+   "p99_ms": 3875.44
+  },
+  "red_latency_refused_at_input": {
+   "max_ms": 1064.92,
+   "median_ms": 865.73,
+   "min_ms": 640.84,
+   "n": 96,
+   "p90_ms": 958.75,
+   "p95_ms": 983.16,
+   "p99_ms": 1001.18
+  },
+  "requests": 120,
+  "rule": "D = ceil((p99 of decision time of requests that reached the model + 100 ms reserve) / 100 ms) * 100 ms",
+  "runs": 12
+ },
+ "code_revision": {
+  "files": 101,
+  "note": "not a git repository; hash over aegis/ sandbox/ evaluation/ scripts/ tests/ samples/ (*.py, *.sh, *.json)",
+  "tree_sha256": "sha256:5cd6d4940e2a1ca2e712bdb018606f5979db87b1a5533cc54d66f8ca03ee2d32"
+ },
+ "conditions": {
+  "0": {
+   "added_median_latency_for_answered_requests_ms": 0.0,
+   "added_median_wall_clock_per_run_s": 0.0,
+   "answered_requests": 40,
+   "auc_refused_faster": 1.0,
+   "baseline_adjusted_accuracy": 0.2,
+   "cut_off_rate_of_requests_that_reached_the_model": 0.0,
+   "cut_offs": 0,
+   "folds": 5,
+   "heldout_accuracy": 1.0,
+   "heldout_accuracy_ci95": [
+    0.981,
+    1.0
+   ],
+   "heldout_balanced_accuracy": 1.0,
+   "latency_answered": {
+    "max_ms": 3135.44,
+    "median_ms": 2531.09,
+    "min_ms": 1700.32,
+    "n": 40,
+    "p90_ms": 2940.24,
+    "p95_ms": 3100.47,
+    "p99_ms": 3135.44
+   },
+   "latency_refused": {
+    "max_ms": 883.11,
+    "median_ms": 678.14,
+    "min_ms": 592.05,
+    "n": 160,
+    "p90_ms": 718.09,
+    "p95_ms": 741.48,
+    "p99_ms": 789.0
+   },
+   "majority_baseline": 0.8,
+   "max_late_ms": 0.0,
+   "model_server_cpu_s_per_run": {
+    "max_ms": 17323.11,
+    "median_ms": 9545.7,
+    "min_ms": 6652.71,
+    "n": 20,
+    "p90_ms": 16176.98,
+    "p95_ms": 17004.2,
+    "p99_ms": 17323.11
+   },
+   "n_answered": 40,
+   "n_refused": 160,
+   "overruns": 0,
+   "path_label": {
+    "auc_refused_faster": 1.0,
+    "baseline_adjusted_accuracy": 0.2,
+    "heldout_accuracy": 1.0,
+    "heldout_accuracy_ci95": [
+     0.981,
+     1.0
+    ],
+    "majority_baseline": 0.8,
+    "n_answered": 40,
+    "n_refused": 160,
+    "note": "label = refused by the input rules (never reached the model) vs reached the model",
+    "permutation_p": 0.001
+   },
+   "payload_in_both_classes": false,
+   "permutation_p": 0.001,
+   "permutations": 1000,
+   "reached_model": 40,
+   "run_wall_clock_s": {
+    "max_ms": 16935.2,
+    "median_ms": 12594.95,
+    "min_ms": 11053.3,
+    "n": 20,
+    "p90_ms": 14576.7,
+    "p95_ms": 14770.4,
+    "p99_ms": 16935.2
+   },
+   "shadow_calls": 0,
+   "total_requests": 200,
+   "usable_runs": 20
+  },
+  "deadline": {
+   "added_median_latency_for_answered_requests_ms": 1515.64,
+   "added_median_wall_clock_per_run_s": 30.43,
+   "answered_requests": 40,
+   "auc_refused_faster": 0.551,
+   "baseline_adjusted_accuracy": -0.405,
+   "cut_off_rate_of_requests_that_reached_the_model": 0.0,
+   "cut_offs": 0,
+   "folds": 5,
+   "heldout_accuracy": 0.395,
+   "heldout_accuracy_ci95": [
+    0.33,
+    0.464
+   ],
+   "heldout_balanced_accuracy": 0.5,
+   "latency_answered": {
+    "max_ms": 4051.96,
+    "median_ms": 4046.73,
+    "min_ms": 4041.2,
+    "n": 40,
+    "p90_ms": 4050.01,
+    "p95_ms": 4050.62,
+    "p99_ms": 4051.96
+   },
+   "latency_refused": {
+    "max_ms": 4203.31,
+    "median_ms": 4046.28,
+    "min_ms": 4040.74,
+    "n": 160,
+    "p90_ms": 4050.71,
+    "p95_ms": 4053.77,
+    "p99_ms": 4059.39
+   },
+   "majority_baseline": 0.8,
+   "max_late_ms": 1.462,
+   "model_server_cpu_s_per_run": {
+    "max_ms": 15502.83,
+    "median_ms": 9718.55,
+    "min_ms": 6652.26,
+    "n": 20,
+    "p90_ms": 15398.5,
+    "p95_ms": 15429.93,
+    "p99_ms": 15502.83
+   },
+   "n_answered": 40,
+   "n_refused": 160,
+   "overruns": 0,
+   "path_label": {
+    "auc_refused_faster": 0.551,
+    "baseline_adjusted_accuracy": -0.52,
+    "heldout_accuracy": 0.28,
+    "heldout_accuracy_ci95": [
+     0.222,
+     0.346
+    ],
+    "majority_baseline": 0.8,
+    "n_answered": 40,
+    "n_refused": 160,
+    "note": "label = refused by the input rules (never reached the model) vs reached the model",
+    "permutation_p": 0.997
+   },
+   "payload_in_both_classes": false,
+   "permutation_p": 0.8462,
+   "permutations": 1000,
+   "reached_model": 40,
+   "run_wall_clock_s": {
+    "max_ms": 43391.5,
+    "median_ms": 43025.25,
+    "min_ms": 42995.1,
+    "n": 20,
+    "p90_ms": 43241.4,
+    "p95_ms": 43287.5,
+    "p99_ms": 43391.5
+   },
+   "shadow_calls": 0,
+   "total_requests": 200,
+   "usable_runs": 20
+  }
+ },
+ "config": {
+  "aegis_var": "/tmp/aegis-p16-timing-UwRB/var",
+  "attacks_per_run": 10,
+  "calibration_runs": 12,
+  "deadline_reserve_ms": 100,
+  "runs_per_setting": 20,
+  "settings": [
+   "0",
+   "deadline"
+  ]
+ },
+ "confounders": [
+  "one host (laptop CPU, desktop session, SELinux enforcing, rootless Podman); another CPU, model or max_tokens needs its own D",
+  "temperature 0: an answered payload gets the same answer every time, so its latency is mostly a property of the payload; the balanced design (each payload refused in half of the runs) stops that from predicting the label",
+  "a single-threshold classifier is a weak adversary; the deadline removes the latency difference by construction, the classifier only checks that nothing measurable is left",
+  "red's latency includes the mailbox round trip (polling), which does not depend on the decision",
+  "the guard refuses A02-A06 and A10 whatever the configuration, so those payloads are in one class only; a latency difference between payloads can then predict the label, which would show up as a leak (not hide one)"
+ ],
+ "defence_configs": {
+  "X": {
+   "file": "defence_config_X.json",
+   "refuses_at_input": [
+    "A01",
+    "A02",
+    "A03",
+    "A04",
+    "A05"
+   ],
+   "sha256": "d7163222390025f01f7a93e1895d18c10db6605e726797df06d7ba59da2a3f9a"
+  },
+  "Y": {
+   "file": "defence_config_Y.json",
+   "refuses_at_input": [
+    "A06",
+    "A07",
+    "A08",
+    "A09",
+    "A10"
+   ],
+   "sha256": "5ecf9cc1b8139e3a21b97f4ecc97666580479a7afb6e7d7fe2b1975c0e559699"
+  }
+ },
+ "environment": {
+  "cgroups": "v2",
+  "cpus": 16,
+  "cpuset_delegated": false,
+  "kernel": "7.2.15-300.fc45.x86_64",
+  "oci_runtime": "crun",
+  "oci_runtime_version": "crun version 1.30.1",
+  "podman": "6.1.3",
+  "rootless": true,
+  "seccomp_profile": "/usr/share/containers/seccomp.json",
+  "selinux": true
+ },
+ "execution_id": "TD-20261120T073845Z-58ffc7",
+ "finished_utc": "2026-11-20T08:03:27.439246+00:00",
+ "host": {
+  "cpu_model": "AMD Ryzen 7 7735HS with Radeon Graphics",
+  "cpus": 16,
+  "governor": "performance",
+  "loadavg": [
+   2.06689453125,
+   2.97265625,
+   2.3369140625
+  ],
+  "loadavg_after": [
+   1.154296875,
+   2.14794921875,
+   2.83935546875
+  ],
+  "mem_available_mb": 6763,
+  "platform": "Linux-7.2.15-300.fc45.x86_64-x86_64-with-glibc2.44",
+  "python": "3.15.0",
+  "top_processes_by_cpu_after": [
+   "177 llama-server",
+   "11.2 python",
+   "4.7 brave",
+   "4.3 brave",
+   "3.1 brave",
+   "2.5 gnome-shell"
+  ],
+  "top_processes_by_cpu_before_start": [
+   "149 llama-server",
+   "73.3 python",
+   "5.5 bash",
+   "4.3 brave",
+   "2.7 brave",
+   "2.0 brave"
+  ]
+ },
+ "label": "finale P16: P4 timing protocol with the Qwen3Guard guard ON (guard_mode both), real model",
+ "model": {
+  "api_key_configured": true,
+  "backend": "openai_compatible",
+  "declared_identity": {
+   "inference_server": "llama.cpp CPU b11819",
+   "model_file": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
+   "model_sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+   "server_isolation": "rootless-podman-network-none"
+  },
+  "endpoint": "http://localhost/v1",
+  "extra_body_fields": [
+   "cache_prompt"
+  ],
+  "loopback_only": true,
+  "max_tokens": 96,
+  "model": "local",
+  "stateless_requests": true,
+  "timeout_s": 30.0,
+  "transport": "unix_socket",
+  "unix_socket_owner_uid": 526212
+ },
+ "p16_guard": {
+  "deadline_fixed_ms": null,
+  "fields_added_to_both_configs": {
+   "guard_block_controversial": true,
+   "guard_mode": "both"
+  },
+  "inference_server": "llama.cpp CPU b11819",
+  "model_file": "Qwen3Guard-Gen-0.6B-Q8_0.gguf",
+  "model_sha256": "3f66ce2417b6df317e750b4c5bd847cb8e3e120eb9b3314b347269d87223efcd",
+  "settings": [
+   "0",
+   "deadline"
+  ],
+  "tag_baseline": {
+   "deadline_heldout_accuracy": [
+    0.495,
+    0.575
+   ],
+   "majority_baseline": [
+    0.515,
+    0.54
+   ],
+   "source": "evidence/finale_p4_2026-11-11/timing_deadline/aggregate.json"
+  }
+ },
+ "raw_files_sha256": {
+  "defence_config_X.json": "d7163222390025f01f7a93e1895d18c10db6605e726797df06d7ba59da2a3f9a",
+  "defence_config_Y.json": "5ecf9cc1b8139e3a21b97f4ecc97666580479a7afb6e7d7fe2b1975c0e559699",
+  "raw_calibration.jsonl": "5005d958cefadc3740e3e223ef9b6e8df1400e1a223662add17396f92b12878b",
+  "raw_classification.jsonl": "e615fc6063a16f298fa35366d7d39181f295917c2735ab437df7f7d24c342ecb",
+  "raw_runs.json": "8204662448680a7ae970c088651a42f970174a8163eadce57bbe70299d67e2ed"
+ },
+ "rules": {
+  "classes": "config X refuses A01-A05 at input, Y refuses A06-A10; rep r uses X if r even else Y",
+  "deadline": "fixed from this execution's calibration before phase 2 (see calibration.rule)",
+  "usable_run": "SEALED, complete=true, exactly 10 observations; others are listed in `unusable`, raw kept",
+  "verdict": "a padded setting is 'leak detected' if its permutation p < 0.05/9 (Bonferroni over 3 executions x 3 padded settings) in any execution; otherwise 'no leak detected (inconclusive as to absence)'"
+ },
+ "sandbox_image_id": "843529247ffbf4e67eddb33f46ee33d1a2539d05d717eb3a250a680d97422151",
+ "seed": 20261120,
+ "source_sha256": {
+  "Containerfile": "f95ad2be7ea71a18032c8c67ae657e761983b0e2731847a7d34db9992ac96ca0",
+  "aegis/__init__.py": "1d45131a7817b12972ad8fa3f7611a8d80004d089467d2eb5edf18f4f2c81874",
+  "aegis/anomaly.py": "f13180494a638ef102437c9cfeeda040921522a98efacb7ba8e6f927bcca8842",
+  "aegis/api.py": "33a1ae2f03ab650b8e2e03726b309d7f871877a63ee9b396c17b3f39b59b16d1",
+  "aegis/audit.py": "33f2bacf9bfeba23f1298d337946d8268c65139d097b20191b72759ef296cc81",
+  "aegis/canary_scan.py": "19f73f94078dec05d1932935b5eb44ffded259aa8c3dc711e7b740ecc6471df4",
+  "aegis/captoken.py": "197124c0f0f23e87d2705f341c80157ca0ac264a19be175d0fe34a1064116ffe",
+  "aegis/console.py": "eecf9e8df4782bbb03bcc5413d7af88275c972874bd78443605751fa65909e19",
+  "aegis/countersign.py": "d840be230366322875edfe032dbf739fc5a743a2888a25eefbdf7a331043cfa3",
+  "aegis/crypto.py": "1b4a2511c2301fbc90c92fc9bc0609719cc706ccde8956a78bd1d55fe88ed833",
+  "aegis/evidence.py": "70e4016772d4faf6028eeeb161df5f072cdba4e378ca502b5f179340f4287e37",
+  "aegis/guard.py": "b08641481bf1661750a4e0e75d46e4dad573d76e5605bf8a8e9df506c3d875f6",
+  "aegis/lab_session.py": "f623f35e173b31627db12fd52c45faee9d871959ad5c7dc69e5688b02bae8672",
+  "aegis/model_client.py": "4b357838fc05a0751cd31af4aa3af266be7ef541380d6c1a71147ccea9742791",
+  "aegis/runs.py": "2e48dc26f7b55c4ca777db7b912783112447e9442709be56d4464e60fce9592e",
+  "aegis/runtime.py": "3cb8569136f0873417035879ae7eace2566ab8514811a4a5e64f4ec494566b42",
+  "aegis/store.py": "80b3c6ee81ea2857f386788f4a25f3927685a469b5ffd1c24fa57bc37d7bda81",
+  "aegis/userns.py": "a61c76a9e3f5e6fd6d398c582608522db23327749ac998a70784c3ad996a5d28",
+  "aegis/verify_cli.py": "8cf4ee6da6e290579fb727cf13fb8d39c001655941c48a989b6d14b15ff91eb6",
+  "evaluation/check_claims.py": "318aab7f8fea48ef99e44ce3a05803ccc0ebfdf4417d16aba8cd1b91a85681b9",
+  "evaluation/check_finale_presentation.py": "83c6ef6284c1f934cdf517eee8af5d517e08f6760517823094a93ad37a3f9028",
+  "evaluation/check_presentation.py": "37fbeb96f0a7df1dde4f2902836316ccc2e3e105e61a10b03b313ed24ad28150",
+  "evaluation/guard_eval.py": "033b20f80cad84c16ef41b5b111506a82a5e23b8d1bcedebde7397bba022dcd9",
+  "evaluation/isolation_matrix.py": "bb41bea3dd85c69b7bfb252de68396bd5da2bfad4a57c620a31b819db22785bc",
+  "evaluation/llm_common.py": "1a84ab5ffaedf1643ae8e61f5f29bd10e76776e651881c1276450dcd55db904f",
+  "evaluation/llm_isolation.py": "a2081d3447ac817fd924f20435f3a8ad9e943616ff2fd2a0975feafb09e78dd6",
+  "evaluation/model_experiments.py": "6e83677afab67757754ca8f89f465d125978c4b8b50a17cd7ae7cf5a04ab17c3",
+  "evaluation/model_server_hardening.py": "f4f0ced9d9bf6b9066e9a6ed93180594fb7266c27c6dc97aa003121ffac8442a",
+  "evaluation/p4_userns_proof.py": "e51f671ac3ff11f158bc563a4c7e405cde2c9aad607d3942ec086ccce176b7c6",
+  "evaluation/phase2_matrix.py": "fb905d18ef681bfd7c02fbc010598fe7452259dd90cd88832eda8820b6195461",
+  "evaluation/revision.py": "8613c974eb9dfd30c1c5ef10ecd7296423783e4659f8f7c1621d8bbb9178f281",
+  "evaluation/run_evaluation.py": "d96966eaf3b3c4ad73e89fc6d2a1c76522ec30cd1563302d1bd0c27780148347",
+  "evaluation/run_validation.py": "a661455713b8e4d7e410d6ba9c1311ec35a4c1f8d14e4128da5459b8d65cbfcc",
+  "evaluation/timing_aggregate.py": "96fe3884a2a946edbd15ac0eec87a19045c515a688eaffb8aba173a6843493cd",
+  "evaluation/timing_closeout.py": "a88bfa637df3610f2de29726b0893ae3d6a9de84af1846e92047afcfc5e72065",
+  "evaluation/timing_deadline.py": "96d7bf969cf0804a32b9828ca94ae1eeec0beea0c07455e233a1e2bbf1afb9b1",
+  "evaluation/timing_eval.py": "6f793132c98c0a43e945e4afc7013298476fedcdf74e94746a802531d2ec7128",
+  "evaluation/timing_guard.py": "84974c35544806714c329e3ef7eec1596d6da345c98baa726f0cd31bf7c38367",
+  "evaluation/timing_real_model.py": "814f7aeab860db913274083b1c72f9c69d9d13c4321693fa484a52e2f7cce4a5",
+  "requirements.txt": "2dade7e6e03924544949eec51a72dc5b18b6678c8285a9486170df98488f513f",
+  "samples/attack_pack.json": "eba57929c4accb5e68b3d46fd4bfdf0b3a77ff8e196ff43b1b99d27be9fc0aea",
+  "samples/defence_config.json": "c6139a79babc49ecddf1a4564e7e750a52292dbc41585ab4f11ffaf097918d76",
+  "sandbox/defence_runner.py": "70c0b3e9288d95a66b48faa306adf1343e43dff897f139148a09f30cbd4c376f",
+  "sandbox/model_worker.py": "f4d89aa4274b2611ab8ab7200fab2a6d7cbbd8e0abcec33685f359559dc6b96c",
+  "sandbox/red_agent.py": "1f70fc31e16a0ad9aefdc0f8bdf5fcf7d2d14dfa06e1b43563f5730c526f81bb",
+  "sandbox/spool.py": "fb3b388cd5e59a78c9682ff4686d8f0de107b692b4be14e659568f90a077982e",
+  "scripts/demo_run.py": "4493ad7f955878071f559448c6972fec4e415c6b76aefb556f521788b672f21c",
+  "scripts/judge_demo.py": "3dbcf2b2f2aadd8929465db39b29e39d2d2fb85e5a6daa5d672057c46e8f373c",
+  "scripts/judge_demo.sh": "34fcfbe3c86cea5b6faaceae60d61cc2e7cae55c698a66698effde69bdc88f0c",
+  "scripts/quickstart.sh": "47c02ed04b3ef2eefeac34de4c986401cb1a64e3d49af11b083a81ad3b65e7fb",
+  "scripts/real_model_console_check.py": "ff97665b677efef5c2878d9b20b1c312cb16dc887bfefb28c8f4be098287c73c",
+  "scripts/real_model_demo.py": "99634dc59ba04e72106d3386ca924837b00cd851b7284e8b09f695fef041fda8",
+  "scripts/real_model_demo.sh": "51b001d9ad03c25959b5eddb863eef8fe1e26352e7e08f40a84758b57e3e2ed6",
+  "scripts/release_gates.sh": "e3e27dd9e8d3d766a59b4704cdfdf3588073f95efd065956e985325ea7193efd",
+  "scripts/run_browser_tests.sh": "a8ec67f2a2a775381342da9987ea1de479bfc2a7896e54c38d625f5b559cac03",
+  "scripts/security_demo.py": "792dc5cae41d1e67f056e111e36f4d0cb9af46b71c6862c7f2444e7dffe1ce2d",
+  "scripts/security_demo.sh": "69210d857d9216b033e09f0e15d484e81d9e1777f0390231a1ed821dcd36f1c2",
+  "scripts/start_guard_server.sh": "a1fcd05037cfc49011c5f2d22bfeb8ab43b7a28124fdc56b7500d940466cfc95",
+  "scripts/start_model_server.sh": "7a688763a104e39549be72ad5fcbdf716c092e67a6fa1b619ee220b01bc007bb",
+  "scripts/start_prototype.sh": "446826eb6d4282aae2a623417d35dbe22f9d216cda2ffef0defcd99e00f0f7ae",
+  "scripts/start_real_model_console.sh": "6d659f0e2f6e119376bc5f271276951c08c3a7e9d000f8495c39bb6c936c89de",
+  "tests/browser/conftest.py": "46d3c48c1ac4865be33bbedaee2ee4ae4c40334b7ab31bae34db3fef3f635d1c",
+  "tests/browser/test_console_browser.py": "97190e4379a23fe52dad9fed4213809a2502242066184eab3f4b413803f996c1",
+  "tests/browser/test_console_browser_core.py": "34140448e6c6fc99066a186a5a103a818a533abe0d134d2689a551c70a6a68e9",
+  "tests/test_audit_integrity.py": "4d896036674e6b8f7b6bca599edccf29605547c2f8b2b54047766afd96acda23",
+  "tests/test_core.py": "e977af5a5756d0f3e93ba8814e7dab4579af707974ba2ca3234222541a124dd6",
+  "tests/test_finale_p16_guard.py": "e9f7b5467d616e663689e0720a0da7e7d754bbb65217b520352b7ec18f5a3f65",
+  "tests/test_finale_p1_public_demo.py": "afea3b30617d2e53ad14580baf5476fb6b7e79c444e0451227ae71ffb0a6a36b",
+  "tests/test_finale_p2_model_cache_guard.py": "9859bc70f6188ae54d73c73f29683a7c5978379fc275157524b81907aef8e95c",
+  "tests/test_finale_p2_monitor.py": "f8cdc4bc2415dde7829d6424afc42d0ef28fc72210cecc9ba1270452e244cf0e",
+  "tests/test_finale_p2_quickstart.py": "9730ea7c570091b1c23308d6ee0d27dd36e3674e8a631d61d49ab2303dcd9477",
+  "tests/test_finale_p2_release_consistency.py": "486ed4b0431d8a17e15cab160064db4ac86f63be01f8b02ab4a6b9e0219b2f5f",
+  "tests/test_finale_p2_source_drift.py": "db7cfb59db9a507c268f4dafef59154a4354672117544e60c6612ffd3b454adf",
+  "tests/test_finale_p2_tenant_storage.py": "d1e62b507a923e18ce6d6958a7bfc818c032d9c530d3dd346dade584d894c060",
+  "tests/test_finale_p3_live_model.py": "ed912a5832a0c89c83ac11adb26627eedcf69cfb2af1f5dda3c6f2ad931b9137",
+  "tests/test_finale_p3_model_client.py": "b070f4253088cf187d270c5929ee207834a3fdcb08eaa56b58e35bc9cb49380a",
+  "tests/test_finale_p4_anomaly.py": "d6d1f7c24964497ac3c4038c69fd9a2049067fc3ec4cac01a729d92cc91acec7",
+  "tests/test_finale_p4_anomaly_console.py": "3a08d1abecb1fc66b95362bc387835c62e2e0699f3a22e886df800e96f0821f7",
+  "tests/test_finale_p4_canary_scan.py": "5e27d40b0f98868fd846d4f980b776787a9a1fe0e183e7c1598643eb0db4e4b5",
+  "tests/test_finale_p4_captoken.py": "5a2bfeb17f6af34f0dc9688ed30ba24af3ac832a226dda1e581186415858a3a0",
+  "tests/test_finale_p4_countersign.py": "f17114c0d098e277db7d71ce0689518bbba3ed2c1220c243a137819ec6ac707a",
+  "tests/test_finale_p4_pins.py": "65eb1ac3df673d9ff7d9a113b7be21b96f8954a3794540a1cd15dad9759108ba",
+  "tests/test_finale_p4_quota.py": "9f850f2242165dc06727afb1b3b8e542423dc874bddb26ecf356ca7d8cf6f024",
+  "tests/test_finale_p4_release_timing.py": "4003e7bfeb33be0a414068a85b039ac671a7d95cd3f78dc94fbb3d509852fdf0",
+  "tests/test_finale_p4_source_drift.py": "a7285d72485b3e6ce7281cb889ce6b2de04924da28801c956ad78b6db8df3530",
+  "tests/test_finale_p4_timing_default.py": "7ab8352cf14a2af9d8a8a1bf944706e319c23c03d89a69d976e7972c945bea02",
+  "tests/test_finale_p4_userns.py": "8f5533f00dfce613038d7f675dcb797e666f5eb586c5eb013d42431e2674ae34",
+  "tests/test_finale_p5_presentation_check.py": "3e64e533b4187f25b6dbaf82e964dde3827096910843a5bcaa240c3e2888ec97",
+  "tests/test_finale_p6_launcher_env.py": "a6ff2b0009b55887ae26d9e4ce2a50b0ff08f56c812ff558becf90f6153d9254",
+  "tests/test_finale_p6_render.py": "a0a0961b7b317ecfedc9f36ac998b8acc114458cbf56c53de90ed1ff728fc1c3",
+  "tests/test_isolation.py": "7155822e7f2c61183d44cbe5d3f4d1e0f41ce6f866c0601679702fedbe9dd000",
+  "tests/test_model_client.py": "c615d6be6007b9ee310d70cc5b52d456e4b1ce10ce0552b64f0ace7998d23187",
+  "tests/test_phase2_audit.py": "f4f5eace824dd9d25d4db86fe1b2eb0e826c4c9f0099c7d215ab2c5c41656f25",
+  "tests/test_phase2_broker.py": "b415a16328b6b7bbd7151f2d764222bf5b14e46b3b7db3c25735382fa8f53179",
+  "tests/test_phase2_config.py": "571d01418927563d1a2b2f7f18bc391d40071b229124c9591bb8669b94c5bdc8",
+  "tests/test_phase2_container.py": "61bdbfc5261a2f7e2d68d83e4c21b57841d6effb7853d0209ce4d3c4bd68a606",
+  "tests/test_phase2_lifecycle.py": "b8f36c6f563ab3b72b73fab63b13ccc9077c48a0a8418f4d3d5f1599433b2c18",
+  "tests/test_phase3_llm.py": "992babd133be74c8e97bb31980ca44079b85bdf5f9c990c1dae3f5d21c123e93",
+  "tests/test_phase3_tools.py": "baca043669ddbea011c98d59ea7fcb4ce72a9339ddd1f172c935768d4e757373",
+  "tests/test_phase4_presentation.py": "db0e93857f2264d65f9feadb7c18c12f0a831de0835ee38393f3b545ccc0d81d",
+  "tests/test_r1_console.py": "8423a90f3a0a48035b92830928a63c9f7906e226ae7bfab1f3fe58e16765509b",
+  "tests/test_r2_lab.py": "fe1d544e5e95926bd98666147967b0af877597730b0b9e772d49ab0123a3911a",
+  "tests/test_r3_hardening.py": "8a7c0b098ea89b3b42d84378124e4d9d24ec680dabc23ab986e8a382b1188e64"
+ },
+ "started_utc": "2026-11-20T07:38:45.038771+00:00",
+ "status": "COMPLETE",
+ "unusable": [],
+ "verdicts": {
+  "deadline": "no leak detected (inconclusive as to absence)"
+ },
+ "wall_clock_s": 1482.4
+}

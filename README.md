@@ -10,11 +10,80 @@
 > - **The rc4 package** at the repository root (`Tech_Mavericks_AegisLab_Submission.pptx` and `.pdf`, `Tech_Mavericks_AegisLab_Pitch_120s.mp4`, `Captions.srt`, `Voiceover_Script.txt`, `Storyboard_Timestamped.txt`, `Judge_QA.md`, `PHASE4_CLAIM_MATRIX.*`) is the **historical** pre-finale submission of 23 Oct 2026, kept unchanged and still checked against its own figures by `check_presentation.py`. See [`RC4_PACKAGE_HISTORICAL.md`](RC4_PACKAGE_HISTORICAL.md).
 <!-- finale:end -->
 
-**Secure infrastructure for adversarial AI safety testing.** Red-team attacks, blue-team defences and the model under test run side by side, cannot read each other's protected state, and every run ends with signed evidence that a reviewer can verify on their own machine.
+[![release-gates](https://github.com/Invinciblx777/HIH/actions/workflows/release-gates.yml/badge.svg)](https://github.com/Invinciblx777/HIH/actions/workflows/release-gates.yml)
+[![live-gates](https://github.com/Invinciblx777/HIH/actions/workflows/live-gates.yml/badge.svg)](https://github.com/Invinciblx777/HIH/actions/workflows/live-gates.yml)
+![licence: MIT](https://img.shields.io/badge/licence-MIT-blue)
 
-Team **Tech Mavericks** (Abdul Munaf Z, Likhith Sai N, Sreeram Rajesh) · **Hack in Hills '26** · Track 04: *Securing Adversarial AI Safety Testing Infrastructure* (Bayora).
+**The secure range for AI red-teaming.** Guards protect the model and attack tools test the model; AegisLab protects *the test itself*.
+Red-team attacks, blue-team defences and the model under test run in sandboxes that cannot reach each other, a broker hides which layer
+refused and when, and every run ends with signed evidence that a reviewer releases and anyone can verify on their own machine.
+
+![The jailbreak playground: Prompt B blocked by Qwen3Guard before the model; per-stage pipeline with latencies; verify and tamper results](docs/pitch/img/console_jailbreak_result.png)
+
+*The live jailbreak playground (`start_real_model_console.sh --playground`): the same prompt through REGEX ONLY and REGEX + QWEN3GUARD, each stage with its measured latency from the sealed record, then release, verification and a rejected tampered copy.*
+
+Team **Tech Mavericks** (Abdul Munaf Z, Likhith Sai N, Sreeram Rajesh) · **Hack in Hills '26** · Track 04: *Securing Adversarial AI Safety Testing Infrastructure* (Bayora). Product page: `/product` on any running console ([source](aegislab/web/product/index.html)). Pitch deck: [PDF](docs/pitch/AegisLab_Pitch.pdf) · [PPTX](docs/pitch/AegisLab_Pitch.pptx) · [talk tracks](docs/pitch/PITCH_SCRIPT.md).
 
 > **Status: working single-host prototype.** It is not a production security system and has not been audited by a third party. Everything below says which results are measured live, which come from saved runs, and where the guarantees stop.
+
+## Try it in 60 seconds
+
+| You have | Do this | What you see |
+|---|---|---|
+| A browser | Open https://aegislab-demo.onrender.com (read-only; the free instance can take about half a minute to wake) | Evidence pages; run the real verifier on a shipped bundle, then tamper with a disposable copy and watch it fail |
+| Linux + rootless Podman | `git clone https://github.com/Invinciblx777/HIH.git && cd HIH/aegislab && bash scripts/quickstart.sh`, then `bash scripts/judge_demo.sh` | Real sandboxes, rejected attacks, a released run that verifies, a tampered copy that does not (the first setup builds the venv and image and takes longer than a minute) |
+| The model files as well | `bash scripts/start_real_model_console.sh --playground` and open the launch link, then **Lab → Try a jailbreak (live)** | Your prompt through the real broker, blue's regex + Qwen3Guard and the sandboxed model; verdict banner, per-stage pipeline, verify and tamper |
+
+## Architecture
+
+```mermaid
+flowchart LR
+  R["Red sandbox<br/>attack pack · no network"] -->|mailbox| B{{"Broker<br/>fixed deadline · one refusal text<br/>canary scan · quotas"}}
+  B -->|mailbox| BL["Blue sandbox<br/>regex rules"]
+  BL -->|socket| G["Qwen3Guard sandbox<br/>(blue only)"]
+  B -->|UNIX socket| M["Model sandbox<br/>llama.cpp · --network none"]
+  B --> A[("Hash-chained audit log<br/>Ed25519 checkpoints")]
+  A -->|reviewer releases| V["verify_cli<br/>offline, fail-closed"]
+  A -.->|optional| BASE["Base anchor<br/>terminal checkpoint digest"]
+  A -.->|optional| N8N["n8n<br/>signed incident"]
+  TF["TinyFish web agents<br/>(Outside-In)"] -.->|untrusted pack| R
+```
+
+Red, blue and the model never talk to each other: each sandbox has only its own mailbox or socket, and the broker on the host is the only path.
+The detailed boundary table is in [The approach](#the-approach); the full threat model in [`aegislab/THREAT_MODEL.md`](aegislab/THREAT_MODEL.md).
+
+## Proof
+
+Every figure here is a claim from [`finale_package/claims_used_for_finale.json`](finale_package/claims_used_for_finale.json) with its label (LIVE = re-run on demand; RE-MEASURED / MEASURED / RECORDED with the date), recomputed from raw evidence by `aegislab/evaluation/check_claims.py`. The weak numbers are included.
+
+| What | Result | Label |
+|---|---|---|
+| Cross-session isolation, real model | 0 of 1040 isolation trials leaked (positive controls that must leak did) | RE-MEASURED 11 Nov 2026 |
+| Tamper evidence | 40/40 tampered copies rejected; 10/10 genuine bundles accepted | RE-MEASURED 11 Nov 2026 |
+| API boundary | 181/181 unauthorized cases denied | RE-MEASURED 11 Nov 2026 |
+| Role matrix | 419/419 denied, 141/141 allowed | RE-MEASURED 11 Nov 2026 |
+| Guard detection (Qwen3Guard-Gen-0.6B) | 99 of 100 JailbreakBench harmful goals (regex: 0 of 100 with regex); 61 of 112 Gandalf attacks (15 of 112 with regex, 63 of 112 with both) | MEASURED 20 Nov 2026 |
+| Guard false positives | 3 of 200 HH-RLHF helpful prompts; **59 of 100 JailbreakBench benign look-alikes** (harmless prompts on the same topics as the harmful set: the cost of the guard's recall; regex refuses none of them but also blocks none of the harmful set) | MEASURED 20 Nov 2026 |
+| Guard latency | p50 602 ms, p95 726 ms, 0 guard errors in 512 texts | MEASURED 20 Nov 2026 |
+| Which layer refused? (timing channel, guard mode) | unpadded: accuracy 1.000 (baseline 0.800, p = 0.001); with D = 4000 ms: accuracy 0.395 (baseline 0.800, p = 0.846); 200 requests per setting; cost +1516 ms; 0 overruns, 0 cut-offs | MEASURED 20 Nov 2026 |
+| Live demos | real model 13/13 checks; judge 17/17 checks; security 35/35 checks; console 21/21 browser checks | LIVE |
+
+Base anchor (finale P16, 20 Nov 2026): playground run TRY-006-G's terminal checkpoint is anchored on Base mainnet in tx [`0xb1d568e2…5daf5`](https://basescan.org/tx/0xb1d568e2bef36402bb8d43ab43b0b4253d93a402f16fbef0fc3ac65b3095daf5); `python -m aegis.anchor check` exits 0 on the bundle and 1 on a copy with 2 audit lines deleted. Bundle and check results: [`aegislab/evidence/finale_p17_2026-11-21/anchor_e5/`](aegislab/evidence/finale_p17_2026-11-21/anchor_e5/).
+
+## Integrations
+
+All OFF by default; each is enabled by one environment variable and tested with the flag off and on.
+
+| Integration | What it adds | Switch | Docs |
+|---|---|---|---|
+| **Qwen3Guard** (local) | A second blue layer after the regex rules, in its own sandbox that only blue can reach; fails closed | `--playground` / `AEGIS_GUARD_RUNDIR` | [`aegislab/guard/`](aegislab/guard/) |
+| **n8n** (self-hosted) | One HMAC-signed incident notice per sealed run (counts and digests only, never attack text) | `AEGIS_N8N_WEBHOOK` | [`tools/n8n/`](tools/n8n/) |
+| **Base** (mainnet) | The terminal checkpoint's digest in a 0-value self-transfer; offline-first queue, cost check before posting | `AEGIS_ANCHOR_CHAIN=base` | [`aegislab/aegis/anchor.py`](aegislab/aegis/anchor.py) |
+| **TinyFish** (web agents) | *AegisLab Outside-In*: agents read synthetic injection pages and audit the hosted demo read-only; their results come back as an untrusted attack pack. RECORDED 21 Nov 2026: no agent that read a poisoned page obeyed it, and the audit of the demo found nothing exposed | `tools/range/outside_in.py` | [`docs/integrations/TINYFISH.md`](docs/integrations/TINYFISH.md) |
+
+## How AegisLab compares
+
+Runtime guards (Lakera Guard, NeMo Guardrails, Llama Guard) and attack generators (PyRIT, garak, promptfoo, Cisco AI Defense validation) secure or test the **model**. AegisLab secures the **testing infrastructure** they run in, so it complements them: any guard can be blue, any generator can feed red. The capability grid in [`docs/pitch/RESEARCH.md`](docs/pitch/RESEARCH.md) uses only each vendor's public documentation (sources and access date in [`docs/pitch/SOURCES.md`](docs/pitch/SOURCES.md)), says "documented / not documented", and we did not benchmark any of these products.
 
 ## The problem
 
@@ -156,6 +225,9 @@ Stated here because a security result is only as credible as its limits.
 - **GPU and accelerator KV-cache isolation were not tested.** Only CPU inference was exercised. The proposed GPU boundary is described in `aegislab/README.md` ("GPU inference boundary").
 - **Saved and live real-model results.** The judge and security demos show the real-model numbers from saved runs; they never run a model. `scripts/real_model_demo.sh` and `scripts/start_real_model_console.sh` do run it live. Both these scripts and the experiments need a local `llama-server` binary and a GGUF model file (not included; nothing is downloaded by the repo). Re-running E1–E5 took 33 minutes on 11 Nov (`evaluation/llm_isolation.py`).
 - An earlier CPU-contention measurement (+37–52% round-trip time) did not reproduce in later runs (−5% to +1%).
+- **Guard limits (Qwen3Guard, measured 20 Nov 2026).** It is a layer, not a wall: about half of the Gandalf injection attacks pass it, and it refuses many harmless prompts that look like harmful ones (the JailbreakBench benign look-alike set). Guard mode needs a longer deadline (D = 4000 ms), so every reply in guard mode waits about four seconds.
+- **Outside-In limits.** The synthetic pages are served from a public branch; the public mirrors keep no request log for us, and one of them put a click-through page in front of ours that many agents never passed, so whether a web agent obeyed an injection is judged only from its own answer and step log. The agents' behaviour is TinyFish's at the time of the run and may change. See [`docs/integrations/TINYFISH.md`](docs/integrations/TINYFISH.md).
+- **Base anchor.** It proves *when* a terminal checkpoint existed, not that the run was honest; the anchoring key is a hot wallet on the operator host.
 
 ## Security and responsible use
 
@@ -183,10 +255,20 @@ PHASE2/3/4 reports, Judge_QA.md, PHASE4_CLAIM_MATRIX.md, VALIDATION_ADDENDUM_202
 Tech_Mavericks_AegisLab_Submission.pptx / .pdf, Tech_Mavericks_AegisLab_Pitch_120s.mp4, Captions.srt, Voiceover_Script.txt, Storyboard_Timestamped.txt
 presentation_src/            deck and video build sources (includes the official event template)
 assets/                      15 Oct diagrams and screenshots (historical figures; not used by the current deck)
-MANIFEST.sha256              SHA-256 of the 259 release files (rc4 minus the legacy site): sha256sum -c MANIFEST.sha256
+MANIFEST.sha256              SHA-256 of the release files: sha256sum -c MANIFEST.sha256
 docs/                        judge guide, validation record, and docs/prototype (console guide, walkthrough, Phase R1 report)
 tools/publication_scan.py    pre-publication secret and private-data scan (git index and history)
 ```
+
+## Roadmap
+
+- **Now (prototype):** single host, rootless Podman, CPU model, one guard, offline verifier, optional Base anchor, n8n relay, TinyFish Outside-In.
+- **Next:** per-team commit-reveal anchoring (each team anchors a commitment to its attack pack or defence config before the run and reveals it after release); a public transparency log of evaluation evidence (append-only, so a lab cannot quietly drop a bad run); reviewer key off the broker host by default; per-run tokens for every role; GPU KV-cache isolation tests; more guard models side by side in blue; Outside-In packs from more agent frameworks.
+- **Later:** multi-host ranges, gVisor or microVM sandboxes, signed evaluation reports mapped to OWASP LLM Top 10, MITRE ATLAS, NIST AI RMF and EU AI Act Art. 15.
+
+## Team
+
+Tech Mavericks: Abdul Munaf Z, Likhith Sai N, Sreeram Rajesh.
 
 ## Licence
 

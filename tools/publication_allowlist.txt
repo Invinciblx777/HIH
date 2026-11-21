@@ -22,3 +22,7 @@ home_path *evidence/finale_p4_2026-11-11/timing_stub/*              # same reaso
 
 # The 120 s pitch video of the release package (47 MB, below GitHub's 100 MB file limit).
 large_file Tech_Mavericks_AegisLab_Pitch_120s.mp4
+
+# Finale P16 (2026-11-20): the self-hosted n8n UI needs an owner account; this is a placeholder login on the .local domain
+# (no mailbox exists), used only on the loopback-only n8n of the venue laptop. The password is generated into a 0600 file.
+email *tools/n8n/start_n8n.sh                       # placeholder n8n owner login, not a real address

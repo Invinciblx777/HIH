@@ -1,0 +1,8 @@
+{
+  "event_count": 21,
+  "final_head": "sha256:b44e4768db257289457275ef8832d4572939b2ae6e11d67674b9960f4479532d",
+  "note": "bundle.json is a convenience index and is not trusted; the signed terminal_anchor.json is.",
+  "run_id": "OIN-003-G",
+  "signing_key_id": "sha256:ea0cb29793dbe82f",
+  "state": "RELEASED"
+}

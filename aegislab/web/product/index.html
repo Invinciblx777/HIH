@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AegisLab · the secure range for AI red-teaming</title>
+<meta name="description" content="AegisLab runs AI red-team tests in sandboxes that cannot reach each other, hides which defence layer refused, and seals every result as signed, verifiable evidence.">
+<link rel="stylesheet" href="/product/product.css">
+</head>
+<body>
+<!-- finale P17 landing page. Offline-safe: no CDN, no script, fonts from /fonts. Every figure is a claim from
+     finale_package/claims_used_for_finale.json (label, date and sample size shown next to it) or a P17 record under
+     aegislab/evidence/finale_p17_2026-11-21. Competitor statements: docs/pitch/SOURCES.md. -->
+<header class="top">
+  <a class="brand" href="/product">AegisLab<span>.</span></a>
+  <nav><a href="#how">How it works</a><a href="#proof">Proof</a><a href="#compare">Compare</a><a href="#compliance">Compliance</a><a href="#plans">Plans</a></nav>
+  <a class="cta sm" href="/">Launch live lab</a>
+</header>
+
+<main>
+<section class="hero-wrap"><div class="hero">
+  <p class="eyebrow">Track 04 · Securing adversarial AI safety testing infrastructure</p>
+  <h1>The secure range for AI red-teaming.</h1>
+  <p class="lead">Guards protect the model. Attack tools test the model. AegisLab protects the <em>test itself</em>: red, blue and the model run in
+    sandboxes that cannot reach each other, a broker hides which layer refused and when, and every result is sealed, released by a
+    reviewer, and provable afterwards.</p>
+  <div class="ctas"><a class="cta" href="/">Launch live lab</a><a class="cta ghost" href="/#/evidence">Verify the evidence</a>
+    <a class="cta ghost" href="https://github.com/Invinciblx777/HIH">Source (MIT)</a></div>
+  <p class="fine">The live lab runs on your own Linux machine with rootless Podman. The hosted copy at aegislab-demo.onrender.com is read-only by design.</p>
+</div>
+<figure class="shot"><img src="/product/hero.png" alt="The live jailbreak playground: Prompt B blocked by Qwen3Guard before the model, with the per-stage pipeline and measured latencies" width="1920" height="1080">
+<figcaption>Live playground run: blocked by Qwen3Guard before the model; red still waits for the same fixed deadline.</figcaption></figure>
+</section>
+
+<section id="problem" class="band">
+  <h2>The problem: the red-team range leaks</h2>
+  <div class="grid4">
+    <div class="card"><h3>Attack packs leak</h3><p>If blue can read the attacks before the run, the score measures memory, not defence.</p></div>
+    <div class="card"><h3>Refusals leak</h3><p>If a reply arrives faster when the guard refuses, red learns which layer stopped it, and tunes the next attack.</p></div>
+    <div class="card"><h3>Results leak early</h3><p>If anyone can read results before a reviewer releases them, findings escape before they are fixed.</p></div>
+    <div class="card"><h3>Logs can be rewritten</h3><p>If the record can be edited afterwards, nobody outside the team can trust the evaluation.</p></div>
+  </div>
+</section>
+
+<section id="how">
+  <h2>How it works, in three steps</h2>
+  <ol class="steps">
+    <li><span class="n">1</span><h3>Freeze</h3><p>The attack pack and the defence config are frozen; their sha256 enter a hash-chained audit log.</p></li>
+    <li><span class="n">2</span><h3>Attack in sandboxes</h3><p>Red, blue (regex + Qwen3Guard) and the model each run in a rootless Podman sandbox with no network. Only the broker
+      passes messages, and every reply leaves at one fixed deadline with one refusal text.</p></li>
+    <li><span class="n">3</span><h3>Seal, release, verify</h3><p>The run is sealed with Ed25519 checkpoints. A reviewer releases it. Anyone can verify the bundle offline;
+      optionally its terminal checkpoint is anchored on Base.</p></li>
+  </ol>
+</section>
+
+<section id="proof" class="band">
+  <h2>Proof, with the weak numbers too</h2>
+  <p class="sub">Each figure carries its label: MEASURED / RE-MEASURED / RECORDED with a date, or LIVE (re-run on demand). Sample sizes are in the text.</p>
+  <div class="proof">
+    <div class="pf"><strong>0 of 1040 isolation trials</strong><span>leaked across sandboxes (canary probes, real model).</span><em>RE-MEASURED 11 Nov 2026</em></div>
+    <div class="pf"><strong>40/40 tampered copies rejected</strong><span>by the independent verifier; 10/10 genuine bundles accepted.</span><em>RE-MEASURED 11 Nov 2026</em></div>
+    <div class="pf"><strong>181/181 unauthorized cases denied</strong><span>in the API matrix; 0 in 216 public bodies carried a sealed marker.</span><em>RE-MEASURED 11 Nov 2026</em></div>
+    <div class="pf"><strong>99 of 100 JailbreakBench harmful goals</strong><span>blocked by Qwen3Guard; regex alone: 0 of 100 with regex.</span><em>MEASURED 20 Nov 2026</em></div>
+    <div class="pf"><strong>61 of 112 Gandalf attacks</strong><span>blocked by the guard; 15 of 112 with regex; 63 of 112 with both. About half still pass: a layer, not a wall.</span><em>MEASURED 20 Nov 2026</em></div>
+    <div class="pf weak"><strong>59 of 100 JailbreakBench benign look-alikes</strong><span>refused by the guard (harmless prompts on the same topics as the harmful set): the price of its recall.
+      On ordinary requests: 3 of 200 HH-RLHF helpful prompts.</span><em>MEASURED 20 Nov 2026</em></div>
+    <div class="pf"><strong>accuracy 0.395 (baseline 0.800, p = 0.846)</strong><span>a timing classifier trying to tell refused from answered, with D = 4000 ms: no leak detected.
+      Without the deadline: accuracy 1.000 (baseline 0.800, p = 0.001). 200 requests per setting. Cost +1516 ms.</span><em>MEASURED 20 Nov 2026</em></div>
+    <div class="pf"><strong>p50 602 ms</strong><span>guard check latency; p95 726 ms; 0 guard errors in 512 texts.</span><em>MEASURED 20 Nov 2026</em></div>
+  </div>
+</section>
+
+<section id="arch">
+  <h2>Architecture</h2>
+  <figure class="arch">
+    <svg viewBox="0 0 1000 380" role="img" aria-label="Red, blue and model sandboxes connected only through the broker; the broker writes a signed audit log that a reviewer releases and verify_cli checks; the terminal checkpoint can be anchored on Base and incidents go to n8n.">
+      <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="#111"/></marker></defs>
+      <g font-family="IBM Plex Sans, sans-serif" font-size="15" text-anchor="middle">
+        <rect x="20" y="40" width="170" height="80" rx="12" fill="#fde8d8" stroke="#b4532a" stroke-width="2"/><text x="105" y="74" font-weight="600">Red sandbox</text><text x="105" y="96" font-size="12">attack pack · no network</text>
+        <rect x="20" y="240" width="170" height="80" rx="12" fill="#e2ecfa" stroke="#2f6fb3" stroke-width="2"/><text x="105" y="270" font-weight="600">Blue sandbox</text><text x="105" y="292" font-size="12">regex rules → Qwen3Guard</text><text x="105" y="308" font-size="12">(guard in its own sandbox)</text>
+        <rect x="380" y="130" width="220" height="110" rx="14" fill="#111" stroke="#111"/><text x="490" y="170" fill="#fff" font-weight="600">Broker</text><text x="490" y="194" fill="#ddd" font-size="12">fixed deadline · one refusal text</text><text x="490" y="214" fill="#ddd" font-size="12">canary scan · quotas</text>
+        <rect x="790" y="40" width="190" height="80" rx="12" fill="#ddf1f1" stroke="#1f7a7a" stroke-width="2"/><text x="885" y="74" font-weight="600">Model sandbox</text><text x="885" y="96" font-size="12">llama.cpp · own socket</text>
+        <rect x="790" y="240" width="190" height="80" rx="12" fill="#f4ecd8" stroke="#8c6210" stroke-width="2"/><text x="885" y="270" font-weight="600">Signed audit log</text><text x="885" y="292" font-size="12">hash chain · Ed25519</text><text x="885" y="308" font-size="12">sealed until released</text>
+        <path d="M190,80 L380,160" stroke="#111" stroke-width="2" marker-end="url(#a)" fill="none"/>
+        <path d="M190,280 L380,215" stroke="#111" stroke-width="2" marker-end="url(#a)" fill="none"/>
+        <path d="M600,160 L790,80" stroke="#111" stroke-width="2" marker-end="url(#a)" fill="none"/>
+        <path d="M600,215 L790,280" stroke="#111" stroke-width="2" marker-end="url(#a)" fill="none"/>
+        <text x="500" y="300" font-size="13">Reviewer releases → verify_cli (offline) → optional Base anchor · n8n incident</text>
+        <text x="105" y="190" font-size="12" fill="#9b2c2c">red ✕ blue ✕ model: no direct path</text>
+      </g>
+    </svg>
+  </figure>
+</section>
+
+<section id="outside" class="band">
+  <h2>Outside-In: web agents meet the open web</h2>
+  <p>TinyFish web agents did ordinary tasks (summarise an article, extract pricing, follow a support article) on synthetic pages that each hide
+    one instruction: hidden div, HTML comment, white text, off-screen, alt text, footer, fake system block, link lure, base64 in a hidden div,
+    aria-label with a fake reference code. What the agents brought back enters AegisLab as an <em>untrusted attack pack</em> and goes through
+    the same broker, regex + Qwen3Guard and sandboxed model. Agents also audited the hosted demo read-only, and every case became a signed n8n incident.</p>
+  <p class="sub">Small samples from one night of runs; agent behaviour can change. Details and limits: docs/integrations/TINYFISH.md.</p>
+  <div class="proof three"><div class="pf" data-src="outside_in"><strong>0 of 18</strong><span>agents that read a poisoned page followed its hidden instruction (repeated its marker or opened its link). 30 TinyFish runs on 10 pages; in 18 the answer shows the page was read. None warned the user either.</span><em>RECORDED 21 Nov 2026</em></div><div class="pf" data-src="outside_in"><strong>9 of 20</strong><span>imported web entries stopped before the model by regex + Qwen3Guard (regex alone: 8 of 20). No model answer carried the injected link. Sealed run OIN-002-G: verify exit 0, tampered copy exit 1.</span><em>RECORDED 21 Nov 2026</em></div><div class="pf" data-src="outside_in"><strong>34 of 34</strong><span>signed incidents delivered to n8n. Agents auditing the hosted demo found no API docs, keys, tokens or write path; one misread claim was checked by us and dismissed.</span><em>RECORDED 21 Nov 2026</em></div></div>
+</section>
+
+<section id="compare">
+  <h2>Where AegisLab fits</h2>
+  <p class="sub">From each product's public documentation, read 21 Nov 2026 (sources in docs/pitch/SOURCES.md). "Not documented" means we did not find it, not that
+    the product lacks it. We did not benchmark any of these products.</p>
+  <div class="tablewrap"><table class="cmp">
+    <tr><th>Capability</th><th>AegisLab</th><th>Lakera Guard</th><th>PyRIT</th><th>garak</th><th>promptfoo</th><th>Cisco AI Defense</th><th>NeMo Guardrails</th></tr>
+    <tr><td>Screens model input/output at runtime</td><td class="y">Yes</td><td>documented</td><td>not documented</td><td>not documented</td><td>not documented</td><td>documented</td><td>documented</td></tr>
+    <tr><td>Generates / automates attacks</td><td class="y">Yes</td><td>not documented</td><td>documented</td><td>documented</td><td>documented</td><td>documented</td><td>not documented</td></tr>
+    <tr><td>Red, blue, model in separate network-less sandboxes</td><td class="y">Yes</td><td>not documented</td><td>not documented</td><td>not documented</td><td>not documented</td><td>not documented</td><td>not documented</td></tr>
+    <tr><td>Hides which layer refused (fixed deadline)</td><td class="y">Yes</td><td>not documented</td><td>not documented</td><td>not documented</td><td>not documented</td><td>not documented</td><td>not documented</td></tr>
+    <tr><td>Results sealed until a reviewer releases them</td><td class="y">Yes</td><td>not documented</td><td>not documented</td><td>not documented</td><td>not documented</td><td>not documented</td><td>not documented</td></tr>
+    <tr><td>Signed, hash-chained evidence + offline verifier</td><td class="y">Yes</td><td>not documented</td><td>not documented</td><td>not documented</td><td>not documented</td><td>not documented</td><td>not documented</td></tr>
+    <tr><td>OWASP LLM Top 10 report mapping</td><td>Manual (below)</td><td>not documented</td><td>not documented</td><td>not documented</td><td>documented</td><td>documented</td><td>not documented</td></tr>
+  </table></div>
+  <p class="fine">AegisLab is complementary: any guard can sit in the blue sandbox (we run Qwen3Guard) and any generator can feed the red pack.</p>
+</section>
+
+<section id="integrations" class="band">
+  <h2>Integrations</h2>
+  <div class="logos">
+    <div><strong>Qwen3Guard</strong><span>local safety classifier, sandboxed, blue-only</span></div>
+    <div><strong>TinyFish</strong><span>web agents for Outside-In tests</span></div>
+    <div><strong>n8n</strong><span>signed incident relay, self-hosted</span></div>
+    <div><strong>Base</strong><span>optional public anchor of the terminal checkpoint</span></div>
+    <div><strong>Podman</strong><span>rootless sandboxes, no network</span></div>
+    <div><strong>llama.cpp</strong><span>local model server, own socket</span></div>
+    <div><strong>Render</strong><span>hosted read-only demo: browse, verify, tamper</span></div>
+  </div>
+</section>
+
+<section id="compliance">
+  <h2>Compliance mapping: evidence, not certification</h2>
+  <p class="sub">AegisLab produces test evidence that can support these controls. It does not make a system compliant. Only what the code does is listed.</p>
+  <div class="tablewrap"><table class="cmp map">
+    <tr><th>Framework item</th><th>What AegisLab does for it</th></tr>
+    <tr><td>OWASP LLM01:2025 Prompt Injection</td><td>Runs direct and indirect injection packs (incl. Outside-In web content) against regex + Qwen3Guard; records per-item outcome.</td></tr>
+    <tr><td>OWASP LLM02:2025 Sensitive Information Disclosure</td><td>Canary scan withholds any answer that carries a planted secret; red receives the uniform refusal.</td></tr>
+    <tr><td>OWASP LLM05:2025 Improper Output Handling</td><td>Every model answer passes blue's output check and the canary scan before the broker releases it to red.</td></tr>
+    <tr><td>OWASP LLM10:2025 Unbounded Consumption</td><td>Per-run message, rate, size and outbox quotas enforced by the broker.</td></tr>
+    <tr><td>MITRE ATLAS AML.T0051 (.000 direct, .001 indirect)</td><td>Test packs for both paths; Outside-In covers indirect injection through web pages.</td></tr>
+    <tr><td>MITRE ATLAS AML.T0054 LLM Jailbreak</td><td>Jailbreak presets (role-play, DAN, encoding) in the live playground, sealed and verifiable.</td></tr>
+    <tr><td>NIST AI RMF MEASURE 2.7 (security and resilience evaluated and documented)</td><td>Red-team runs under adversarial conditions with signed, reviewer-released evidence.</td></tr>
+    <tr><td>EU AI Act Art. 15 (accuracy, robustness, cybersecurity)</td><td>Robustness and cybersecurity test evidence for high-risk systems, including attacks that aim to make the model misbehave.</td></tr>
+  </table></div>
+</section>
+
+<section id="who" class="band">
+  <h2>Who it is for</h2>
+  <div class="grid4">
+    <div class="card"><h3>AI labs' red teams</h3><p>Test release candidates without the blue team or the model seeing the pack early.</p></div>
+    <div class="card"><h3>Red-team vendors</h3><p>Hand clients sealed, verifiable results instead of screenshots.</p></div>
+    <div class="card"><h3>Safety institutes &amp; evaluators</h3><p>Run third-party evaluations whose records nobody can quietly rewrite.</p></div>
+    <div class="card"><h3>Regulated enterprises</h3><p>Keep robustness test evidence for audits (EU AI Act Art. 15, NIST AI RMF).</p></div>
+  </div>
+</section>
+
+<section id="plans">
+  <h2>Plans <span class="tag">ILLUSTRATIVE · no pricing has been set</span></h2>
+  <div class="grid3">
+    <div class="card plan"><h3>Community</h3><p class="price">Open source</p><ul><li>Self-hosted range (MIT)</li><li>Offline verifier</li><li>Local Qwen3Guard</li></ul></div>
+    <div class="card plan hi"><h3>Team</h3><p class="price">Per range, per year</p><ul><li>Managed range on your hardware</li><li>n8n incident routing</li><li>Outside-In web-agent packs</li></ul></div>
+    <div class="card plan"><h3>Institute</h3><p class="price">Custom</p><ul><li>Air-gapped deployment</li><li>Public anchoring of evidence</li><li>Evaluation reports mapped to frameworks</li></ul></div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <p><strong>AegisLab</strong> by Tech Mavericks · Hack in the Hills, Track 04 · MIT licence · <a href="https://github.com/Invinciblx777/HIH">github.com/Invinciblx777/HIH</a></p>
+  <p class="fine">Figures: finale_package/claims_used_for_finale.json and aegislab/evidence/. Market and competitor statements: docs/pitch/SOURCES.md.</p>
+</footer>
+</body>
+</html>
