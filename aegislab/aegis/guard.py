@@ -23,6 +23,8 @@ from pathlib import Path
 from . import runtime
 
 GUARD_RUNNER = Path(__file__).resolve().parent.parent / "guard" / "guard_runner.py"
+HARDEN = Path(__file__).resolve().parent / "harden.py"                                  # finale P18
+HARDEN_RULES = Path(__file__).resolve().parent.parent / "guard" / "harden_rules.json"
 _orig_launch = None
 
 
@@ -39,8 +41,13 @@ def guard_extension(role: str, mounts: list, env: dict, cmd):
     gdir.mkdir(mode=0o700, parents=True, exist_ok=True)
     shutil.copyfile(GUARD_RUNNER, gdir / "guard_runner.py")
     shutil.copyfile(Path(rundir) / "key", gdir / "key")
+    # finale P18: the hardening module and its rules beside the runner (read-only); used only when the frozen config asks for it
+    shutil.copyfile(HARDEN, gdir / "harden.py")
+    shutil.copyfile(HARDEN_RULES, gdir / "harden_rules.json")
     os.chmod(gdir / "key", 0o600)
     mounts = list(mounts) + [(str(gdir / "guard_runner.py"), "/aegis/guardrun/guard_runner.py", "ro"),
+                             (str(gdir / "harden.py"), "/aegis/guardrun/harden.py", "ro"),
+                             (str(gdir / "harden_rules.json"), "/aegis/guardrun/harden_rules.json", "ro"),
                              (str(gdir / "key"), "/aegis/guard/key", "ro"), (str(sock), "/aegis/guard/sock", "rw")]
     return mounts, dict(env), "/aegis/guardrun/guard_runner.py"
 

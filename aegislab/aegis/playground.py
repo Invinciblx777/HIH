@@ -64,8 +64,8 @@ def scrub(text):
 
 
 class Job:
-    def __init__(self, jid, prompt, guard):
-        self.id, self.prompt, self.guard = jid, prompt, guard
+    def __init__(self, jid, prompt, guard, harden=False):
+        self.id, self.prompt, self.guard, self.harden = jid, prompt, guard, harden
         self.t0 = time.monotonic()
         self.lines, self.done, self.result = [], False, None
         self.log_path = store.p("playground") / (jid + ".log")
@@ -199,6 +199,7 @@ def _work(job, items=None, extra=None):
     items = items or [{"id": "J1", "category": "jailbreak under test", "payload": job.prompt},
                       {"id": "C1", "category": "benign control", "payload": CONTROL}]
     res = {"runs": {}, "prompt": job.prompt, "deadline_ms": DEADLINE_MS}
+    res["harden"] = bool(getattr(job, "harden", False))
     res = dict(extra, **res) if extra else res
     work = Path(tempfile.mkdtemp(prefix="aegis-try-"))
     try:
@@ -218,11 +219,11 @@ def _work(job, items=None, extra=None):
         plan = [(job.id + "-R", "RUN-R", "regex")] + ([(job.id + "-G", "RUN-G", "both")] if job.guard else [])
         for rid, label, mode in plan:
             dc = work / (rid + ".json")
-            dc.write_text(json.dumps(dict(base, guard_mode=mode)))
+            dc.write_text(json.dumps(dict(base, guard_mode=mode, guard_harden=True) if getattr(job, "harden", False) else dict(base, guard_mode=mode)))
             runs.create_run(rid, attack_pack=str(work / "pack.json"), defence_config=str(dc), timing_deadline_ms=DEADLINE_MS)
             runs.freeze(rid)
-            job.emit(label, "freeze", "%s frozen · attack pack sha256 %s · defence config sha256 %s (guard_mode %s) · deadline %d ms" % (
-                rid, _sha(work / "pack.json")[:12], _sha(dc)[:12], mode, DEADLINE_MS))
+            job.emit(label, "freeze", "%s frozen · attack pack sha256 %s · defence config sha256 %s (guard_mode %s%s) · deadline %d ms" % (
+                rid, _sha(work / "pack.json")[:12], _sha(dc)[:12], mode, ", input hardening ON" if getattr(job, "harden", False) else "", DEADLINE_MS))
             r, arts = _stream_run(job, rid, label)
             obs = store.read_json(r.dir / "sealed/red_observed.json", [])
             lat = {o.get("attack_id"): o.get("latency_ms") for o in obs if isinstance(o, dict)}
@@ -288,6 +289,29 @@ def _work(job, items=None, extra=None):
             job.result, job.done = res, True
 
 
+HARDEN_EVIDENCE = ROOT / "evidence/finale_p18_2026-11-21/results.json"
+
+
+def harden_default():
+    """Finale P18: the "Hardening" toggle's default. OFF unless AEGIS_GUARD_HARDEN=1."""
+    return os.environ.get("AEGIS_GUARD_HARDEN", "").strip() == "1"
+
+
+def harden_card():
+    """The measured figures for the toggle's card (team red-team set, HELD-OUT half, and the false-positive change); None if absent."""
+    try:
+        r = json.loads(HARDEN_EVIDENCE.read_text())
+        ho = r["team"]["HELD-OUT"]
+        ref = r.get("reference") or {}
+        fp = {k: {"n": v["n"], "off": v["off"]["both"]["blocked"], "on": v["on"]["both"]["blocked"]} for k, v in ref.items() if k in ("hh_helpful", "jbb_benign")}
+        d = time.strptime(r["utc"][:10], "%Y-%m-%d")
+        return {"label": "MEASURED %d %s" % (d.tm_mday, time.strftime("%b %Y", d)), "held_out_n": ho["n"],
+                "held_out": {arm: {m: ho[arm][m]["blocked"] for m in ("regex", "both", "both_content")} for arm in ("off", "on")},
+                "false_positives": fp, "window_chars": r.get("content_window_chars")}
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
 def _next_id(prefix="TRY", floor=0):
     """floor: the highest number already used outside this console's state (ids recorded in committed evidence)."""
     used = {floor} if floor else set()
@@ -304,13 +328,13 @@ def _next_id(prefix="TRY", floor=0):
     return "%s-%03d" % (prefix, max(used, default=0) + 1)
 
 
-def start_job(jid, prompt, guard, items=None, target=None):
+def start_job(jid, prompt, guard, items=None, target=None, harden=False):
     """Queue one job (one at a time across the playground and Outside-In); returns the Job. Raises HTTPException 409 if busy.
     target: a replacement worker target(job) that ends by calling _work (the Outside-In live TinyFish run)."""
     with _lock:
         if any(not j.done for j in _jobs.values()):
             raise HTTPException(409, "a playground test is already running")
-    job = Job(jid, prompt, guard)
+    job = Job(jid, prompt, guard, harden)
     with _lock:
         _jobs[job.id] = job
         _order.append(job.id)
@@ -338,7 +362,8 @@ def register(app, authorize):
 
     @app.get("/api/lab/playground")
     def playground_status():
-        return {"enabled": enabled(), "guard": bool(os.environ.get("AEGIS_GUARD_RUNDIR", "").strip())}
+        return {"enabled": enabled(), "guard": bool(os.environ.get("AEGIS_GUARD_RUNDIR", "").strip()),
+                "harden": harden_default(), "harden_card": harden_card() if enabled() else None}
 
     @app.post("/api/lab/playground")
     async def playground_start(request: Request, x_aegis_token: str = Header(None)):
@@ -351,8 +376,9 @@ def register(app, authorize):
         if not 1 <= len(prompt) <= MAX_PROMPT:
             raise HTTPException(400, "prompt must be 1-%d characters" % MAX_PROMPT)
         guard = bool((body or {}).get("guard", True)) and bool(os.environ.get("AEGIS_GUARD_RUNDIR", "").strip())
-        job = start_job(_next_id(), prompt, guard)
-        return {"job": job.id, "guard": guard}
+        harden = bool((body or {}).get("harden", harden_default()))
+        job = start_job(_next_id(), prompt, guard, harden=harden)
+        return {"job": job.id, "guard": guard, "harden": harden}
 
     @app.get("/api/lab/playground/{job_id}")
     def playground_poll(job_id: str, request: Request, since: int = 0, x_aegis_token: str = Header(None)):
