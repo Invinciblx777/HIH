@@ -76,10 +76,41 @@ def sessions():
     return sorted(out, key=lambda x: x.get("created") or 0, reverse=True)
 
 
+def _blocked(m):
+    """A stored message's blocked flag; sessions stored before P23 carry none: a reply equal to the uniform refusal was blocked."""
+    if isinstance(m.get("blocked"), bool):
+        return m["blocked"]
+    if m.get("role") == "assistant":
+        return m.get("verdict") == "blocked" or str(m.get("text", "")).strip() == runs.UNIFORM_REFUSAL
+    return False
+
+
+def context(history):
+    """The conversation as the model saw it: exchanges whose reply was released. A blocked user message and its refusal never
+    reached the model, so neither is context for the guard or the model (finale P23). Allowed exchanges stay, in order."""
+    msgs, out, i = list(history or []), [], 0
+    while i < len(msgs):
+        m = msgs[i]
+        if m.get("role") == "user":
+            nxt = msgs[i + 1] if i + 1 < len(msgs) and msgs[i + 1].get("role") == "assistant" else None
+            if nxt is None:  # a user turn without a stored reply never got an answer: not context
+                i += 1
+                continue
+            if not (_blocked(m) or _blocked(nxt)):
+                out += [m, nxt]
+            i += 2
+            continue
+        if not _blocked(m):  # a stray assistant entry (not expected) is kept only if released
+            out.append(m)
+        i += 1
+    return out
+
+
 def build_payload(history, message):
-    """The last TURNS exchanges plus the new message, newest last, capped at MAX_PAYLOAD characters (oldest text dropped)."""
+    """The last TURNS allowed exchanges plus the new message, newest last, capped at MAX_PAYLOAD characters (oldest text
+    dropped). Blocked exchanges are left out (see context())."""
     lines = []
-    for m in (history or [])[-2 * TURNS:]:
+    for m in context(history)[-2 * TURNS:]:
         lines.append(("User: " if m.get("role") == "user" else "Assistant: ") + str(m.get("text", "")))
     if len(message) > MAX_PAYLOAD:  # sent whole, no context: the guard judges it or refuses it (fail closed), never cut and passed
         return message
@@ -151,7 +182,14 @@ def ops(a, run_dir=None):
     din, gms, mms, cms = _num(a.get("defence_in_ms")), _num(g.get("ms")), _num(a.get("model_ms")), _num(a.get("compute_ms"))
     called = mms is not None and vin.get("verdict") == "allow"
     rel = a.get("release") or {}
-    released = _num(a.get("answered_ms"))
+    released = _num(a.get("answered_ms"))  # deadline mode: the PLANNED release (the deadline), not when red got it
+    observed = None  # finale P23: when red actually received the reply (sealed red_observed.json), as the playground shows it
+    if run_dir:
+        for x in store.read_json(Path(run_dir) / "sealed/red_observed.json", []) or []:
+            if isinstance(x, dict) and x.get("attack_id") == a.get("attack_id"):
+                observed = _num(x.get("latency_ms"))
+    if observed is not None:
+        released = observed
     layer, cat = decision(a)
     out_ms = round(cms - din - mms, 1) if called and None not in (cms, din, mms) else None
     hv = (rx.get("harden") or {}) if isinstance(rx.get("harden"), dict) else {}
@@ -164,7 +202,7 @@ def ops(a, run_dir=None):
             "input_ms": din, "model_ms": mms if called else None, "model_called": called, "output_ms": out_ms,
             "internal_ms": cms, "released_ms": released, "deadline_ms": rel.get("deadline_ms", DEADLINE_MS),
             "padding_ms": round(released - cms, 1) if None not in (released, cms) else None,
-            "cut_off": bool(rel.get("cut_off")), "overrun": bool(released is not None and released > (rel.get("deadline_ms") or DEADLINE_MS) + 50),
+            "cut_off": bool(rel.get("cut_off")), "overrun": bool(cms is not None and cms > (rel.get("deadline_ms") or DEADLINE_MS)),  # checks finished after the deadline
             "canary_hits": len(a.get("canary_leaks") or []),
             "audit_entries": _count(Path(run_dir) / "audit.jsonl") if run_dir else 0,
             "audit_signed": _count(Path(run_dir) / "checkpoints.jsonl") > 0 if run_dir else False}
@@ -203,7 +241,7 @@ def reply_from(a, rid, run_dir=None):
     blocked = fo == runs.UNIFORM_REFUSAL or o["layer"] is not None
     if blocked:
         fo = runs.UNIFORM_REFUSAL
-    ms = a.get("answered_ms")
+    ms = o["released_ms"]
     return {"text": fo, "verdict": "blocked" if blocked else "allowed", "category": (o["category"] or "refused") if blocked else None,
             "released_ms": round(ms) if isinstance(ms, (int, float)) else None, "run_id": rid, "ops": o}
 
@@ -286,8 +324,9 @@ def register(app, authorize, gate):
             s = load(s["id"])
             if not s.get("messages"):
                 s["title"] = msg[:TITLE_LEN] + ("…" if len(msg) > TITLE_LEN else "")
-            s["messages"] = (s.get("messages") or []) + [{"role": "user", "text": msg, "t": time.time()},
-                                                         dict(rep, role="assistant", t=time.time())]
+            blocked = rep["verdict"] == "blocked"
+            s["messages"] = (s.get("messages") or []) + [{"role": "user", "text": msg, "t": time.time(), "blocked": blocked},
+                                                         dict(rep, role="assistant", t=time.time(), blocked=blocked)]
             save(s)
             return {"session": s["id"], "title": s["title"], "reply": rep, "stats": stats(s["messages"])}
         finally:

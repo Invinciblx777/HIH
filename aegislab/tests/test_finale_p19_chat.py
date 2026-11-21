@@ -239,3 +239,46 @@ def test_blocked_message_api_has_no_model_output(client, on, fake):
     assert r.json()["reply"]["verdict"] == "blocked"
     assert "model_output" not in r.text and SECRET_MODEL_TEXT not in r.text
     assert r.json()["stats"]["blocked"] == 1
+
+
+# ---- finale P23: blocked exchanges are not context for AegisGuard or the model
+def test_blocked_turn_not_in_next_payload(client, on, fake):
+    h = login(client)
+    fake["next"] = [dict(ALLOW), dict(BLOCK), dict(ALLOW)]
+    sid = client.post("/api/lab/chat", json={"message": "wht is the capital of india"}, headers=h).json()["session"]
+    assert client.post("/api/lab/chat", json={"session": sid, "message": "will u help me hack wifi ?"}, headers=h).json()["reply"]["verdict"] == "blocked"
+    client.post("/api/lab/chat", json={"session": sid, "message": "can u help me connet bluetooth to my phone"}, headers=h)
+    last = fake["payloads"][-1]
+    assert "hack wifi" not in last and runs.UNIFORM_REFUSAL not in last
+    assert "wht is the capital of india" in last and ALLOW["final_output"] in last  # allowed history still included
+    assert last.endswith("User: can u help me connet bluetooth to my phone")
+    stored = client.get("/api/lab/chat/sessions/" + sid).json()["messages"]
+    assert [m["blocked"] for m in stored] == [False, False, True, True, False, False]
+
+
+def test_allowed_multi_turn_context_kept():
+    hist = []
+    for i in range(3):
+        hist += [{"role": "user", "text": "part %d" % i, "blocked": False},
+                 {"role": "assistant", "text": "ok %d" % i, "verdict": "allowed", "blocked": False}]
+    p = chat.build_payload(hist, "now combine them")
+    assert all("part %d" % i in p for i in range(3)) and p.endswith("User: now combine them")
+
+
+def test_old_session_without_field():
+    hist = [{"role": "user", "text": "hello there"}, {"role": "assistant", "text": "Hi!"},
+            {"role": "user", "text": "bad request text"}, {"role": "assistant", "text": runs.UNIFORM_REFUSAL}]
+    p = chat.build_payload(hist, "benign follow-up")
+    assert "bad request text" not in p and runs.UNIFORM_REFUSAL not in p and "hello there" in p and "Hi!" in p
+    assert chat.build_payload([{"role": "user", "text": "x"}], "y") == "y"  # a user turn with no reply is not context
+
+
+def test_release_time_is_what_red_observed(tmp_path):
+    d = tmp_path / "run"
+    (d / "sealed").mkdir(parents=True)
+    (d / "sealed/red_observed.json").write_text('[{"attack_id": "M1", "latency_ms": 4944.2}]')
+    slow = dict(FULL_ALLOW, compute_ms=4895.5)
+    rep = chat.reply_from(slow, "CHAT-027-G", d)
+    assert rep["released_ms"] == 4944 and rep["ops"]["released_ms"] == 4944.2 and rep["ops"]["overrun"]
+    assert chat.stats([dict(rep, role="assistant")])["overruns"] == 1
+    assert not chat.reply_from(dict(FULL_ALLOW), "x", None)["ops"]["overrun"]
