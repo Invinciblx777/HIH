@@ -213,8 +213,8 @@ docker exec -it -u podman -w /home/podman/HIH/aegislab aegis-lab bash scripts/ju
 - `judge_prompt.sh`, `judge_prompt.py`, `stage_real_model_demo.sh`, `stage_tinyfish_console.sh` and
   `scripts/stage/sitecustomize.py` are new and only in this local copy: not committed, not in the team repo.
   The team's hash-pinned files (e.g. `evaluation/llm_common.py`, `aegis/playground.py`) are unchanged.
-- Repo updated to the latest main on 21 Nov (82340f8: P17 TinyFish, P18 hardening, P19–P21 Aegis Chat and deck).
-  Branch finale/p22-aegisguard (renames the guard "AegisGuard" in display text only) is not merged into main yet.
+- Repo updated to the latest main on 21 Nov (P17 TinyFish, P18 hardening, P19–P21 Aegis Chat and deck,
+  P22 "AegisGuard" naming in display text). The UI now says "AegisGuard" where older notes say "Aegis Guard".
 
 ## Fallback
 
