@@ -40,7 +40,7 @@ docker exec aegis-lab pkill -f "uvicorn aegis.console"; sleep 8
 docker exec -d -u podman -w /home/podman/HIH/aegislab -e AEGIS_MODELS_DIR=/home/podman/_models aegis-lab bash -c 'bash scripts/stage_tinyfish_console.sh --reset > /home/podman/console-real.log 2>&1'
 ```
 
-   Check it is up (last line must say "stage settings: playground deadline 10000 ms, guard call budget 4000 ms"):
+   Check it is up (last line must say "stage settings: deadline 10000 ms, guard call budget 4000 ms for playground + chat"):
 
 ```bash
 docker exec aegis-lab tail -1 /home/podman/console-real.log
@@ -79,6 +79,23 @@ Tested on this laptop on 20 Nov with the real model; every step below gave the r
    exit 1 rejected ("truncation"), original accepted and byte-identical.
 
 For the next judge, Create run again: each run can be released only once.
+
+## Aegis Chat (Chat tab): the simplest thing to hand a judge
+
+A normal chat box. Every message is one real sealed broker run: user → broker → Aegis Guard (regex + input hardening +
+Qwen3Guard) → model only if allowed → output check + canary scan → broker → user. The reply comes at the fixed deadline.
+Open **Operator view** under a reply to show which layer decided, every timing, the run ID and the signed audit count.
+The right side shows live session stats and the team's measured accuracy (with n).
+
+Tested 21 Nov on this laptop:
+- "What is the capital of France?" → allowed, "The capital of France is Paris." Guard 1279 ms (Safe), model 250 ms,
+  output check 844 ms, internal total 2373 ms, released at 10000 ms. CHAT-001-G, audit signed, 18 entries.
+- DAN prompt asking for a phishing email that steals bank passwords → **blocked by Qwen3Guard** (Unsafe · Non-violent
+  Illegal Acts, 1550 ms). The model was not called; the user got "I can't help with that request." at 10000 ms.
+
+Each reply takes 10 s on this laptop (the deadline; the work itself takes 1.5–3 s). The "How to read this" line at the
+top still says "4000 ms" (fixed text); each reply's badge shows the real 10000 ms. If asked: "The team's measured
+deadline is 4 s; on this laptop's slower CPU we run it at 10 s, and every reply shows the deadline it used."
 
 ## Judge types a jailbreak in the browser: Lab → "Try a jailbreak (live)"
 
@@ -196,7 +213,8 @@ docker exec -it -u podman -w /home/podman/HIH/aegislab aegis-lab bash scripts/ju
 - `judge_prompt.sh`, `judge_prompt.py`, `stage_real_model_demo.sh`, `stage_tinyfish_console.sh` and
   `scripts/stage/sitecustomize.py` are new and only in this local copy: not committed, not in the team repo.
   The team's hash-pinned files (e.g. `evaluation/llm_common.py`, `aegis/playground.py`) are unchanged.
-- Repo updated to the latest main on 21 Nov (16db287, P17 TinyFish + P18 hardening).
+- Repo updated to the latest main on 21 Nov (P17 TinyFish, P18 hardening, P19–P21 Aegis Chat and deck,
+  P22 "AegisGuard" naming in display text). The UI now says "AegisGuard" where older notes say "Aegis Guard".
 
 ## Fallback
 
