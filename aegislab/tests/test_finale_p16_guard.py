@@ -126,7 +126,9 @@ def test_P16A02_with_the_flag_only_the_defence_runner_gets_the_guard_mounts(tmp_
     m, env, cmd = aguard.guard_extension("blue", mounts, {}, None)
     assert cmd == "/aegis/guardrun/guard_runner.py"
     extra = {c: (h, mode) for h, c, mode in m[len(mounts):]}
-    assert set(extra) == {"/aegis/guardrun/guard_runner.py", "/aegis/guard/key", "/aegis/guard/sock"}
+    assert set(extra) == {"/aegis/guardrun/guard_runner.py", "/aegis/guard/key", "/aegis/guard/sock",
+                          "/aegis/guardrun/harden.py", "/aegis/guardrun/harden_rules.json"}  # finale P18: read-only, used only with guard_harden
+    assert extra["/aegis/guardrun/harden.py"][1] == "ro" and extra["/aegis/guardrun/harden_rules.json"][1] == "ro"
     assert extra["/aegis/guard/sock"] == (str(rd / "sock"), "rw") and extra["/aegis/guardrun/guard_runner.py"][1] == "ro"
     # the copies live under the guard's run directory, never in the run's own (exported) directory
     assert all(not h.startswith(str(run)) for h, _c, _m in m[len(mounts):] if _c != "/aegis/guard/sock")

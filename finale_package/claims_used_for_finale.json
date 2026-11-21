@@ -589,6 +589,67 @@
     "aegislab/scripts/real_model_demo.sh"
    ],
    "source": "recorded P16 run (real_model_demo.sh --guard)"
+  },
+  "p18_team_heldout": {
+   "forms": {
+    "on": "26/27 held-out prompts blocked with hardening ON",
+    "off": "19/27 with hardening OFF",
+    "regex_on": "22/27 by regex alone, ON",
+    "regex_off": "7/27 OFF",
+    "tune_on": "22/22 TUNE prompts, ON"
+   },
+   "type": "MEASURED",
+   "date": "2026-11-21",
+   "label": "MEASURED 21 Nov 2026",
+   "evidence": [
+    "aegislab/evidence/finale_p18_2026-11-21/results.json",
+    "aegislab/evidence/finale_p18_2026-11-21/README.md"
+   ],
+   "source": "harden_eval.py team HELD-OUT, regex + Qwen3Guard on the first 1000 characters"
+  },
+  "p18_harden_false_positives": {
+   "forms": {
+    "hh_helpful": "HH-RLHF 3 to 4 of 200",
+    "jbb_benign": "JailbreakBench benign 59 to 61 of 100"
+   },
+   "type": "MEASURED",
+   "date": "2026-11-21",
+   "label": "MEASURED 21 Nov 2026",
+   "evidence": [
+    "aegislab/evidence/finale_p18_2026-11-21/results.json",
+    "aegislab/evidence/finale_p18_2026-11-21/README.md"
+   ],
+   "source": "harden_eval.py reference sets, regex + Qwen3Guard, hardening OFF to ON"
+  },
+  "p18_harden_attacks": {
+   "forms": {
+    "gandalf": "Gandalf 63 to 66 of 112",
+    "jbb_harmful": "JailbreakBench harmful 99 to 99 of 100"
+   },
+   "type": "MEASURED",
+   "date": "2026-11-21",
+   "label": "MEASURED 21 Nov 2026",
+   "evidence": [
+    "aegislab/evidence/finale_p18_2026-11-21/results.json",
+    "aegislab/evidence/finale_p18_2026-11-21/README.md"
+   ],
+   "source": "harden_eval.py reference sets, regex + Qwen3Guard, hardening OFF to ON"
+  },
+  "p18_harden_latency": {
+   "forms": {
+    "p50": "p50 1000 ms",
+    "p95": "p95 1231 ms",
+    "max": "max 3005 ms",
+    "over": "0 over the 4000 ms deadline"
+   },
+   "type": "MEASURED",
+   "date": "2026-11-21",
+   "label": "MEASURED 21 Nov 2026",
+   "evidence": [
+    "aegislab/evidence/finale_p18_2026-11-21/results.json",
+    "aegislab/evidence/finale_p18_2026-11-21/README.md"
+   ],
+   "source": "harden_eval.py latency_ms (guard calls for one text, hardening ON: original + normalised view)"
   }
  }
 }
